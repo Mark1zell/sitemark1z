@@ -1499,11 +1499,8 @@
 
   function renderConversationMessage(message) {
   const isOutgoing =
-    (String(message.user_id) === String(state.currentSession?.user?.id) &&
-      message.sender_mode !== 'support_brand') ||
-    (isOwner() &&
-      isSupportConversation(message.conversation_id) &&
-      message.sender_mode === 'support_brand');
+  String(message.user_id) === String(state.currentSession?.user?.id) &&
+  message.sender_mode !== 'support_brand';
 
   const author = getMessageAuthorIdentity(message);
   const authorName = safeText(
