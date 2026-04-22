@@ -3928,8 +3928,5 @@
       renderContestEntriesAdmin(),
       searchPeople(),
       renderMessengerDialogs()
-]);
-}
-
-init();
+    ]);
 })();
