@@ -3919,4 +3919,3 @@
       renderMessengerDialogs()
     ]);
   })();
-})();
