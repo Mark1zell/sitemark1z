@@ -3953,4 +3953,5 @@ bindStaticEvents();
     renderMessengerDialogs()
   ]);
   init();  // Дополнительный вызов функции инициализации
+  })();
 })();
