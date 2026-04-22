@@ -3929,4 +3929,7 @@
       searchPeople(),
       renderMessengerDialogs()
     ]);
-  })();
+  }
+
+ init();
+})();
