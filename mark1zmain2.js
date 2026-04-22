@@ -3909,27 +3909,48 @@
 
   bindStaticEvents();
 
-  (async function init() {
-    renderStars(state.currentRating);
-    await fetchSessionAndProfile();
+  async function init() {
+  // Вызовы рендеринга различных разделов
+  renderStars(state.currentRating);
+  await fetchSessionAndProfile();
 
-    if (state.currentSession) {
-      startPresenceHeartbeat();
-      await requestNotificationsIfNeeded();
-      await updatePresence(true);
-    }
+  // Проверка текущей сессии и выполнение действий, если она существует
+  if (state.currentSession) {
+    startPresenceHeartBeat();
+    await requestNotificationsIfNeeded();
+    await updatePresence(true);
+  }
 
-await Promise.all([
-  cacheProfiles(),
-  renderPortfolio(),
-  renderReviews(),
-  renderNews(),
-  renderFaqQuestions(),
-  renderContestEntriesAdmin(),
-  searchPeople(),
-  renderMessengerDialogs()
-]);
+  // Загрузка всех данных параллельно
+  await Promise.all([
+    cacheProfiles(),
+    renderPortfolio(),
+    renderReviews(),
+    renderNew(),
+    renderFaqQuestions(),
+    renderContestEntriesAdmin(),
+    searchPeople(),
+    renderMessengerDialogs()
+  ]);
 }
 
+// Вызов функции init() для выполнения кода
 init();
+
+// Код для инициализации статических событий
+bindStaticEvents();
+
+// Асинхронная функция для начала работы
+(async function initApp() {
+  await Promise.all([
+    cacheProfiles(),
+    renderPortfolio(),
+    renderReviews(),
+    renderNew(),
+    renderFaqQuestions(),
+    renderContestEntriesAdmin(),
+    searchPeople(),
+    renderMessengerDialogs()
+  ]);
+  init();  // Дополнительный вызов функции инициализации
 })();
