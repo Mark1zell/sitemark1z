@@ -1528,54 +1528,68 @@
     : 'mkz-message-row mkz-message-row--them';
 
   const msgClass = isOutgoing
-    ? 'mkz-message mkz-message--outgoing'
-    : 'mkz-message mkz-message--incoming';
+    ? 'mkz-message mkz-message--me'
+    : 'mkz-message mkz-message--them';
 
   return `
     <div class="${rowClass}">
       <div class="${msgClass}">
         <span class="mkz-message__title">${authorName}</span>
 
-        ${message.text ? `
-          <div class="mkz-message__text">${nl2brSafe(message.text)}</div>
-        ` : ''}
+        ${message.text ? `${nl2brSafe(message.text)}` : ''}
 
-        ${isImage ? `
-          <div class="mkz-message__image">
-            <img src="${attachmentUrl}" alt="${attachmentName}">
-          </div>
-        ` : ''}
+        ${
+          isImage
+            ? `
+              <div class="mkz-message__image">
+                <img src="${attachmentUrl}" alt="${attachmentName}">
+              </div>
+            `
+            : ''
+        }
 
-        ${isAudio ? `
-          <div class="mkz-message__file">
-            <a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">Скачать аудио</a>
-          </div>
-        ` : ''}
+        ${
+          isAudio
+            ? `
+              <div class="mkz-message__audio">
+                <audio controls src="${attachmentUrl}"></audio>
+              </div>
+            `
+            : ''
+        }
 
-        ${attachmentUrl && !isImage && !isAudio ? `
-          <div class="mkz-message__file">
-            <a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">${attachmentName}</a>
-          </div>
-        ` : ''}
+        ${
+          attachmentUrl && !isImage && !isAudio
+            ? `
+              <div class="mkz-message__file">
+                <a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">${attachmentName}</a>
+              </div>
+            `
+            : ''
+        }
 
         <div class="mkz-message__footer">
           <span class="mkz-message__time">${formatDateTime(message.created_at)}</span>
 
-          ${canModerate ? `
-            <div class="mkz-message__actions">
-              <button type="button" class="mkz-message__icon-btn" title="Редактировать" data-edit-message="${message.id}">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.13 1.13 3.75 3.75L21 5.75z"></path>
-                </svg>
-              </button>
+          ${
+            canModerate
+              ? `
+                <div class="mkz-message__actions">
+                  <button type="button" class="mkz-message__icon-btn" title="Редактировать">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.13 1.13 3.75 3.75L21 5.75z"></path>
+                    </svg>
+                  </button>
 
-              <button type="button" class="mkz-message__icon-btn" title="Удалить" data-delete-message="${message.id}">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M6 7h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7zm3-4h6l1 2h4v2H4V5h4l1-2z"></path>
-                </svg>
-              </button>
-            </div>
-          ` : ''}
+                  <button type="button" class="mkz-message__icon-btn" title="Удалить">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M6 7h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7zm3-4h6l1 2h4v2H4V5h4l1-2z"></path>
+                    </svg>
+                  </button>
+                </div>
+              `
+              : ''
+          }
         </div>
       </div>
     </div>
