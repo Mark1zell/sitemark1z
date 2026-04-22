@@ -3928,8 +3928,8 @@
       renderContestEntriesAdmin(),
       searchPeople(),
       renderMessengerDialogs()
-    ]);
-  }
+]);
+}
 
- init();
+init();
 })();
