@@ -3919,16 +3919,16 @@
       await updatePresence(true);
     }
 
-    await Promise.all([
-      cacheProfiles(),
-      renderPortfolio(),
-      renderReviews(),
-      renderNews(),
-      renderFaqQuestions(),
-      renderContestEntriesAdmin(),
-      searchPeople(),
-      renderMessengerDialogs()
-   ]);
+await Promise.all([
+  cacheProfiles(),
+  renderPortfolio(),
+  renderReviews(),
+  renderNews(),
+  renderFaqQuestions(),
+  renderContestEntriesAdmin(),
+  searchPeople(),
+  renderMessengerDialogs()
+]);
 }
 
 init();
