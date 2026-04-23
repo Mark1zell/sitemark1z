@@ -273,13 +273,13 @@
   };
 
   function escapeHtml(value) {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
   function safeText(value, fallback = '') {
     const prepared = String(value ?? '').trim();
@@ -287,14 +287,14 @@
   }
 
   function safeUrl(value) {
-    const prepared = String(value ?? '').trim();
-    if (!prepared) return '';
-    return prepared.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-  }
+  const prepared = String(value ?? '').trim();
+  if (!prepared) return '';
+  return prepared.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
 
   function nl2brSafe(value) {
-    return safeText(value || '', '').replace(/\n/g, '<br>');
-  }
+  return safeText(value || '', '').replace(/\n/g, '<br>');
+}
 
   function getInitial(name, fallback = 'Г') {
     return String(name || fallback).trim().charAt(0).toUpperCase() || fallback;
@@ -2650,10 +2650,10 @@
         openScreen('account');
         alert('Регистрация завершена');
       } else {
-        alert('Аккаунт создан. Теперь войди в него.');
-        registerForm.reset();
-        showLoginBtn?.click();
-      }
+  alert('Аккаунт создан. Теперь войди в него.');
+  registerForm.reset();
+  showLoginBtn?.click();
+}
     } catch (err) {
       console.error(err);
       alert('Ошибка регистрации');
@@ -3949,8 +3949,6 @@ bindStaticEvents();
     searchPeople(),
     renderMessengerDialogs()
   ]);
-})();
-  
 })();
 
 })();
