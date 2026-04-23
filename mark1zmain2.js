@@ -3940,7 +3940,7 @@ window.addEventListener('beforeunload', () => {
   }, 0);
 });
 
-bindStaticEvents();
+  bindStaticEvents();
 
 (async function init() {
   await fetchSessionAndProfile();
@@ -3955,6 +3955,6 @@ bindStaticEvents();
     searchPeople(),
     renderMessengerDialogs()
   ]);
-})();
+ })();
 
 })();
