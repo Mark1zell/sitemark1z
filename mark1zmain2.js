@@ -3950,5 +3950,7 @@ bindStaticEvents();
     renderMessengerDialogs()
   ]);
 })();
+  
+})();
 
 })();
