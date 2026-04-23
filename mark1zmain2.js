@@ -3908,35 +3908,17 @@ window.addEventListener('beforeunload', () => {
 });
 
    supabaseClient.auth.onAuthStateChange(function (_event, session) {
-    state.currentSession = session || null;
+  state.currentSession = session || null;
 
-    if (state.currentSession) {
-      startPresenceHeartbeat();
-      requestNotificationsIfNeeded();
-      updatePresence(true);
-    } else {
-      stopPresenceHeartbeat();
-    }
+  if (state.currentSession) {
+    startPresenceHeartbeat();
+    requestNotificationsIfNeeded();
+    updatePresence(true);
+  } else {
+    stopPresenceHeartbeat();
+  }
 
-    setTimeout(async () => {
-      await fetchSessionAndProfile();
-
-      await Promise.all([
-        cacheProfiles(),
-        renderPortfolio(),
-        renderReviews(),
-        renderNews(),
-        renderFaqQuestions(),
-        renderContestEntriesAdmin(),
-        searchPeople(),
-        renderMessengerDialogs()
-      ]);
-    }, 0);
-  });
-
-  bindStaticEvents();
-
-  (async function init() {
+  setTimeout(async () => {
     await fetchSessionAndProfile();
 
     await Promise.all([
@@ -3949,6 +3931,24 @@ window.addEventListener('beforeunload', () => {
       searchPeople(),
       renderMessengerDialogs()
     ]);
-  })();
+  }, 0);
+});
+
+bindStaticEvents();
+
+(async function init() {
+  await fetchSessionAndProfile();
+
+  await Promise.all([
+    cacheProfiles(),
+    renderPortfolio(),
+    renderReviews(),
+    renderNews(),
+    renderFaqQuestions(),
+    renderContestEntriesAdmin(),
+    searchPeople(),
+    renderMessengerDialogs()
+  ]);
+})();
 
 })();
