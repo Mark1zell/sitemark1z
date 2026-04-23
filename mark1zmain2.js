@@ -3880,7 +3880,7 @@
     });
   }
 
-  supabaseClient.auth.onAuthStateChange(function (_event, session) {
+   supabaseClient.auth.onAuthStateChange(function (_event, session) {
     state.currentSession = session || null;
 
     if (state.currentSession) {
@@ -3894,16 +3894,34 @@
     setTimeout(async () => {
       await fetchSessionAndProfile();
 
-        await Promise.all([
-    cacheProfiles(),
-    renderPortfolio(),
-    renderReviews(),
-    renderNews(),
-    renderFaqQuestions(),
-    renderContestEntriesAdmin(),
-    searchPeople(),
-    renderMessengerDialogs()
-  ]);
-})();
+      await Promise.all([
+        cacheProfiles(),
+        renderPortfolio(),
+        renderReviews(),
+        renderNews(),
+        renderFaqQuestions(),
+        renderContestEntriesAdmin(),
+        searchPeople(),
+        renderMessengerDialogs()
+      ]);
+    }, 0);
+  });
+
+  bindStaticEvents();
+
+  (async function init() {
+    await fetchSessionAndProfile();
+
+    await Promise.all([
+      cacheProfiles(),
+      renderPortfolio(),
+      renderReviews(),
+      renderNews(),
+      renderFaqQuestions(),
+      renderContestEntriesAdmin(),
+      searchPeople(),
+      renderMessengerDialogs()
+    ]);
+  })();
 
 })();
