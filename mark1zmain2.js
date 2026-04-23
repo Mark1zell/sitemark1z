@@ -281,15 +281,21 @@
     .replace(/'/g, '&#039;');
 }
 
-  function safeText(value, fallback = '') {
-    const prepared = String(value ?? '').trim();
-    return prepared ? escapeHtml(prepared) : fallback;
-  }
+function safeText(value, fallback = '') {
+  const prepared = String(value ?? '').trim();
+  return prepared ? escapeHtml(prepared) : fallback;
+}
 
-  function safeUrl(value) {
+function safeUrl(value) {
   const prepared = String(value ?? '').trim();
   if (!prepared) return '';
-  return prepared.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  return prepared
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function nl2brSafe(value) {
+  return safeText(value || '', '').replace(/\n/g, '<br>');
 }
 
   function nl2brSafe(value) {
