@@ -3894,39 +3894,16 @@
     setTimeout(async () => {
       await fetchSessionAndProfile();
 
-      await Promise.all([
-        cacheProfiles(),
-        renderPortfolio(),
-        renderReviews(),
-        renderNews(),
-        renderFaqQuestions(),
-        renderContestEntriesAdmin(),
-        searchPeople(),
-        renderMessengerDialogs()
-      ]);
-    }, 0);
-  });
+        await Promise.all([
+    cacheProfiles(),
+    renderPortfolio(),
+    renderReviews(),
+    renderNews(),
+    renderFaqQuestions(),
+    renderContestEntriesAdmin(),
+    searchPeople(),
+    renderMessengerDialogs()
+  ]);
+})();
 
-  bindStaticEvents();
-
-  (async function init() {
-    renderStars(state.currentRating);
-    await fetchSessionAndProfile();
-
-    if (state.currentSession) {
-      startPresenceHeartbeat();
-      await requestNotificationsIfNeeded();
-      await updatePresence(true);
-    }
-
-    await Promise.all([
-      cacheProfiles(),
-      renderPortfolio(),
-      renderReviews(),
-      renderNews(),
-      renderFaqQuestions(),
-      renderContestEntriesAdmin(),
-      searchPeople(),
-      renderMessengerDialogs()
-    ]);
 })();
