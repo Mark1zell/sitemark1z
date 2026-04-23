@@ -3900,13 +3900,12 @@ reviewsList?.addEventListener('click', async function (e) {
     });
 
     document.addEventListener('visibilitychange', async () => {
-      await updatePresence(!document.hidden);
-    });
+  await updatePresence(!document.hidden);
+});
 
-    window.addEventListener('beforeunload', () => {
-      updatePresence(false);
-    });
-  }
+window.addEventListener('beforeunload', () => {
+  updatePresence(false);
+});
 
    supabaseClient.auth.onAuthStateChange(function (_event, session) {
     state.currentSession = session || null;
