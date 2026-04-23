@@ -3627,184 +3627,183 @@
     }
 
     const targetId = String(state.openedProfile.id);
-    const myId = String(state.currentSession.user.id);
+const myId = String(state.currentSession.user.id);
 
-    if (targetId === myId) {
-      openScreen('messenger');
-      await renderMessengerDialogs();
-      if (state.supportConversationId) {
-        await openConversation(state.supportConversationId);
-      }
-      return;
-    }
+if (targetId === myId) {
+  openScreen('messenger');
+  await renderMessengerDialogs();
+  if (state.supportConversationId) {
+    await openConversation(state.supportConversationId);
+  }
+  return;
+}
 
-    const conversationId = await findOrCreateDirectConversation(targetId);
+const conversationId = await findOrCreateDirectConversation(targetId);
 
-    if (!conversationId) {
-      alert('Не удалось открыть чат');
-      console.error('Conversation was not created for target:', targetId);
-      return;
-    }
+if (!conversationId) {
+  alert('Не удалось открыть чат');
+  console.error('Conversation was not created for target:', targetId);
+  return;
+}
 
-    openScreen('messenger');
+openScreen('messenger');
+await renderMessengerDialogs();
+await openConversation(conversationId);
+
+if (messengerSearch) {
+  messengerSearch.addEventListener('input', async () => {
     await renderMessengerDialogs();
-    await openConversation(conversationId);
   });
 }
-    if (messengerSearch) {
-      messengerSearch.addEventListener('input', async () => {
-        await renderMessengerDialogs();
-      });
+
+messengerForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await sendMessengerMessage();
+});
+
+if (pinnedOwnerChatBtn) {
+  pinnedOwnerChatBtn.addEventListener('click', async () => {
+    if (!state.currentSession) {
+      openScreen('account');
+      return;
     }
 
-    messengerForm?.addEventListener('submit', async e => {
+    await renderMessengerDialogs();
+
+    if (state.supportConversationId) {
+      await openConversation(state.supportConversationId);
+    }
+  });
+}
+
+if (messengerAttachImageBtn && messengerImageInput) {
+  messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
+}
+
+if (messengerAttachFileBtn && messengerFileInput) {
+  messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
+}
+
+if (messengerImageInput) {
+  messengerImageInput.addEventListener('change', () => {
+    const file = messengerImageInput.files?.[0];
+    if (!file) return;
+    state.pendingMessengerAttachment = { file, kind: 'image' };
+    renderMessengerAttachmentMeta();
+  });
+}
+
+if (messengerFileInput) {
+  messengerFileInput.addEventListener('change', () => {
+    const file = messengerFileInput.files?.[0];
+    if (!file) return;
+    state.pendingMessengerAttachment = { file, kind: 'file' };
+    renderMessengerAttachmentMeta();
+  });
+}
+
+if (messengerVoiceBtn) {
+  messengerVoiceBtn.addEventListener('click', async () => {
+    await startVoiceRecording();
+  });
+}
+
+if (messengerVoiceStopBtn) {
+  messengerVoiceStopBtn.addEventListener('click', () => {
+    stopVoiceRecording();
+  });
+}
+
+if (messengerRefreshBtn) {
+  messengerRefreshBtn.addEventListener('click', async () => {
+    await fetchMessengerData();
+    await renderMessengerDialogs();
+
+    if (state.currentConversationId) {
+      await openConversation(state.currentConversationId, true);
+    }
+  });
+}
+
+if (messengerOpenProfileBtn) {
+  messengerOpenProfileBtn.addEventListener('click', async () => {
+    const profileId = messengerOpenProfileBtn.dataset.profileId;
+    if (!profileId) return;
+    await openPublicProfile(profileId);
+  });
+}
+
+if (messengerInput) {
+  messengerInput.addEventListener('keydown', async e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       await sendMessengerMessage();
-    });
+    }
+  });
+}
 
-    if (pinnedOwnerChatBtn) {
-      pinnedOwnerChatBtn.addEventListener('click', async () => {
-        if (!state.currentSession) {
-          openScreen('account');
-          return;
-        }
-
-        await renderMessengerDialogs();
-
-        if (state.supportConversationId) {
-          await openConversation(state.supportConversationId);
-        }
-      });
+if (messengerMessages) {
+  messengerMessages.addEventListener('click', async e => {
+    const zoomImg = e.target.closest('[data-zoom-image]');
+    if (zoomImg) {
+      showImageModal(zoomImg.dataset.zoomImage, zoomImg.dataset.zoomTitle || '');
+      return;
     }
 
-    if (messengerAttachImageBtn && messengerImageInput) {
-      messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
+    const deleteBtn = e.target.closest('[data-delete-message]');
+    if (deleteBtn) {
+      await handleDeleteConversationMessage(deleteBtn.dataset.deleteMessage);
+      return;
     }
+  });
+}
 
-    if (messengerAttachFileBtn && messengerFileInput) {
-      messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
-    }
+reviewsList?.addEventListener('click', async function (e) {
+  const likeBtn = e.target.closest('[data-like-id]');
+  if (likeBtn) {
+    e.stopPropagation();
+    await likeReview(likeBtn.dataset.likeId);
+    return;
+  }
 
-    if (messengerImageInput) {
-      messengerImageInput.addEventListener('change', () => {
-        const file = messengerImageInput.files?.[0];
-        if (!file) return;
-        state.pendingMessengerAttachment = { file, kind: 'image' };
-        renderMessengerAttachmentMeta();
-      });
-    }
+  const editBtn = e.target.closest('[data-edit-review]');
+  if (editBtn) {
+    e.stopPropagation();
+    await handleEditReview(editBtn.dataset.editReview);
+    return;
+  }
 
-    if (messengerFileInput) {
-      messengerFileInput.addEventListener('change', () => {
-        const file = messengerFileInput.files?.[0];
-        if (!file) return;
-        state.pendingMessengerAttachment = { file, kind: 'file' };
-        renderMessengerAttachmentMeta();
-      });
-    }
+  const deleteBtn = e.target.closest('[data-delete-review]');
+  if (deleteBtn) {
+    e.stopPropagation();
+    await handleDeleteReview(deleteBtn.dataset.deleteReview);
+    return;
+  }
 
-    if (messengerVoiceBtn) {
-      messengerVoiceBtn.addEventListener('click', async () => {
-        await startVoiceRecording();
-      });
-    }
+  const deleteReplyBtn = e.target.closest('[data-delete-review-reply]');
+  if (deleteReplyBtn) {
+    e.stopPropagation();
+    await handleDeleteReviewReply(deleteReplyBtn.dataset.deleteReviewReply);
+    return;
+  }
 
-    if (messengerVoiceStopBtn) {
-      messengerVoiceStopBtn.addEventListener('click', () => {
-        stopVoiceRecording();
-      });
-    }
+  const replyForm = e.target.closest('[data-review-reply-form]');
+  if (replyForm) return;
 
-    if (messengerRefreshBtn) {
-      messengerRefreshBtn.addEventListener('click', async () => {
-        await fetchMessengerData();
-        await renderMessengerDialogs();
+  const profileBtn = e.target.closest('[data-open-profile]');
+  if (profileBtn) {
+    e.stopPropagation();
+    return;
+  }
 
-        if (state.currentConversationId) {
-          await openConversation(state.currentConversationId, true);
-        }
-      });
-    }
-
-    if (messengerOpenProfileBtn) {
-      messengerOpenProfileBtn.addEventListener('click', async () => {
-        const profileId = messengerOpenProfileBtn.dataset.profileId;
-        if (!profileId) return;
-        await openPublicProfile(profileId);
-      });
-    }
-
-    if (messengerInput) {
-      messengerInput.addEventListener('keydown', async e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          await sendMessengerMessage();
-        }
-      });
-    }
-
-    if (messengerMessages) {
-      messengerMessages.addEventListener('click', async e => {
-        const zoomImg = e.target.closest('[data-zoom-image]');
-        if (zoomImg) {
-          showImageModal(zoomImg.dataset.zoomImage, zoomImg.dataset.zoomTitle || '');
-          return;
-        }
-
-        const deleteBtn = e.target.closest('[data-delete-message]');
-        if (deleteBtn) {
-          await handleDeleteConversationMessage(deleteBtn.dataset.deleteMessage);
-          return;
-        }
-      });
-    }
-
-    reviewsList?.addEventListener('click', async function (e) {
-      const likeBtn = e.target.closest('[data-like-id]');
-      if (likeBtn) {
-        e.stopPropagation();
-        await likeReview(likeBtn.dataset.likeId);
-        return;
-      }
-
-      const editBtn = e.target.closest('[data-edit-review]');
-      if (editBtn) {
-        e.stopPropagation();
-        await handleEditReview(editBtn.dataset.editReview);
-        return;
-      }
-
-      const deleteBtn = e.target.closest('[data-delete-review]');
-      if (deleteBtn) {
-        e.stopPropagation();
-        await handleDeleteReview(deleteBtn.dataset.deleteReview);
-        return;
-      }
-
-      const deleteReplyBtn = e.target.closest('[data-delete-review-reply]');
-      if (deleteReplyBtn) {
-        e.stopPropagation();
-        await handleDeleteReviewReply(deleteBtn?.dataset.deleteReviewReply || deleteReplyBtn.dataset.deleteReviewReply);
-        return;
-      }
-
-      const replyForm = e.target.closest('[data-review-reply-form]');
-      if (replyForm) return;
-
-      const profileBtn = e.target.closest('[data-open-profile]');
-      if (profileBtn) {
-        e.stopPropagation();
-        return;
-      }
-
-      const card = e.target.closest('[data-review-id]');
-      if (card) {
-        const review = state.reviews.find(
-          r => String(r.id) === String(card.dataset.reviewId)
-        );
-        if (review) showReviewPopup(review);
-      }
-    });
+  const card = e.target.closest('[data-review-id]');
+  if (card) {
+    const review = state.reviews.find(
+      r => String(r.id) === String(card.dataset.reviewId)
+    );
+    if (review) showReviewPopup(review);
+  }
+});
 
     currentFolderWorks?.addEventListener('click', async function (e) {
       const editBtn = e.target.closest('[data-edit-work-inline]');
