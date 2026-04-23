@@ -1499,8 +1499,8 @@
 
   function renderConversationMessage(message) {
   const isOutgoing =
-  String(message.user_id) === String(state.currentSession?.user?.id) &&
-  message.sender_mode !== 'support_brand';
+    String(message.user_id) === String(state.currentSession?.user?.id) &&
+    message.sender_mode !== 'support_brand';
 
   const author = getMessageAuthorIdentity(message);
   const authorName = safeText(
@@ -1528,18 +1528,35 @@
     ? 'mkz-message mkz-message--me'
     : 'mkz-message mkz-message--them';
 
+  const hasText = Boolean(message.text && String(message.text).trim());
+  const hasImage = Boolean(isImage);
+  const isImageOnly = hasImage && !hasText;
+
   return `
     <div class="${rowClass}">
-      <div class="${msgClass}">
+      <div class="${msgClass} ${isImageOnly ? 'mkz-message--image-only' : ''}">
         <span class="mkz-message__title">${authorName}</span>
 
-        ${message.text ? `${nl2brSafe(message.text)}` : ''}
+        ${
+          hasText
+            ? `
+              <div class="mkz-message__text">
+                ${nl2brSafe(message.text)}
+              </div>
+            `
+            : ''
+        }
 
         ${
           isImage
             ? `
               <div class="mkz-message__image">
-                <img src="${attachmentUrl}" alt="${attachmentName}">
+                <img
+                  src="${attachmentUrl}"
+                  alt="${attachmentName}"
+                  data-zoom-image="${attachmentUrl}"
+                  data-zoom-title="${attachmentName}"
+                >
               </div>
             `
             : ''
@@ -1559,7 +1576,9 @@
           attachmentUrl && !isImage && !isAudio
             ? `
               <div class="mkz-message__file">
-                <a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">${attachmentName}</a>
+                <a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">
+                  ${attachmentName}
+                </a>
               </div>
             `
             : ''
@@ -1572,13 +1591,23 @@
             canModerate
               ? `
                 <div class="mkz-message__actions">
-                  <button type="button" class="mkz-message__icon-btn" title="Редактировать">
+                  <button
+                    type="button"
+                    class="mkz-message__icon-btn"
+                    title="Редактировать"
+                    data-edit-message="${message.id}"
+                  >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.13 1.13 3.75 3.75L21 5.75z"></path>
                     </svg>
                   </button>
 
-                  <button type="button" class="mkz-message__icon-btn" title="Удалить">
+                  <button
+                    type="button"
+                    class="mkz-message__icon-btn"
+                    title="Удалить"
+                    data-delete-message="${message.id}"
+                  >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M6 7h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7zm3-4h6l1 2h4v2H4V5h4l1-2z"></path>
                     </svg>
