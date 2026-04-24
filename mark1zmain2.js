@@ -1394,18 +1394,24 @@ async function openPublicProfile(userId) {
   }
 
       async function subscribeToMessages() {
-  if (!state.currentSession?.user) return;
+  if (!state.currentSession?.user) {
+    console.log('❌ Нет пользователя, подписка не создаётся');
+    return;
+  }
   
-  // Отписываемся от старого канала
+  // Закрываем старый канал
   if (state.messagesChannel) {
     try {
       await supabaseClient.removeChannel(state.messagesChannel);
+      console.log('✅ Старый канал закрыт');
     } catch(e) {
       console.warn('removeChannel error:', e);
     }
   }
   
-  // Создаём новый канал
+  console.log('🔄 Создаём новый канал для user:', state.currentSession.user.id);
+  
+  // Создаём новый канал с обработкой ошибок
   state.messagesChannel = supabaseClient
     .channel('messages-channel')
     .on(
@@ -1417,9 +1423,13 @@ async function openPublicProfile(userId) {
       },
       async (payload) => {
         const newMessage = payload.new;
+        console.log('📨 Получено новое сообщение:', newMessage);
         
         // Не обрабатываем свои сообщения
-        if (newMessage.user_id === state.currentSession?.user?.id) return;
+        if (newMessage.user_id === state.currentSession?.user?.id) {
+          console.log('⏭️ Своё сообщение, пропускаем');
+          return;
+        }
         
         // Проверяем, участвует ли пользователь в этом чате
         const isMember = state.conversationMembers.some(
@@ -1428,6 +1438,8 @@ async function openPublicProfile(userId) {
         );
         
         if (isMember) {
+          console.log('✅ Новое сообщение для текущего пользователя, обновляем чат');
+          
           // Обновляем данные
           await fetchMessengerData();
           await renderMessengerDialogs();
@@ -1447,7 +1459,14 @@ async function openPublicProfile(userId) {
         }
       }
     )
-    .subscribe();
+    .subscribe((status, err) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Realtime подписка активна!');
+      }
+      if (err) {
+        console.error('❌ Realtime ошибка:', err);
+      }
+    });
 }
 
     async function renderMessengerDialogs() {
