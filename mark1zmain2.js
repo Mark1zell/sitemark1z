@@ -1189,47 +1189,25 @@
     if (publicProfilePhone) publicProfilePhone.textContent = getVisiblePhone(profile);
     if (publicProfileTelegram) publicProfileTelegram.textContent = getVisibleTelegram(profile);
     if (publicProfileBio) publicProfileBio.textContent = profile.bio || 'Описание профиля пока не заполнено.';
-
-    // Устанавливаем аватар
-    if (publicProfileAvatar) {
-      if (profile.avatar_url) {
-        publicProfileAvatar.style.backgroundImage = `url('${profile.avatar_url}')`;
-        publicProfileAvatar.style.backgroundSize = 'cover';
-        publicProfileAvatar.style.backgroundPosition = 'center';
-        publicProfileAvatar.textContent = '';
-      } else {
-        publicProfileAvatar.style.backgroundImage = '';
-        publicProfileAvatar.textContent = getInitial(profile.username, 'U');
-      }
-    }
-
-    // ========== ДОБАВЬТЕ ЭТУ СТРОКУ ==========
-    // Сохраняем ID пользователя в атрибут кнопки
+    
+    applyAvatar(publicProfileAvatar, profile.avatar_url, profile.username);
+    
+    // ========== ДОБАВЬТЕ ЭТУ СТРОЧКУ ==========
+    // Сохраняем ID пользователя в атрибут кнопки "Написать"
     if (openProfileMessengerBtn) {
       openProfileMessengerBtn.setAttribute('data-user-id', profile.id);
     }
-
+    
     const userReviews = state.reviews.filter(r => String(r.user_id) === String(userId));
     const userComments = state.newsComments.filter(c => String(c.user_id) === String(userId));
-
-    if (publicProfileActivity) {
-      publicProfileActivity.innerHTML = `
-        <div class="mkz-profile-stats">
-          <div class="mkz-profile-stat">
-            <strong>${userReviews.length}</strong>
-            <span>Отзывов</span>
-          </div>
-          <div class="mkz-profile-stat">
-            <strong>${userComments.length}</strong>
-            <span>Комментариев</span>
-          </div>
-        </div>
-      `;
+    
+    if (publicProfileActivity) { 
+      publicProfileActivity.innerHTML = `<div class="mkz-profile-stats"><div class="mkz-profile-stat"><strong>${userReviews.length}</strong><span>Отзывов</span></div><div class="mkz-profile-stat"><strong>${userComments.length}</strong><span>Комментариев</span></div></div>`; 
     }
-
+    
     openScreen('profile');
-  } catch (err) {
-    console.error('openPublicProfile error', err);
+  } catch (err) { 
+    console.error('openPublicProfile error', err); 
   }
 }
       if (publicProfileRegistered) publicProfileRegistered.textContent = formatDateOnly(profile.created_at);
@@ -1866,30 +1844,15 @@
     if (peopleSearchBtn) peopleSearchBtn.addEventListener('click', async () => { await searchPeople(peopleSearchInput?.value || ''); });
     if (peopleSearchInput) peopleSearchInput.addEventListener('input', debounce(async (e) => { await searchPeople(e.target.value); }, 300));
     if (backToPeopleBtn) backToPeopleBtn.addEventListener('click', () => openScreen('people'));
-      // КНОПКА НАПИСАТЬ В ПРОФИЛЕ
-  // КНОПКА НАПИСАТЬ В ПРОФИЛЕ
-if (openProfileMessengerBtn) {
-  // Убираем старые обработчики, чтобы не было дублирования
-  const newBtn = openProfileMessengerBtn.cloneNode(true);
-  openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
-  window.openProfileMessengerBtn = newBtn;
-  
-  newBtn.addEventListener('click', async function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('Кнопка нажата'); // Для отладки
-    
+    if (openProfileMessengerBtn) {
+  openProfileMessengerBtn.addEventListener('click', async () => {
     if (!state.currentSession) {
       showNotification('Сначала войди в аккаунт', 'warning');
       openScreen('account');
       return;
     }
 
-    // Получаем ID сохраненный в атрибуте
-    const targetUserId = this.getAttribute('data-user-id');
-    
-    console.log('Target user ID:', targetUserId); // Для отладки
+    const targetUserId = openProfileMessengerBtn.getAttribute('data-user-id');
     
     if (!targetUserId) {
       showNotification('Профиль не найден', 'warning');
@@ -1907,8 +1870,6 @@ if (openProfileMessengerBtn) {
     
     try {
       const conversationId = await findOrCreateDirectConversation(targetUserId);
-      
-      console.log('Conversation ID:', conversationId); // Для отладки
 
       if (!conversationId) {
         showNotification('Не удалось открыть чат', 'error');
@@ -1919,8 +1880,8 @@ if (openProfileMessengerBtn) {
       await renderMessengerDialogs();
       await openConversation(conversationId);
     } catch (err) {
-      console.error('Error:', err);
-      showNotification('Ошибка при создании чата: ' + err.message, 'error');
+      console.error('Error creating conversation:', err);
+      showNotification('Ошибка при создании чата', 'error');
     } finally {
       hideLoading();
     }
