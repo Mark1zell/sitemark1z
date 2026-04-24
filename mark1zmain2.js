@@ -272,13 +272,18 @@
     voiceStream: null
   };
 
-  function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+function escapeHtml(value) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+
+  return String(value ?? '').split('').map(function (char) {
+    return map[char] || char;
+  }).join('');
 }
 
 function safeText(value, fallback = '') {
@@ -289,13 +294,11 @@ function safeText(value, fallback = '') {
 function safeUrl(value) {
   const prepared = String(value ?? '').trim();
   if (!prepared) return '';
-  return prepared
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+  return prepared.split('"').join('&quot;').split("'").join('&#039;');
 }
 
 function nl2brSafe(value) {
-  return safeText(value || '', '').replace(/\n/g, '<br>');
+  return safeText(value || '', '').split(String.fromCharCode(10)).join('<br>');
 }
 
   function getInitial(name, fallback = 'Г') {
