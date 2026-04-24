@@ -548,6 +548,11 @@
 
     const now = new Date().toISOString();
     
+    // ВАЖНО: Если пользователь уже существует, сохраняем его статус,
+    // если новый - устанавливаем is_online: false
+    const isOnline = existing ? (existing.is_online || false) : false;
+    const lastSeenAt = existing?.last_seen_at || now;
+    
     const payload = {
       id: userId,
       username: baseData?.username ?? existing?.username ?? fallbackName,
@@ -560,8 +565,8 @@
       public_id: publicId,
       user_code: publicId,
       is_admin: userId === OWNER_UID,
-      is_online: false,
-      last_seen_at: existing?.last_seen_at || now,
+      is_online: isOnline,  // Для новых пользователей - false
+      last_seen_at: lastSeenAt,
       show_phone: existing?.show_phone ?? true,
       show_telegram: existing?.show_telegram ?? true,
       show_last_seen: existing?.show_last_seen ?? true
@@ -574,6 +579,20 @@
 
     const afterInsert = await readProfileByUserId(userId);
     state.currentProfile = afterInsert || payload;
+    
+    // Дополнительная проверка: если профиль новый, принудительно устанавливаем is_online: false
+    if (!existing) {
+      await supabaseClient
+        .from('profiles')
+        .update({
+          is_online: false,
+          last_seen_at: now
+        })
+        .eq('id', userId);
+      state.currentProfile.is_online = false;
+      state.currentProfile.last_seen_at = now;
+    }
+    
     return state.currentProfile;
   } finally {
     state.profileSyncInProgress = false;
@@ -611,16 +630,44 @@
 }
 
   async function fetchSessionAndProfile(baseData) {
-    try {
-      const { data: sessionData, error } = await supabaseClient.auth.getSession();
-      if (error) { state.currentSession = null; state.currentProfile = null; if (typeof renderProfile === 'function') renderProfile(); return; }
-      state.currentSession = sessionData?.session || null;
-      if (!state.currentSession) { state.currentProfile = null; if (typeof renderProfile === 'function') renderProfile(); return; }
-      state.currentProfile = await ensureProfileForCurrentUser(baseData);
+  try {
+    const { data: sessionData, error } = await supabaseClient.auth.getSession();
+
+    if (error) {
+      console.error('getSession error:', error);
+      state.currentSession = null;
+      state.currentProfile = null;
       if (typeof renderProfile === 'function') renderProfile();
-      await touchCurrentProfileActivity();
-    } catch (err) { console.error('fetchSessionAndProfile error:', err); if (typeof renderProfile === 'function') renderProfile(); }
+      return;
+    }
+
+    state.currentSession = sessionData?.session || null;
+
+    if (!state.currentSession) {
+      state.currentProfile = null;
+      if (typeof renderProfile === 'function') renderProfile();
+      return;
+    }
+
+    state.currentProfile = await ensureProfileForCurrentUser(baseData);
+    
+    // ВАЖНО: устанавливаем правильный статус при загрузке
+    const isVisible = !document.hidden;
+    await supabaseClient
+      .from('profiles')
+      .update({
+        is_online: isVisible,
+        last_seen_at: new Date().toISOString()
+      })
+      .eq('id', state.currentSession.user.id);
+    
+    if (typeof renderProfile === 'function') renderProfile();
+    await touchCurrentProfileActivity();
+  } catch (err) {
+    console.error('fetchSessionAndProfile error:', err);
+    if (typeof renderProfile === 'function') renderProfile();
   }
+}
 
   async function cacheProfiles() {
     try {
@@ -702,38 +749,107 @@
   }
 
   async function handleRegister() {
-    if (!registerForm?.reportValidity()) return;
-    const telegramUsername = telegramInput?.value.trim() || '';
-    const vkUsername = vkInput?.value.trim() || '';
-    const socialValidation = validateSocialContacts(telegramUsername, vkUsername);
-    if (!socialValidation.valid) { if (socialError) socialError.textContent = socialValidation.message; showNotification(socialValidation.message, 'warning'); return; }
-    if (socialError) socialError.textContent = '';
-    setButtonState(registerBtn, true, 'Регистрация...', 'Зарегистрироваться');
-    try {
-      const username = nameInput?.value.trim() || '';
-      const phone = phoneInput?.value.trim() || '';
-      const avatarFile = avatarInput?.files?.[0];
-      let formattedTelegram = telegramUsername;
-      if (formattedTelegram && !formattedTelegram.startsWith('@')) formattedTelegram = '@' + formattedTelegram.replace(/^@+/, '');
-      const { data, error } = await supabaseClient.auth.signUp({
-        email: registerEmail.value.trim(), password: registerPassword.value.trim(),
-        options: { data: { username, telegram_username: formattedTelegram, vk_username: vkUsername } }
-      });
-      if (error) { showNotification('Ошибка регистрации: ' + error.message, 'error'); return; }
-      let avatarUrl = '';
-      if (data?.user && avatarFile) { try { const upload = await uploadToBucket('avatars', avatarFile, data.user.id); avatarUrl = upload.publicUrl; } catch (err) { console.error(err); } }
-      if (data?.session) { state.currentSession = data.session; } else { const { data: sessionData } = await supabaseClient.auth.getSession(); state.currentSession = sessionData?.session || null; }
-      if (state.currentSession) {
-        await ensureProfileForCurrentUser({ username, phone, avatar_url: avatarUrl, telegram_username: formattedTelegram, vk_username: vkUsername });
-        state.currentProfile = (await readProfileByUserId(state.currentSession.user.id)) || state.currentProfile;
-        renderProfile(); await cacheProfiles(); await searchPeople(); await loadUserBio(); openScreen('account');
-        showNotification('Регистрация завершена', 'success');
-      } else {
-        showNotification('Аккаунт создан. Теперь войдите в него.', 'info');
-        registerForm.reset(); if (vkInput) vkInput.value = ''; if (showLoginBtn) showLoginBtn.click();
-      }
-    } catch (err) { console.error(err); showNotification('Ошибка регистрации', 'error'); } finally { setButtonState(registerBtn, false, 'Регистрация...', 'Зарегистрироваться'); }
+  if (!registerForm?.reportValidity()) return;
+  
+  const telegramUsername = telegramInput?.value.trim() || '';
+  const vkUsername = vkInput?.value.trim() || '';
+  
+  const socialValidation = validateSocialContacts(telegramUsername, vkUsername);
+  if (!socialValidation.valid) {
+    if (socialError) socialError.textContent = socialValidation.message;
+    showNotification(socialValidation.message, 'warning');
+    return;
   }
+  
+  if (socialError) socialError.textContent = '';
+  
+  setButtonState(registerBtn, true, 'Регистрация...', 'Зарегистрироваться');
+
+  try {
+    const username = nameInput?.value.trim() || '';
+    const phone = phoneInput?.value.trim() || '';
+    const avatarFile = avatarInput?.files?.[0];
+
+    let formattedTelegram = telegramUsername;
+    if (formattedTelegram && !formattedTelegram.startsWith('@')) {
+      formattedTelegram = '@' + formattedTelegram.replace(/^@+/, '');
+    }
+
+    const { data, error } = await supabaseClient.auth.signUp({
+      email: registerEmail.value.trim(),
+      password: registerPassword.value.trim(),
+      options: {
+        data: {
+          username,
+          telegram_username: formattedTelegram,
+          vk_username: vkUsername
+        }
+      }
+    });
+
+    if (error) {
+      showNotification('Ошибка регистрации: ' + error.message, 'error');
+      return;
+    }
+
+    let avatarUrl = '';
+
+    if (data?.user && avatarFile) {
+      try {
+        const upload = await uploadToBucket('avatars', avatarFile, data.user.id);
+        avatarUrl = upload.publicUrl;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (data?.session) {
+      state.currentSession = data.session;
+    } else {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      state.currentSession = sessionData?.session || null;
+    }
+
+    if (state.currentSession) {
+      // ВАЖНО: устанавливаем is_online = false при регистрации
+      await ensureProfileForCurrentUser({
+        username,
+        phone,
+        avatar_url: avatarUrl,
+        telegram_username: formattedTelegram,
+        vk_username: vkUsername
+      });
+
+      // ДОПОЛНИТЕЛЬНО: принудительно обновляем статус на НЕ В СЕТИ
+      await supabaseClient
+        .from('profiles')
+        .update({
+          is_online: false,
+          last_seen_at: new Date().toISOString()
+        })
+        .eq('id', state.currentSession.user.id);
+
+      state.currentProfile = (await readProfileByUserId(state.currentSession.user.id)) || state.currentProfile;
+
+      renderProfile();
+      await cacheProfiles();
+      await searchPeople();
+      await loadUserBio();
+      openScreen('account');
+      showNotification('Регистрация завершена', 'success');
+    } else {
+      showNotification('Аккаунт создан. Теперь войдите в него.', 'info');
+      registerForm.reset();
+      if (vkInput) vkInput.value = '';
+      if (showLoginBtn) showLoginBtn.click();
+    }
+  } catch (err) {
+    console.error(err);
+    showNotification('Ошибка регистрации', 'error');
+  } finally {
+    setButtonState(registerBtn, false, 'Регистрация...', 'Зарегистрироваться');
+  }
+}
 
   async function handleUpdateProfile() {
     if (!state.currentSession) return;
