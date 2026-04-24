@@ -3683,347 +3683,349 @@
     }
   
     if (faqFab) {
-      faqFab.addEventListener('click', () => openScreen('faq'));
+  faqFab.addEventListener('click', () => openScreen('faq'));
+}
+
+if (chatFab) {
+  chatFab.addEventListener('click', async () => {
+    if (!state.currentSession) {
+      openScreen('account');
+      return;
     }
-  
-    if (chatFab) {
-      chatFab.addEventListener('click', async () => {
-        if (!state.currentSession) {
-          openScreen('account');
-          return;
-    if (updateBioBtn) {
-      updateBioBtn.addEventListener('click', saveUserBio);
-        }
-  
-        openScreen('messenger');
-        await renderMessengerDialogs();
-  
-        if (state.supportConversationId) {
-          await openConversation(state.supportConversationId);
-        }
-      });
+
+    openScreen('messenger');
+    await renderMessengerDialogs();
+
+    if (state.supportConversationId) {
+      await openConversation(state.supportConversationId);
     }
-  
-    stars.forEach(star => {
-      star.addEventListener('click', () => {
-        state.currentRating = Number(star.dataset.rating);
-        renderStars(state.currentRating);
-      });
-    });
-  
-    aboutTabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        aboutTabs.forEach(item => item.classList.remove('is-active'));
-        aboutPanels.forEach(item => item.classList.remove('is-active'));
-  
-        tab.classList.add('is-active');
-        document
-          .querySelector(`[data-about-panel="${tab.dataset.aboutTab}"]`)
-          ?.classList.add('is-active');
-      });
-    });
-  
-    if (showLoginBtn && showRegisterBtn && loginForm && registerForm) {
-      showLoginBtn.addEventListener('click', () => {
-        showLoginBtn.classList.add('is-active');
-        showRegisterBtn.classList.remove('is-active');
-        loginForm.style.display = 'block';
-        registerForm.style.display = 'none';
-      });
-  
-      showRegisterBtn.addEventListener('click', () => {
-        showRegisterBtn.classList.add('is-active');
-        showLoginBtn.classList.remove('is-active');
-        loginForm.style.display = 'none';
-        registerForm.style.display = 'block';
-      });
+  });
+}
+
+stars.forEach(star => {
+  star.addEventListener('click', () => {
+    state.currentRating = Number(star.dataset.rating);
+    renderStars(state.currentRating);
+  });
+});
+
+aboutTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    aboutTabs.forEach(item => item.classList.remove('is-active'));
+    aboutPanels.forEach(item => item.classList.remove('is-active'));
+
+    tab.classList.add('is-active');
+    document
+      .querySelector(`[data-about-panel="${tab.dataset.aboutTab}"]`)
+      ?.classList.add('is-active');
+  });
+});
+
+if (showLoginBtn && showRegisterBtn && loginForm && registerForm) {
+  showLoginBtn.addEventListener('click', () => {
+    showLoginBtn.classList.add('is-active');
+    showRegisterBtn.classList.remove('is-active');
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+  });
+
+  showRegisterBtn.addEventListener('click', () => {
+    showRegisterBtn.classList.add('is-active');
+    showLoginBtn.classList.remove('is-active');
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+  });
+}
+
+loginForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await handleLogin();
+});
+
+registerForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await handleRegister();
+});
+
+reviewForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await handleReviewSend();
+});
+
+faqAskForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await handleFaqAsk();
+});
+
+folderAdminForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await handleAddFolder();
+});
+
+folderEditForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await handleEditFolderCover();
+});
+
+portfolioAdminForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await handleAddPortfolioItem();
+});
+
+portfolioEditForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await handleEditWork();
+});
+
+if (newsAddBtn) {
+  newsAddBtn.addEventListener('click', handleAddNewsPost);
+}
+
+if (updateProfileBtn) {
+  updateProfileBtn.addEventListener('click', handleUpdateProfile);
+}
+
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', handleLogout);
+}
+
+if (peopleSearchBtn) {
+  peopleSearchBtn.addEventListener('click', async () => {
+    await searchPeople(peopleSearchInput?.value || '');
+  });
+}
+
+if (peopleSearchInput) {
+  peopleSearchInput.addEventListener('input', debounce(async (e) => {
+    await searchPeople(e.target.value);
+  }, 300));
+}
+
+if (backToPeopleBtn) {
+  backToPeopleBtn.addEventListener('click', () => openScreen('people'));
+}
+
+if (openProfileMessengerBtn) {
+  openProfileMessengerBtn.addEventListener('click', async () => {
+    if (!state.currentSession) {
+      showNotification('Сначала войди в аккаунт', 'warning');
+      openScreen('account');
+      return;
     }
-  
-    loginForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      await handleLogin();
-    });
-  
-    registerForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      await handleRegister();
-    });
-  
-    reviewForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      await handleReviewSend();
-    });
-  
-    faqAskForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      await handleFaqAsk();
-    });
-  
-    folderAdminForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      await handleAddFolder();
-    });
-  
-    folderEditForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      await handleEditFolderCover();
-    });
-  
-    portfolioAdminForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      await handleAddPortfolioItem();
-    });
-  
-    portfolioEditForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      await handleEditWork();
-    });
-  
-    if (newsAddBtn) {
-      newsAddBtn.addEventListener('click', handleAddNewsPost);
+
+    if (!state.openedProfile?.id) {
+      showNotification('Профиль не найден', 'warning');
+      return;
     }
-  
-    if (updateProfileBtn) {
-      updateProfileBtn.addEventListener('click', handleUpdateProfile);
+
+    const targetId = String(state.openedProfile.id);
+    const myId = String(state.currentSession.user.id);
+
+    if (targetId === myId) {
+      openScreen('messenger');
+      await renderMessengerDialogs();
+      if (state.supportConversationId) {
+        await openConversation(state.supportConversationId);
+      }
+      return;
     }
-  
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', handleLogout);
+
+    const conversationId = await findOrCreateDirectConversation(targetId);
+
+    if (!conversationId) {
+      showNotification('Не удалось открыть чат', 'error');
+      console.error('Conversation was not created for target:', targetId);
+      return;
     }
-  
-    if (peopleSearchBtn) {
-      peopleSearchBtn.addEventListener('click', async () => {
-        await searchPeople(peopleSearchInput?.value || '');
-      });
+
+    openScreen('messenger');
+    await renderMessengerDialogs();
+    await openConversation(conversationId);
+  });
+}
+
+if (messengerSearch) {
+  messengerSearch.addEventListener('input', debounce(async () => {
+    await renderMessengerDialogs();
+  }, 300));
+}
+
+messengerForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  await sendMessengerMessage();
+});
+
+if (pinnedOwnerChatBtn) {
+  pinnedOwnerChatBtn.addEventListener('click', async () => {
+    if (!state.currentSession) {
+      openScreen('account');
+      return;
     }
-  
-    if (peopleSearchInput) {
-      peopleSearchInput.addEventListener('input', debounce(async (e) => {
-        await searchPeople(e.target.value);
-      }, 300));
+
+    await renderMessengerDialogs();
+
+    if (state.supportConversationId) {
+      await openConversation(state.supportConversationId);
     }
-  
-    if (backToPeopleBtn) {
-      backToPeopleBtn.addEventListener('click', () => openScreen('people'));
+  });
+}
+
+if (messengerAttachImageBtn && messengerImageInput) {
+  messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
+}
+
+if (messengerAttachFileBtn && messengerFileInput) {
+  messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
+}
+
+if (messengerImageInput) {
+  messengerImageInput.addEventListener('change', () => {
+    const file = messengerImageInput.files?.[0];
+    if (!file) return;
+    state.pendingMessengerAttachment = { file, kind: 'image' };
+    renderMessengerAttachmentMeta();
+  });
+}
+
+if (messengerFileInput) {
+  messengerFileInput.addEventListener('change', () => {
+    const file = messengerFileInput.files?.[0];
+    if (!file) return;
+    state.pendingMessengerAttachment = { file, kind: 'file' };
+    renderMessengerAttachmentMeta();
+  });
+}
+
+if (messengerVoiceBtn) {
+  messengerVoiceBtn.addEventListener('click', async () => {
+    await startVoiceRecording();
+  });
+}
+
+if (messengerVoiceStopBtn) {
+  messengerVoiceStopBtn.addEventListener('click', () => {
+    stopVoiceRecording();
+  });
+}
+
+if (messengerRefreshBtn) {
+  messengerRefreshBtn.addEventListener('click', async () => {
+    await fetchMessengerData();
+    await renderMessengerDialogs();
+
+    if (state.currentConversationId) {
+      await openConversation(state.currentConversationId, true);
     }
-  
-    if (openProfileMessengerBtn) {
-      openProfileMessengerBtn.addEventListener('click', async () => {
-        if (!state.currentSession) {
-          showNotification('Сначала войди в аккаунт', 'warning');
-          openScreen('account');
-          return;
-        }
-  
-        if (!state.openedProfile?.id) {
-          showNotification('Профиль не найден', 'warning');
-          return;
-        }
-  
-        const targetId = String(state.openedProfile.id);
-        const myId = String(state.currentSession.user.id);
-  
-        if (targetId === myId) {
-          openScreen('messenger');
-          await renderMessengerDialogs();
-          if (state.supportConversationId) {
-            await openConversation(state.supportConversationId);
-          }
-          return;
-        }
-  
-        const conversationId = await findOrCreateDirectConversation(targetId);
-  
-        if (!conversationId) {
-          showNotification('Не удалось открыть чат', 'error');
-          console.error('Conversation was not created for target:', targetId);
-          return;
-        }
-  
-        openScreen('messenger');
-        await renderMessengerDialogs();
-        await openConversation(conversationId);
-      });
-    }
-  
-    if (messengerSearch) {
-      messengerSearch.addEventListener('input', debounce(async () => {
-        await renderMessengerDialogs();
-      }, 300));
-    }
-  
-    messengerForm?.addEventListener('submit', async e => {
+  });
+}
+
+if (messengerOpenProfileBtn) {
+  messengerOpenProfileBtn.addEventListener('click', async () => {
+    const profileId = messengerOpenProfileBtn.dataset.profileId;
+    if (!profileId) return;
+    await openPublicProfile(profileId);
+  });
+}
+
+if (messengerInput) {
+  messengerInput.addEventListener('keydown', async e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       await sendMessengerMessage();
-    });
-  
-    if (pinnedOwnerChatBtn) {
-      pinnedOwnerChatBtn.addEventListener('click', async () => {
-        if (!state.currentSession) {
-          openScreen('account');
-          return;
-        }
-  
-        await renderMessengerDialogs();
-  
-        if (state.supportConversationId) {
-          await openConversation(state.supportConversationId);
-        }
-      });
     }
-  
-    if (messengerAttachImageBtn && messengerImageInput) {
-      messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
+  });
+}
+
+if (messengerMessages) {
+  messengerMessages.addEventListener('click', async e => {
+    const zoomImg = e.target.closest('[data-zoom-image]');
+    if (zoomImg) {
+      showImageModal(zoomImg.dataset.zoomImage, zoomImg.dataset.zoomTitle || '');
+      return;
     }
-  
-    if (messengerAttachFileBtn && messengerFileInput) {
-      messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
+
+    const deleteBtn = e.target.closest('[data-delete-message]');
+    if (deleteBtn) {
+      await handleDeleteConversationMessage(deleteBtn.dataset.deleteMessage);
+      return;
     }
-  
-    if (messengerImageInput) {
-      messengerImageInput.addEventListener('change', () => {
-        const file = messengerImageInput.files?.[0];
-        if (!file) return;
-        state.pendingMessengerAttachment = { file, kind: 'image' };
-        renderMessengerAttachmentMeta();
-      });
+  });
+}
+
+if (reviewsList) {
+  reviewsList.addEventListener('click', async function (e) {
+    const likeBtn = e.target.closest('[data-like-id]');
+    if (likeBtn) {
+      e.stopPropagation();
+      await likeReview(likeBtn.dataset.likeId);
+      return;
     }
-  
-    if (messengerFileInput) {
-      messengerFileInput.addEventListener('change', () => {
-        const file = messengerFileInput.files?.[0];
-        if (!file) return;
-        state.pendingMessengerAttachment = { file, kind: 'file' };
-        renderMessengerAttachmentMeta();
-      });
+
+    const editBtn = e.target.closest('[data-edit-review]');
+    if (editBtn) {
+      e.stopPropagation();
+      await handleEditReview(editBtn.dataset.editReview);
+      return;
     }
-  
-    if (messengerVoiceBtn) {
-      messengerVoiceBtn.addEventListener('click', async () => {
-        await startVoiceRecording();
-      });
+
+    const deleteBtn = e.target.closest('[data-delete-review]');
+    if (deleteBtn) {
+      e.stopPropagation();
+      await handleDeleteReview(deleteBtn.dataset.deleteReview);
+      return;
     }
-  
-    if (messengerVoiceStopBtn) {
-      messengerVoiceStopBtn.addEventListener('click', () => {
-        stopVoiceRecording();
-      });
+
+    const deleteReplyBtn = e.target.closest('[data-delete-review-reply]');
+    if (deleteReplyBtn) {
+      e.stopPropagation();
+      await handleDeleteReviewReply(deleteReplyBtn.dataset.deleteReviewReply);
+      return;
     }
-  
-    if (messengerRefreshBtn) {
-      messengerRefreshBtn.addEventListener('click', async () => {
-        await fetchMessengerData();
-        await renderMessengerDialogs();
-  
-        if (state.currentConversationId) {
-          await openConversation(state.currentConversationId, true);
-        }
-      });
+
+    const replyForm = e.target.closest('[data-review-reply-form]');
+    if (replyForm) return;
+
+    const profileBtn = e.target.closest('[data-open-profile]');
+    if (profileBtn) {
+      e.stopPropagation();
+      return;
     }
-  
-    if (messengerOpenProfileBtn) {
-      messengerOpenProfileBtn.addEventListener('click', async () => {
-        const profileId = messengerOpenProfileBtn.dataset.profileId;
-        if (!profileId) return;
-        await openPublicProfile(profileId);
-      });
+
+    const card = e.target.closest('[data-review-id]');
+    if (card) {
+      const review = state.reviews.find(
+        r => String(r.id) === String(card.dataset.reviewId)
+      );
+      if (review) showReviewPopup(review);
     }
-  
-    if (messengerInput) {
-      messengerInput.addEventListener('keydown', async e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          await sendMessengerMessage();
-        }
-      });
+  });
+}
+
+if (currentFolderWorks) {
+  currentFolderWorks.addEventListener('click', async function (e) {
+    const editBtn = e.target.closest('[data-edit-work-inline]');
+    if (editBtn) {
+      fillEditWorkForm(editBtn.dataset.editWorkInline);
+      return;
     }
-  
-    if (messengerMessages) {
-      messengerMessages.addEventListener('click', async e => {
-        const zoomImg = e.target.closest('[data-zoom-image]');
-        if (zoomImg) {
-          showImageModal(zoomImg.dataset.zoomImage, zoomImg.dataset.zoomTitle || '');
-          return;
-        }
-  
-        const deleteBtn = e.target.closest('[data-delete-message]');
-        if (deleteBtn) {
-          await handleDeleteConversationMessage(deleteBtn.dataset.deleteMessage);
-          return;
-        }
-      });
+
+    const deleteBtn = e.target.closest('[data-delete-work]');
+    if (deleteBtn) {
+      await handleDeleteWork(deleteBtn.dataset.deleteWork);
+      return;
     }
-  
-    if (reviewsList) {
-      reviewsList.addEventListener('click', async function (e) {
-        const likeBtn = e.target.closest('[data-like-id]');
-        if (likeBtn) {
-          e.stopPropagation();
-          await likeReview(likeBtn.dataset.likeId);
-          return;
-        }
-  
-        const editBtn = e.target.closest('[data-edit-review]');
-        if (editBtn) {
-          e.stopPropagation();
-          await handleEditReview(editBtn.dataset.editReview);
-          return;
-        }
-  
-        const deleteBtn = e.target.closest('[data-delete-review]');
-        if (deleteBtn) {
-          e.stopPropagation();
-          await handleDeleteReview(deleteBtn.dataset.deleteReview);
-          return;
-        }
-  
-        const deleteReplyBtn = e.target.closest('[data-delete-review-reply]');
-        if (deleteReplyBtn) {
-          e.stopPropagation();
-          await handleDeleteReviewReply(deleteReplyBtn.dataset.deleteReviewReply);
-          return;
-        }
-  
-        const replyForm = e.target.closest('[data-review-reply-form]');
-        if (replyForm) return;
-  
-        const profileBtn = e.target.closest('[data-open-profile]');
-        if (profileBtn) {
-          e.stopPropagation();
-          return;
-        }
-  
-        const card = e.target.closest('[data-review-id]');
-        if (card) {
-          const review = state.reviews.find(
-            r => String(r.id) === String(card.dataset.reviewId)
-          );
-          if (review) showReviewPopup(review);
-        }
-      });
+
+    const image = e.target.closest('.mkz-work-card__image img');
+    if (image) {
+      showImageModal(image.getAttribute('src') || '', image.getAttribute('alt') || '');
     }
-  
-    if (currentFolderWorks) {
-      currentFolderWorks.addEventListener('click', async function (e) {
-        const editBtn = e.target.closest('[data-edit-work-inline]');
-        if (editBtn) {
-          fillEditWorkForm(editBtn.dataset.editWorkInline);
-          return;
-        }
-  
-        const deleteBtn = e.target.closest('[data-delete-work]');
-        if (deleteBtn) {
-          await handleDeleteWork(deleteBtn.dataset.deleteWork);
-          return;
-        }
-  
-        const image = e.target.closest('.mkz-work-card__image img');
-        if (image) {
-          showImageModal(image.getAttribute('src') || '', image.getAttribute('alt') || '');
-        }
-      });
-    }
-  }
+  });
+}
+
+// ========== ДОБАВЬТЕ ЭТО В КОНЦЕ ФУНКЦИИ ==========
+if (updateBioBtn) {
+  updateBioBtn.addEventListener('click', saveUserBio);
+}
   
   async function handleEditReview(reviewId) {
     if (!isOwner()) return;
@@ -4516,11 +4518,6 @@ const updateBio = $('#mkzUpdateBio');
 const updateBioBtn = $('#mkzUpdateBioBtn');
 const vkInput = $('#mkzVkUsername');
 const socialError = $('#mkzSocialError');
-
-// Добавляем обработчики событий в bindStaticEvents
-// Найдите функцию bindStaticEvents и добавьте туда эти строки:
-if (updateBioBtn) {
-  updateBioBtn.addEventListener('click', saveUserBio);
 }
 
 // Добавляем загрузку био в init функцию
