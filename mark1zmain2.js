@@ -174,6 +174,13 @@
     return many;
   }
 
+
+  function generateNumericId(uuid) {
+    const uuidStr = String(uuid).replace(/-/g, '');
+    const numericHash = Math.abs(parseInt(uuidStr.slice(-8), 16) % 10000000);
+    return '#' + String(numericHash).padStart(7, '0');
+}
+
   function formatLastSeen(value) {
     if (!value) return 'Не в сети';
     const diffMs = Date.now() - new Date(value).getTime();
@@ -186,6 +193,14 @@
     if (diffDays < 7) return `Был(а) ${diffDays} ${pluralRu(diffDays, 'день', 'дня', 'дней')} назад`;
     return `Был(а) ${formatDateOnly(value)}`;
   }
+
+  function pluralRu(n, one, few, many) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
 
   function slugify(text) {
     return String(text || '').trim().toLowerCase().replace(/[^a-z0-9а-яё\s-]/gi, '').replace(/\s+/g, '-').replace(/-+/g, '-');
@@ -225,12 +240,21 @@
   }
 
   function buildPublicUserCode(profile, userId) {
-    if (String(userId) === String(OWNER_UID)) return '#Mark1z';
-    const existing = String(profile?.public_id || profile?.user_code || '').trim();
-    if (existing) return existing.startsWith('#') ? existing : '#' + existing;
-    const digits = String(userId || '').replace(/\D/g, '');
-    return '#' + (digits.slice(-6).padStart(6, '0') || '000001');
+  if (String(userId) === String(OWNER_UID)) return '#Mark1z';
+  
+  const existing = String(profile?.public_id || profile?.user_code || '').trim();
+  if (existing && existing !== '#Mark1z') {
+    return existing.startsWith('#') ? existing : '#' + existing;
   }
+  
+  if (profile?.email) {
+    const emailHash = Math.abs(profile.email.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 9000000);
+    return '#' + String(emailHash + 1000000).slice(-7);
+  }
+  
+  const numericId = Math.abs(parseInt(String(userId).replace(/\D/g, '').slice(-7)) || 1000000);
+  return '#' + String(numericId).padStart(7, '0');
+}
 
   function getProfileByUserId(userId) {
     if (String(userId) === String(SUPPORT_CHAT_IDENTITY.id)) return SUPPORT_CHAT_IDENTITY;
@@ -469,46 +493,90 @@
   }
 
   async function ensureProfileForCurrentUser(baseData) {
-    if (!state.currentSession?.user) return null;
-    if (state.profileSyncInProgress) return state.currentProfile || null;
-    state.profileSyncInProgress = true;
-    try {
-      const userId = state.currentSession.user.id;
-      const existing = await readProfileByUserId(userId);
-      const fallbackName = baseData?.username || state.currentSession.user.user_metadata?.username || state.currentSession.user.email?.split('@')[0] || 'Пользователь';
-      const publicId = String(userId) === String(OWNER_UID) ? '#Mark1z' : (existing?.public_id || existing?.user_code || buildPublicUserCode(null, userId));
-      const payload = {
-        id: userId, username: baseData?.username ?? existing?.username ?? fallbackName,
-        full_name: baseData?.username ?? existing?.full_name ?? fallbackName,
-        phone: baseData?.phone ?? existing?.phone ?? '',
-        avatar_url: baseData?.avatar_url ?? existing?.avatar_url ?? '',
-        email: state.currentSession.user.email || existing?.email || '',
-        telegram_username: baseData?.telegram_username ?? existing?.telegram_username ?? '',
-        bio: existing?.bio || '', public_id: publicId, user_code: publicId,
-        is_admin: userId === OWNER_UID, is_online: true, last_seen_at: new Date().toISOString(),
-        show_phone: existing?.show_phone ?? true, show_telegram: existing?.show_telegram ?? true, show_last_seen: existing?.show_last_seen ?? true
-      };
-      const { error } = await supabaseClient.from('profiles').upsert(payload, { onConflict: 'id' });
-      if (error) console.error('ensureProfileForCurrentUser upsert error', error);
-      const afterInsert = await readProfileByUserId(userId);
-      state.currentProfile = afterInsert || payload;
-      return state.currentProfile;
-    } finally { state.profileSyncInProgress = false; }
+  if (!state.currentSession?.user) return null;
+  if (state.profileSyncInProgress) return state.currentProfile || null;
+
+  state.profileSyncInProgress = true;
+
+  try {
+    const userId = state.currentSession.user.id;
+    const existing = await readProfileByUserId(userId);
+
+    const fallbackName =
+      baseData?.username ||
+      state.currentSession.user.user_metadata?.username ||
+      state.currentSession.user.email?.split('@')[0] ||
+      'Пользователь';
+
+    const numericId = generateNumericId(userId);
+    
+    const publicId = String(userId) === String(OWNER_UID)
+      ? '#Mark1z'
+      : (existing?.public_id || existing?.user_code || numericId);
+
+    const now = new Date().toISOString();
+    
+    const payload = {
+      id: userId,
+      username: baseData?.username ?? existing?.username ?? fallbackName,
+      full_name: baseData?.username ?? existing?.full_name ?? fallbackName,
+      phone: baseData?.phone ?? existing?.phone ?? '',
+      avatar_url: baseData?.avatar_url ?? existing?.avatar_url ?? '',
+      email: state.currentSession.user.email || existing?.email || '',
+      telegram_username: baseData?.telegram_username ?? existing?.telegram_username ?? '',
+      bio: existing?.bio || '',
+      public_id: publicId,
+      user_code: publicId,
+      is_admin: userId === OWNER_UID,
+      is_online: false,
+      last_seen_at: existing?.last_seen_at || now,
+      show_phone: existing?.show_phone ?? true,
+      show_telegram: existing?.show_telegram ?? true,
+      show_last_seen: existing?.show_last_seen ?? true
+    };
+
+    const { error } = await supabaseClient.from('profiles').upsert(payload, { onConflict: 'id' });
+    if (error) {
+      console.error('ensureProfileForCurrentUser upsert error', error);
+    }
+
+    const afterInsert = await readProfileByUserId(userId);
+    state.currentProfile = afterInsert || payload;
+    return state.currentProfile;
+  } finally {
+    state.profileSyncInProgress = false;
   }
+}
 
   async function updatePresence(isOnline) {
-    if (!state.currentSession?.user) return;
-    try {
-      await supabaseClient.from('profiles').update({ is_online: !!isOnline, last_seen_at: new Date().toISOString() }).eq('id', state.currentSession.user.id);
-    } catch (e) { console.error('updatePresence error:', e); }
+  if (!state.currentSession?.user) return;
+  try {
+    await supabaseClient
+      .from('profiles')
+      .update({
+        is_online: !!isOnline,
+        last_seen_at: new Date().toISOString()
+      })
+      .eq('id', state.currentSession.user.id);
+  } catch (e) {
+    console.error('updatePresence error:', e);
   }
-
+}
   async function touchCurrentProfileActivity() {
-    if (!state.currentSession?.user) return;
-    try {
-      await supabaseClient.from('profiles').update({ is_online: !document.hidden, last_seen_at: new Date().toISOString() }).eq('id', state.currentSession.user.id);
-    } catch (e) { console.error('touchCurrentProfileActivity error:', e); }
+  if (!state.currentSession?.user) return;
+  try {
+    const isOnline = !document.hidden;
+    await supabaseClient
+      .from('profiles')
+      .update({
+        is_online: isOnline,
+        last_seen_at: new Date().toISOString()
+      })
+      .eq('id', state.currentSession.user.id);
+  } catch (e) {
+    console.error('touchCurrentProfileActivity error:', e);
   }
+}
 
   async function fetchSessionAndProfile(baseData) {
     try {
@@ -937,19 +1005,86 @@
 
   // ========== ПОИСК ЛЮДЕЙ ==========
   async function searchPeople(query = '') {
-    try {
-      if (!peopleSearchResults) return;
-      showLoading('Поиск пользователей...');
-      await cacheProfiles();
-      let list = [...state.allProfilesCache];
-      const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
-      if (prepared) { list = list.filter(profile => { const username = String(profile.username || '').toLowerCase(); const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase(); return username.includes(prepared) || publicId.includes(prepared); }); }
-      state.peopleSearchResults = list;
-      if (!list.length) { peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>'; return; }
-      peopleSearchResults.innerHTML = list.map(profile => { const avatarUrl = safeUrl(profile.avatar_url || ''); const name = safeText(profile.username || 'Пользователь', 'Пользователь'); const publicId = buildPublicUserCode(profile, profile.id); const lastSeen = getVisibleLastSeen(profile); return `<button class="mkz-person-card" type="button" data-open-profile="${profile.id}"><div class="mkz-person-card__top"><div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');` : ''}">${avatarUrl ? '' : getInitial(profile.username, 'U')}</div><div class="mkz-person-card__meta"><div class="mkz-person-card__name">${name}</div><div class="mkz-person-card__id">${publicId}</div><div class="mkz-person-card__status">${lastSeen}</div></div></div></button>`; }).join('');
-      $$('[data-open-profile]', peopleSearchResults).forEach(btn => { btn.addEventListener('click', async () => { await openPublicProfile(btn.dataset.openProfile); }); });
-    } catch (err) { console.error('searchPeople error', err); showNotification('Ошибка при поиске пользователей', 'error'); } finally { hideLoading(); }
+  try {
+    if (!peopleSearchResults) return;
+  
+    showLoading('Поиск пользователей...');
+    
+    await cacheProfiles();
+  
+    let list = [...state.allProfilesCache];
+    const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
+  
+    if (prepared) {
+      list = list.filter(profile => {
+        const username = String(profile.username || '').toLowerCase();
+        const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase();
+        return username.includes(prepared) || publicId.includes(prepared);
+      });
+    }
+  
+    state.peopleSearchResults = list;
+  
+    if (!list.length) {
+      peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
+      return;
+    }
+  
+    peopleSearchResults.innerHTML = list.map(profile => {
+      const avatarUrl = safeUrl(profile.avatar_url || '');
+      const name = safeText(profile.username || 'Пользователь', 'Пользователь');
+      const publicId = buildPublicUserCode(profile, profile.id);
+      
+      let statusText = '';
+      if (profile.is_online) {
+        statusText = 'В сети';
+      } else if (profile.last_seen_at) {
+        const lastSeen = new Date(profile.last_seen_at);
+        const now = new Date();
+        const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
+        
+        if (diffDays === 0 && diffHours === 0) {
+          statusText = 'Был(а) только что';
+        } else if (diffDays === 0 && diffHours < 24) {
+          statusText = `Был(а) ${diffHours} ${pluralRu(diffHours, 'час', 'часа', 'часов')} назад`;
+        } else if (diffDays < 7) {
+          statusText = `Был(а) ${diffDays} ${pluralRu(diffDays, 'день', 'дня', 'дней')} назад`;
+        } else {
+          statusText = formatDateOnly(profile.last_seen_at);
+        }
+      } else {
+        statusText = 'Давно не был(а)';
+      }
+  
+      return `
+        <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
+          <div class="mkz-person-card__top">
+            <div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');` : ''}">
+              ${avatarUrl ? '' : getInitial(profile.username, 'U')}
+            </div>
+            <div class="mkz-person-card__meta">
+              <div class="mkz-person-card__name">${name}</div>
+              <div class="mkz-person-card__id">${publicId}</div>
+              <div class="mkz-person-card__status">${statusText}</div>
+            </div>
+          </div>
+        </button>
+      `;
+    }).join('');
+  
+    $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await openPublicProfile(btn.dataset.openProfile);
+      });
+    });
+  } catch (err) {
+    console.error('searchPeople error', err);
+    showNotification('Ошибка при поиске пользователей', 'error');
+  } finally {
+    hideLoading();
   }
+}
 
   async function openPublicProfile(userId) {
     try {
@@ -1518,8 +1653,30 @@
     await loadUserBio();
     bindStaticEvents();
     supabaseClient.auth.onAuthStateChange(function (_event, session) { state.currentSession = session || null; if (state.currentSession) { startPresenceHeartbeat(); requestNotificationsIfNeeded(); updatePresence(true); } else { stopPresenceHeartbeat(); } setTimeout(async () => { await fetchSessionAndProfile(); await loadUserBio(); await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]); }, 0); });
-    document.addEventListener('visibilitychange', async () => { await updatePresence(!document.hidden); });
+        document.addEventListener('visibilitychange', async () => {
+      if (state.currentSession?.user) {
+        const isVisible = !document.hidden;
+        await supabaseClient
+          .from('profiles')
+          .update({
+            is_online: isVisible,
+            last_seen_at: new Date().toISOString()
+          })
+          .eq('id', state.currentSession.user.id);
+      }
+    });
     window.addEventListener('beforeunload', () => { updatePresence(false); });
+        window.addEventListener('beforeunload', async () => {
+      if (state.currentSession?.user) {
+        await supabaseClient
+          .from('profiles')
+          .update({
+            is_online: false,
+            last_seen_at: new Date().toISOString()
+          })
+          .eq('id', state.currentSession.user.id);
+      }
+    });
   })();
 
 })();
