@@ -102,7 +102,7 @@
     const cached = queryCache.get(key);
     if (cached && Date.now() - cached.timestamp < ttl) return cached.data;
     const data = await queryFn();
-    queryCache.set(key, { data, timestamp: new Date().toISOString() });
+    queryCache.set(key, { data, timestamp: Date.now() });
     return data;
   }
 
@@ -134,8 +134,9 @@
   }
 
   function escapeHtml(value) {
+  if (!value) return '';
   const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-  return String(value ?? '').replace(/[&<>"']/g, function(m) { return map[m]; });
+  return String(value).replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
   function safeText(value, fallback = '') {
@@ -993,6 +994,57 @@
     } catch (err) { console.error('renderContestEntriesAdmin error', err); }
   }
 
+    // ========== НОВОСТИ ==========
+  async function renderNews() {
+    try {
+      if (!newsList) return;
+      
+      const { data: posts, error } = await supabaseClient
+        .from('news_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      state.newsPosts = posts || [];
+      
+      if (!state.newsPosts.length) {
+        newsList.innerHTML = '<div class="mkz-card"><p>Пока нет новостей.</p></div>';
+        return;
+      }
+      
+      newsList.innerHTML = state.newsPosts.map(post => `
+        <div class="mkz-news-card">
+          <h3>${safeText(post.title || 'Новость')}</h3>
+          <div class="mkz-news-date">${formatDateTime(post.created_at)}</div>
+          <div class="mkz-news-text">${nl2brSafe(post.text || '')}</div>
+          ${post.image_url ? `<img src="${post.image_url}" style="max-width:100%; border-radius:12px; margin-top:12px;">` : ''}
+          ${post.figma_url ? `<a href="${post.figma_url}" target="_blank" class="mkz-btn mkz-btn--ghost" style="margin-top:12px;">Открыть ссылку</a>` : ''}
+        </div>
+      `).join('');
+    } catch (err) {
+      console.error('renderNews error:', err);
+      if (newsList) newsList.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки новостей</p></div>';
+    }
+  }
+
+  // Вспомогательные функции-заглушки для новостей (чтобы не было ошибок)
+  async function handleAddNewsPost() {
+    console.warn('handleAddNewsPost: функция не реализована');
+  }
+  
+  async function handleDeleteNewsPost(postId) {
+    console.warn('handleDeleteNewsPost: функция не реализована');
+  }
+  
+  async function handleEditNewsPost(postId) {
+    console.warn('handleEditNewsPost: функция не реализована');
+  }
+  
+  async function handleDeleteNewsComment(commentId) {
+    console.warn('handleDeleteNewsComment: функция не реализована');
+  }
+
   // ========== ПОИСК ЛЮДЕЙ ==========
  async function searchPeople(query = '') {
   try {
@@ -1092,8 +1144,66 @@
   }
 }
 
-// ========== ОСТАЛЬНОЙ КОД (openPublicProfile, fetchMessengerData и т.д.) ==========
-// ... здесь весь ваш остальной код ...
+// ========== ПУБЛИЧНЫЙ ПРОФИЛЬ ==========
+async function openPublicProfile(userId) {
+  try {
+    console.log('🔍 openPublicProfile вызван с userId:', userId);
+    
+    let profile = await readProfileByUserId(userId);
+    if (!profile) profile = getProfileByUserId(userId);
+    if (!profile) {
+      console.error('❌ Профиль не найден для userId:', userId);
+      return;
+    }
+
+    console.log('✅ Профиль загружен:', profile.username, profile.id);
+
+    state.openedProfile = profile;
+
+    const publicId = buildPublicUserCode(profile, profile.id);
+
+    if (publicProfileName) publicProfileName.textContent = profile.username || 'Пользователь';
+    if (publicProfileId) publicProfileId.textContent = publicId;
+    if (publicProfileStatus) publicProfileStatus.textContent = getVisibleLastSeen(profile);
+    if (publicProfileRegistered) publicProfileRegistered.textContent = formatDateOnly(profile.created_at);
+    if (publicProfilePhone) publicProfilePhone.textContent = getVisiblePhone(profile);
+    if (publicProfileTelegram) publicProfileTelegram.textContent = getVisibleTelegram(profile);
+    if (publicProfileBio) publicProfileBio.textContent = profile.bio || 'Описание профиля пока не заполнено.';
+    
+    applyAvatar(publicProfileAvatar, profile.avatar_url, profile.username);
+    
+    // Сохраняем ID в кнопку "Написать"
+    const messengerBtn = document.getElementById('mkzOpenProfileMessengerBtn');
+    if (messengerBtn) {
+      messengerBtn.setAttribute('data-user-id', profile.id);
+      console.log('✅ ID сохранен в кнопку:', profile.id);
+    } else {
+      console.error('❌ Кнопка mkzOpenProfileMessengerBtn не найдена в DOM');
+    }
+    
+    const userReviews = state.reviews.filter(r => String(r.user_id) === String(userId));
+    const userComments = state.newsComments.filter(c => String(c.user_id) === String(userId));
+    
+    if (publicProfileActivity) {
+      publicProfileActivity.innerHTML = `
+        <div class="mkz-profile-stats">
+          <div class="mkz-profile-stat">
+            <strong>${userReviews.length}</strong>
+            <span>Отзывов</span>
+          </div>
+          <div class="mkz-profile-stat">
+            <strong>${userComments.length}</strong>
+            <span>Комментариев</span>
+          </div>
+        </div>
+      `;
+    }
+    
+    openScreen('profile');
+  } catch (err) {
+    console.error('❌ openPublicProfile error:', err);
+  }
+}
 
 // ========== INIT ==========
 (async function init() {
