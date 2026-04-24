@@ -493,7 +493,7 @@
     conversations: [], conversationMembers: [], conversationMessages: [], currentConversationId: null, supportConversationId: null,
     userLikedPosts: new Set(), newsLikesMap: {}, newsCommentsMap: {},
     profileSyncInProgress: false, isPinnedDraft: false,
-    pendingMessengerAttachment: null, messengerPollingTimer: null, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
+    pendingMessengerAttachment: null, messengerPollingTimer: null, messagesChannel: null, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
     mediaRecorder: null, mediaChunks: [], voiceStream: null
   };
 
@@ -917,7 +917,7 @@
     try {
       const { data: reviews } = await supabaseClient.from('reviews').select('*, profiles:user_id ( * )').order('created_at', { ascending: false });
       const { data: likes } = await supabaseClient.from('review_likes').select('*');
-      const { data: replies } = await supabaseClient.from('review_replies').select('*, profiles:user_id ( * )').order('created_at', { ascending: true });
+      const { data: replies } = await supabaseClient.from('review_replies').select('*').order('created_at', { ascending: true });
       state.reviews = (reviews || []).map(r => ({ ...r, profile: r.profiles }));
       state.reviewLikes = likes || [];
       state.reviewReplies = (replies || []).map(r => ({ ...r, profile: r.profiles }));
@@ -1393,45 +1393,62 @@ async function openPublicProfile(userId) {
     }
   }
 
-    async function subscribeToMessages() {
-    if (!state.currentSession?.user) return;
-    
-    if (state.messagesSubscription) {
-      await supabaseClient.removeSubscription(state.messagesSubscription);
+      async function subscribeToMessages() {
+  if (!state.currentSession?.user) return;
+  
+  // Отписываемся от старого канала
+  if (state.messagesChannel) {
+    try {
+      await supabaseClient.removeChannel(state.messagesChannel);
+    } catch(e) {
+      console.warn('removeChannel error:', e);
     }
-    
-    state.messagesSubscription = supabaseClient
-      .channel('messages-channel')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'conversation_messages' },
-        async (payload) => {
-          const newMessage = payload.new;
+  }
+  
+  // Создаём новый канал
+  state.messagesChannel = supabaseClient
+    .channel('messages-channel')
+    .on(
+      'postgres_changes',
+      { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'conversation_messages'
+      },
+      async (payload) => {
+        const newMessage = payload.new;
+        
+        // Не обрабатываем свои сообщения
+        if (newMessage.user_id === state.currentSession?.user?.id) return;
+        
+        // Проверяем, участвует ли пользователь в этом чате
+        const isMember = state.conversationMembers.some(
+          m => m.conversation_id === newMessage.conversation_id && 
+               m.user_id === state.currentSession.user.id
+        );
+        
+        if (isMember) {
+          // Обновляем данные
+          await fetchMessengerData();
+          await renderMessengerDialogs();
           
-          if (newMessage.user_id !== state.currentSession?.user?.id) {
-            const isMember = state.conversationMembers.some(
-              m => m.conversation_id === newMessage.conversation_id && 
-                   m.user_id === state.currentSession.user.id
-            );
-            
-            if (isMember) {
-              await fetchMessengerData();
-              await renderMessengerDialogs();
-              if (state.currentConversationId === newMessage.conversation_id) {
-                await openConversation(state.currentConversationId, true);
-              }
-              
-              if (Notification.permission === 'granted' && document.hidden) {
-                const sender = getProfileByUserId(newMessage.user_id);
-                new Notification(`Новое сообщение от ${sender?.username || 'Пользователя'}`, {
-                  body: newMessage.text || newMessage.attachment_name || 'Новое сообщение'
-                });
-              }
-            }
+          // Если открыт этот чат - обновляем сообщения
+          if (state.currentConversationId === newMessage.conversation_id) {
+            await openConversation(state.currentConversationId, true);
+          }
+          
+          // Показываем уведомление
+          if (Notification.permission === 'granted' && document.hidden) {
+            const sender = getProfileByUserId(newMessage.user_id);
+            new Notification(`Новое сообщение от ${sender?.username || 'Пользователя'}`, {
+              body: newMessage.text || newMessage.attachment_name || 'Новое сообщение'
+            });
           }
         }
-      )
-      .subscribe();
-  }
+      }
+    )
+    .subscribe();
+}
 
     async function renderMessengerDialogs() {
     if (!messengerDialogs) return;
@@ -1447,6 +1464,7 @@ async function openPublicProfile(userId) {
     await findOrCreateSupportConversation();
     await fetchMessengerData();
     await updateConversationList();
+    await subscribeToMessages();
     await subscribeToMessages();
     
     const supportConv = state.conversations.find(c => String(c.id) === String(state.supportConversationId));
