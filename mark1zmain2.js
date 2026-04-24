@@ -995,93 +995,92 @@
 
   // ========== ПОИСК ЛЮДЕЙ ==========
   async function searchPeople(query = '') {
-    try {
-      if (!peopleSearchResults) return;
-      showLoading('Поиск пользователей...');
-      await cacheProfiles();
-      let list = [...state.allProfilesCache];
-      const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
-      if (prepared) {
-        list = list.filter(profile => {
-          const username = String(profile.username || '').toLowerCase();
-          const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase();
-          return username.includes(prepared) || publicId.includes(prepared);
-        });
-      }
-      state.peopleSearchResults = list;
-      if (!list.length) {
-        peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
-        return;
-      }
-      peopleSearchResults.innerHTML = list.map(profile => {
-        const avatarUrl = safeUrl(profile.avatar_url || '');
-        const name = safeText(profile.username || 'Пользователь', 'Пользователь');
-        const publicId = buildPublicUserCode(profile, profile.id);
-        let statusText = '';
-        let statusClass = '';
-        if (!isProfileFieldVisible(profile, 'show_last_seen')) {
-          statusText = 'Статус скрыт';
-          statusClass = 'status-hidden';
-        } else if (profile.is_online) {
-          statusText = 'В сети';
-          statusClass = 'status-online';
-        } else if (profile.last_seen_at) {
-          const lastSeen = new Date(profile.last_seen_at);
-          const now = new Date();
-          const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
-          const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
-          const diffMins = Math.floor((now - lastSeen) / (1000 * 60));
-          if (diffMins < 5) {
-            statusText = 'Был(а) только что';
-            statusClass = 'status-recent';
-          } else if (diffHours < 1) {
-            statusText = `Был(а) ${diffMins} ${pluralRu(diffMins, 'минуту', 'минуты', 'минут')} назад`;
-            statusClass = 'status-recent';
-          } else if (diffDays === 0 && diffHours < 24) {
-            statusText = `Был(а) ${diffHours} ${pluralRu(diffHours, 'час', 'часа', 'часов')} назад`;
-            statusClass = 'status-recent';
-          } else if (diffDays < 7) {
-            statusText = `Был(а) ${diffDays} ${pluralRu(diffDays, 'день', 'дня', 'дней')} назад`;
-            statusClass = 'status-offline';
-          } else {
-            statusText = formatDateOnly(profile.last_seen_at);
-            statusClass = 'status-offline';
-          }
+  try {
+    if (!peopleSearchResults) return;
+    showLoading('Поиск пользователей...');
+    await cacheProfiles();
+    let list = [...state.allProfilesCache];
+    const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
+    if (prepared) {
+      list = list.filter(profile => {
+        const username = String(profile.username || '').toLowerCase();
+        const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase();
+        return username.includes(prepared) || publicId.includes(prepared);
+      });
+    }
+    state.peopleSearchResults = list;
+    if (!list.length) {
+      peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
+      return;
+    }
+    peopleSearchResults.innerHTML = list.map(profile => {
+      const avatarUrl = safeUrl(profile.avatar_url || '');
+      const name = safeText(profile.username || 'Пользователь', 'Пользователь');
+      const publicId = buildPublicUserCode(profile, profile.id);
+      let statusText = '';
+      let statusClass = '';
+      if (!isProfileFieldVisible(profile, 'show_last_seen')) {
+        statusText = 'Статус скрыт';
+        statusClass = 'status-hidden';
+      } else if (profile.is_online) {
+        statusText = 'В сети';
+        statusClass = 'status-online';
+      } else if (profile.last_seen_at) {
+        const lastSeen = new Date(profile.last_seen_at);
+        const now = new Date();
+        const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
+        const diffMins = Math.floor((now - lastSeen) / (1000 * 60));
+        if (diffMins < 5) {
+          statusText = 'Был(а) только что';
+          statusClass = 'status-recent';
+        } else if (diffHours < 1) {
+          statusText = `Был(а) ${diffMins} ${pluralRu(diffMins, 'минуту', 'минуты', 'минут')} назад`;
+          statusClass = 'status-recent';
+        } else if (diffDays === 0 && diffHours < 24) {
+          statusText = `Был(а) ${diffHours} ${pluralRu(diffHours, 'час', 'часа', 'часов')} назад`;
+          statusClass = 'status-recent';
+        } else if (diffDays < 7) {
+          statusText = `Был(а) ${diffDays} ${pluralRu(diffDays, 'день', 'дня', 'дней')} назад`;
+          statusClass = 'status-offline';
         } else {
-          statusText = 'Давно не был(а)';
+          statusText = formatDateOnly(profile.last_seen_at);
           statusClass = 'status-offline';
         }
-        return `
-          <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
-            <div class="mkz-person-card__top">
-              <div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">
-                ${avatarUrl ? '' : getInitial(profile.username, 'U')}
-              </div>
-              <div class="mkz-person-card__meta">
-                <div class="mkz-person-card__name">${name}</div>
-                <div class="mkz-person-card__id">${publicId}</div>
-                <div class="mkz-person-card__status ${statusClass}">
-                  <span class="mkz-status-indicator"></span>
-                  ${statusText}
-                </div>
+      } else {
+        statusText = 'Давно не был(а)';
+        statusClass = 'status-offline';
+      }
+      return `
+        <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
+          <div class="mkz-person-card__top">
+            <div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">
+              ${avatarUrl ? '' : getInitial(profile.username, 'U')}
+            </div>
+            <div class="mkz-person-card__meta">
+              <div class="mkz-person-card__name">${name}</div>
+              <div class="mkz-person-card__id">${publicId}</div>
+              <div class="mkz-person-card__status ${statusClass}">
+                <span class="mkz-status-indicator"></span>
+                ${statusText}
               </div>
             </div>
-          </button>
-        `;
-      }).join('');
-      $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
-        btn.addEventListener('click', async () => {
-          await openPublicProfile(btn.dataset.openProfile);
-        });
+          </div>
+        </button>
+      `;
+    }).join('');
+    $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await openPublicProfile(btn.dataset.openProfile);
       });
-    } catch (err) {
-      console.error('searchPeople error', err);
-      showNotification('Ошибка при поиске пользователей', 'error');
-    } finally {
-      hideLoading();
-    }
+    });
+  } catch (err) {
+    console.error('searchPeople error:', err);
+    showNotification('Ошибка при поиске пользователей', 'error');
+  } finally {
+    hideLoading();
   }
-
+}
   async function openPublicProfile(userId) {
   try {
     let profile = await readProfileByUserId(userId);
