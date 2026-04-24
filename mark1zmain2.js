@@ -100,9 +100,9 @@
 
   async function cachedQuery(key, queryFn, ttl = 60000) {
     const cached = queryCache.get(key);
-    if (cached && Date.now() - cached.timestamp < ttl) return cached.data;
+    if (cached && new Date().toISOString() - cached.timestamp < ttl) return cached.data;
     const data = await queryFn();
-    queryCache.set(key, { data, timestamp: Date.now() });
+    queryCache.set(key, { data, timestamp: new Date().toISOString() });
     return data;
   }
 
@@ -117,7 +117,7 @@
       else validateFile(file, 2);
       const optimizedFile = await optimizeImage(file);
       const ext = (optimizedFile.name.split('.').pop() || 'bin').toLowerCase();
-      const path = `${prefix}_${Date.now()}.${ext}`;
+      const path = `${prefix}_${new Date().toISOString()}.${ext}`;
       const { error } = await supabaseClient.storage.from(bucket).upload(path, optimizedFile, { upsert: true });
       if (error) throw error;
       const { data } = supabaseClient.storage.from(bucket).getPublicUrl(path);
@@ -183,7 +183,7 @@
 
   function formatLastSeen(value) {
     if (!value) return 'Не в сети';
-    const diffMs = Date.now() - new Date(value).getTime();
+    const diffMs = new Date().toISOString() - new Date(value).getTime();
     const diffMin = Math.max(0, Math.floor(diffMs / 60000));
     if (diffMin < 1) return 'Был(а) только что';
     if (diffMin < 60) return `Был(а) ${diffMin} ${pluralRu(diffMin, 'минуту', 'минуты', 'минут')} назад`;
@@ -543,19 +543,35 @@
   }
 
   async function updatePresence(isOnline) {
-    if (!state.currentSession?.user) return;
-    try {
-      await supabaseClient.from('profiles').update({ is_online: !!isOnline, last_seen_at: new Date().toISOString() }).eq('id', state.currentSession.user.id);
-    } catch (e) { console.error('updatePresence error:', e); }
+  if (!state.currentSession?.user) return;
+  try {
+    await supabaseClient
+      .from('profiles')
+      .update({
+        is_online: !!isOnline,
+        last_seen_at: new Date().toISOString()  // ← ДОЛЖНО БЫТЬ ТАК
+      })
+      .eq('id', state.currentSession.user.id);
+  } catch (e) {
+    console.error('updatePresence error:', e);
   }
+}
 
   async function touchCurrentProfileActivity() {
-    if (!state.currentSession?.user) return;
-    try {
-      const isOnline = !document.hidden;
-      await supabaseClient.from('profiles').update({ is_online: isOnline, last_seen_at: new Date().toISOString() }).eq('id', state.currentSession.user.id);
-    } catch (e) { console.error('touchCurrentProfileActivity error:', e); }
+  if (!state.currentSession?.user) return;
+  try {
+    const isOnline = !document.hidden;
+    await supabaseClient
+      .from('profiles')
+      .update({
+        is_online: isOnline,
+        last_seen_at: new Date().toISOString()  // ← ИСПРАВИТЬ
+      })
+      .eq('id', state.currentSession.user.id);
+  } catch (e) {
+    console.error('touchCurrentProfileActivity error:', e);
   }
+}
 
   async function fetchSessionAndProfile(baseData) {
     try {
