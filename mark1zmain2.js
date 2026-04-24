@@ -285,12 +285,44 @@
   }
 
   function getVisibleLastSeen(profile) {
-    if (!profile) return 'Не в сети';
-    if (profile.is_virtual_support) return 'Официальный чат';
-    if (profile.is_online) return 'В сети';
-    if (!isProfileFieldVisible(profile, 'show_last_seen')) return 'Статус скрыт';
-    return formatLastSeen(profile.last_seen_at);
+  if (!profile) return 'Не в сети';
+  if (profile.is_virtual_support) return 'Официальный чат';
+  
+  // Если пользователь скрыл статус
+  if (!isProfileFieldVisible(profile, 'show_last_seen')) {
+    return 'Статус скрыт';
   }
+  
+  // Если онлайн - показываем зеленый индикатор
+  if (profile.is_online) {
+    return 'В сети';
+  }
+  
+  // Если был в сети недавно
+  if (profile.last_seen_at) {
+    const lastSeen = new Date(profile.last_seen_at);
+    const now = new Date();
+    const diffMs = now - lastSeen;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 5) {
+      return 'Был(а) только что';
+    } else if (diffMins < 60) {
+      return `Был(а) ${diffMins} ${pluralRu(diffMins, 'минуту', 'минуты', 'минут')} назад`;
+    } else if (diffMins < 1440) {
+      const hours = Math.floor(diffMins / 60);
+      return `Был(а) ${hours} ${pluralRu(hours, 'час', 'часа', 'часов')} назад`;
+    } else {
+      const days = Math.floor(diffMins / 1440);
+      if (days < 7) {
+        return `Был(а) ${days} ${pluralRu(days, 'день', 'дня', 'дней')} назад`;
+      }
+      return formatDateOnly(profile.last_seen_at);
+    }
+  }
+  
+  return 'Давно не был(а)';
+}
 
   // ========== DOM ЭЛЕМЕНТЫ ==========
   const screens = $$('.mkz-screen');
@@ -1035,38 +1067,58 @@
       const name = safeText(profile.username || 'Пользователь', 'Пользователь');
       const publicId = buildPublicUserCode(profile, profile.id);
       
+      // ОПРЕДЕЛЯЕМ СТАТУС
       let statusText = '';
-      if (profile.is_online) {
+      let statusClass = '';
+      
+      // Проверяем, скрыл ли пользователь статус
+      if (!isProfileFieldVisible(profile, 'show_last_seen')) {
+        statusText = 'Статус скрыт';
+        statusClass = 'status-hidden';
+      } else if (profile.is_online) {
         statusText = 'В сети';
+        statusClass = 'status-online';
       } else if (profile.last_seen_at) {
         const lastSeen = new Date(profile.last_seen_at);
         const now = new Date();
         const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
         const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
+        const diffMins = Math.floor((now - lastSeen) / (1000 * 60));
         
-        if (diffDays === 0 && diffHours === 0) {
+        if (diffMins < 5) {
           statusText = 'Был(а) только что';
+          statusClass = 'status-recent';
+        } else if (diffHours < 1) {
+          statusText = `Был(а) ${diffMins} ${pluralRu(diffMins, 'минуту', 'минуты', 'минут')} назад`;
+          statusClass = 'status-recent';
         } else if (diffDays === 0 && diffHours < 24) {
           statusText = `Был(а) ${diffHours} ${pluralRu(diffHours, 'час', 'часа', 'часов')} назад`;
+          statusClass = 'status-recent';
         } else if (diffDays < 7) {
           statusText = `Был(а) ${diffDays} ${pluralRu(diffDays, 'день', 'дня', 'дней')} назад`;
+          statusClass = 'status-offline';
         } else {
           statusText = formatDateOnly(profile.last_seen_at);
+          statusClass = 'status-offline';
         }
       } else {
         statusText = 'Давно не был(а)';
+        statusClass = 'status-offline';
       }
   
       return `
         <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
           <div class="mkz-person-card__top">
-            <div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');` : ''}">
+            <div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">
               ${avatarUrl ? '' : getInitial(profile.username, 'U')}
             </div>
             <div class="mkz-person-card__meta">
               <div class="mkz-person-card__name">${name}</div>
               <div class="mkz-person-card__id">${publicId}</div>
-              <div class="mkz-person-card__status">${statusText}</div>
+              <div class="mkz-person-card__status ${statusClass}">
+                <span class="mkz-status-indicator"></span>
+                ${statusText}
+              </div>
             </div>
           </div>
         </button>
@@ -1095,7 +1147,21 @@
       const publicId = buildPublicUserCode(profile, profile.id);
       if (publicProfileName) publicProfileName.textContent = profile.username || 'Пользователь';
       if (publicProfileId) publicProfileId.textContent = publicId;
-      if (publicProfileStatus) publicProfileStatus.textContent = getVisibleLastSeen(profile);
+          if (publicProfileStatus) {
+    const statusText = getVisibleLastSeen(profile);
+    publicProfileStatus.textContent = statusText;
+  
+  // Устанавливаем data-status для CSS индикатора
+    if (statusText === 'В сети') {
+    publicProfileStatus.setAttribute('data-status', 'online');
+  } else if (statusText === 'Статус скрыт') {
+    publicProfileStatus.setAttribute('data-status', 'hidden');
+  } else if (statusText.includes('Был(а)') && !statusText.includes('давно')) {
+    publicProfileStatus.setAttribute('data-status', 'recent');
+  } else {
+    publicProfileStatus.setAttribute('data-status', 'offline');
+  }
+}
       if (publicProfileRegistered) publicProfileRegistered.textContent = formatDateOnly(profile.created_at);
       if (publicProfilePhone) publicProfilePhone.textContent = getVisiblePhone(profile);
       if (publicProfileTelegram) publicProfileTelegram.textContent = getVisibleTelegram(profile);
@@ -1128,16 +1194,47 @@
   }
 
   async function renderMessengerDialogs() {
-    if (!messengerDialogs) return;
-    if (!state.currentSession?.user) { messengerDialogs.innerHTML = '<div class="mkz-card"><p>Войди в аккаунт, чтобы пользоваться мессенджером.</p></div>'; if (messengerMessages) messengerMessages.innerHTML = ''; return; }
-    await cacheProfiles(); await fetchMessengerData(); await findOrCreateSupportConversation(); await fetchMessengerData();
-    const supportConv = state.conversations.find(c => String(c.id) === String(state.supportConversationId));
-    if (pinnedOwnerChatBtn && supportConv) { applyAvatar(pinnedOwnerAvatar, SUPPORT_CHAT_IDENTITY.avatar_url, 'Mark1z Design'); if (pinnedOwnerName) pinnedOwnerName.textContent = 'Mark1z Design'; if (pinnedOwnerTime) pinnedOwnerTime.textContent = 'официальный чат'; }
-    let list = state.conversations.filter(c => !c.is_support);
-    if (!list.length) { messengerDialogs.innerHTML = '<div class="mkz-card"><p>Чатов пока нет.</p></div>'; } else { messengerDialogs.innerHTML = list.map(conv => { const peer = getConversationPeer(conv.id); const title = peer?.username || 'Личный чат'; const avatarUrl = safeUrl(peer?.avatar_url || ''); return `<button class="mkz-chat-item ${String(state.currentConversationId) === String(conv.id) ? 'is-active' : ''}" type="button" data-open-conversation="${conv.id}"><div class="mkz-chat-item__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">${avatarUrl ? '' : getInitial(title, 'M')}</div><div class="mkz-chat-item__body"><div class="mkz-chat-item__row"><div class="mkz-chat-item__name">${safeText(title, 'Чат')}</div></div></div></button>`; }).join(''); }
-    $$('[data-open-conversation]', messengerDialogs).forEach(btn => { btn.addEventListener('click', async () => { await openConversation(btn.dataset.openConversation); }); });
-    if (!state.currentConversationId && state.supportConversationId) await openConversation(state.supportConversationId);
+  if (!messengerDialogs) return;
+  if (!state.currentSession?.user) { 
+    messengerDialogs.innerHTML = '<div class="mkz-card"><p>Войди в аккаунт, чтобы пользоваться мессенджером.</p></div>'; 
+    if (messengerMessages) messengerMessages.innerHTML = ''; 
+    return; 
   }
+  
+  await cacheProfiles(); 
+  await fetchMessengerData(); 
+  await findOrCreateSupportConversation(); 
+  await fetchMessengerData();
+  
+  const supportConv = state.conversations.find(c => String(c.id) === String(state.supportConversationId));
+  if (pinnedOwnerChatBtn && supportConv) { 
+    applyAvatar(pinnedOwnerAvatar, SUPPORT_CHAT_IDENTITY.avatar_url, 'Mark1z Design'); 
+    if (pinnedOwnerName) pinnedOwnerName.textContent = 'Mark1z Design'; 
+    if (pinnedOwnerTime) pinnedOwnerTime.textContent = 'официальный чат'; 
+  }
+  
+  let list = state.conversations.filter(c => !c.is_support);
+  if (!list.length) { 
+    messengerDialogs.innerHTML = '<div class="mkz-card"><p>Чатов пока нет.</p></div>'; 
+  } else { 
+    messengerDialogs.innerHTML = list.map(conv => { 
+      const peer = getConversationPeer(conv.id); 
+      const title = peer?.username || 'Личный чат'; 
+      const avatarUrl = safeUrl(peer?.avatar_url || ''); 
+      return `<button class="mkz-chat-item ${String(state.currentConversationId) === String(conv.id) ? 'is-active' : ''}" type="button" data-open-conversation="${conv.id}"><div class="mkz-chat-item__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">${avatarUrl ? '' : getInitial(title, 'M')}</div><div class="mkz-chat-item__body"><div class="mkz-chat-item__row"><div class="mkz-chat-item__name">${safeText(title, 'Чат')}</div></div></div></button>`; 
+    }).join(''); 
+  }
+  
+  $$('[data-open-conversation]', messengerDialogs).forEach(btn => { 
+    btn.addEventListener('click', async () => { 
+      await openConversation(btn.dataset.openConversation); 
+    }); 
+  });
+  
+  if (!state.currentConversationId && state.supportConversationId) {
+    await openConversation(state.supportConversationId);
+  }
+}
 
   async function openConversation(conversationId, silent = false) {
     state.currentConversationId = conversationId;
