@@ -1311,62 +1311,64 @@
     if (peopleSearchBtn) peopleSearchBtn.addEventListener('click', async () => { await searchPeople(peopleSearchInput?.value || ''); });
     if (peopleSearchInput) peopleSearchInput.addEventListener('input', debounce(async (e) => { await searchPeople(e.target.value); }, 300));
     if (backToPeopleBtn) backToPeopleBtn.addEventListener('click', () => openScreen('people'));
-    if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
+        if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
+    
     if (openProfileMessengerBtn) {
-  // Убираем старые обработчики
-  const newBtn = openProfileMessengerBtn.cloneNode(true);
-  openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
-  
-  newBtn.addEventListener('click', async function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('🔘 Кнопка НАПИСАТЬ нажата');
-    console.log('🔘 data-user-id на кнопке:', this.getAttribute('data-user-id'));
-    
-    if (!state.currentSession) {
-      showNotification('Сначала войди в аккаунт', 'warning');
-      openScreen('account');
-      return;
-    }
-
-    const targetUserId = this.getAttribute('data-user-id');
-    console.log('📌 targetUserId:', targetUserId);
-    
-    if (!targetUserId) {
-      showNotification('Профиль не найден', 'warning');
-      return;
-    }
-
-    const myId = String(state.currentSession.user.id);
-    console.log('👤 myId:', myId);
-    
-    if (targetUserId === myId) {
-      showNotification('Вы не можете написать сами себе', 'info');
-      return;
-    }
-
-    showLoading('Создание чата...');
-    
-    try {
-      const conversationId = await findOrCreateDirectConversation(targetUserId);
-      console.log('💬 conversationId:', conversationId);
+      const newBtn = openProfileMessengerBtn.cloneNode(true);
+      openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
       
-      if (!conversationId) {
-        showNotification('Не удалось открыть чат', 'error');
-        return;
-      }
+      newBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('🔘 Кнопка НАПИСАТЬ нажата');
+        console.log('🔘 data-user-id на кнопке:', this.getAttribute('data-user-id'));
+        
+        if (!state.currentSession) {
+          showNotification('Сначала войди в аккаунт', 'warning');
+          openScreen('account');
+          return;
+        }
 
-      openScreen('messenger');
-      await renderMessengerDialogs();
-      await openConversation(conversationId);
-    } catch (err) {
-      console.error('❌ Ошибка:', err);
-      showNotification('Ошибка при создании чата', 'error');
-    } finally {
-      hideLoading();
+        const targetUserId = this.getAttribute('data-user-id');
+        console.log('📌 targetUserId:', targetUserId);
+        
+        if (!targetUserId) {
+          showNotification('Профиль не найден', 'warning');
+          return;
+        }
+
+        const myId = String(state.currentSession.user.id);
+        console.log('👤 myId:', myId);
+        
+        if (targetUserId === myId) {
+          showNotification('Вы не можете написать сами себе', 'info');
+          return;
+        }
+
+        showLoading('Создание чата...');
+        
+        try {
+          const conversationId = await findOrCreateDirectConversation(targetUserId);
+          console.log('💬 conversationId:', conversationId);
+          
+          if (!conversationId) {
+            showNotification('Не удалось открыть чат', 'error');
+            return;
+          }
+
+          openScreen('messenger');
+          await renderMessengerDialogs();
+          await openConversation(conversationId);
+        } catch (err) {
+          console.error('❌ Ошибка:', err);
+          showNotification('Ошибка при создании чата', 'error');
+        } finally {
+          hideLoading();
+        }
+      });
     }
-}
+  }
 
   // ========== INIT ==========
   (async function init() {
