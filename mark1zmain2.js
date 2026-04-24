@@ -4520,12 +4520,6 @@ const vkInput = $('#mkzVkUsername');
 const socialError = $('#mkzSocialError');
 }
 
-// Добавляем загрузку био в init функцию
-// В самом конце, где происходит инициализация, добавьте await loadUserBio()
-// Например, после searchPeople():
-
-await loadUserBio();
-
 // Добавляем стили
 const additionalStyles = document.createElement('style');
 additionalStyles.textContent = `
