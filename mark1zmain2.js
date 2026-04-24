@@ -1713,6 +1713,299 @@ async function openPublicProfile(userId) {
     return newConversation.id;
   }
 
+    // ========== BIND STATIC EVENTS ==========
+  function bindStaticEvents() {
+    // Бургер-меню
+    if (burger && nav) {
+      burger.addEventListener('click', () => {
+        nav.classList.toggle('is-open');
+      });
+    }
+
+    // Навигационные кнопки
+    navButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        openScreen(btn.dataset.screenOpen);
+      });
+    });
+
+    // Кнопка пользователя
+    if (userPillButton) {
+      userPillButton.addEventListener('click', () => openScreen('account'));
+    }
+
+    // Модальные окна
+    if (openOrderModal) openOrderModal.addEventListener('click', showOrderModal);
+    if (closeOrderModal) closeOrderModal.addEventListener('click', hideOrderModal);
+    if (orderBackdrop) orderBackdrop.addEventListener('click', hideOrderModal);
+    if (closeReviewPopup) closeReviewPopup.addEventListener('click', hideReviewPopup);
+    if (reviewPopupBackdrop) reviewPopupBackdrop.addEventListener('click', hideReviewPopup);
+    if (closeImageModal) closeImageModal.addEventListener('click', hideImageModal);
+    if (imageModalBackdrop) imageModalBackdrop.addEventListener('click', hideImageModal);
+
+    // Портфолио
+    if (backToFolders) backToFolders.addEventListener('click', showFoldersList);
+    if (quickAddFolderBtn) {
+      quickAddFolderBtn.addEventListener('click', () => {
+        folderTitle?.focus();
+        ownerPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+    if (quickAddWorkBtn) {
+      quickAddWorkBtn.addEventListener('click', () => {
+        if (state.currentOpenedFolderId && portfolioFolderSelect) {
+          portfolioFolderSelect.value = state.currentOpenedFolderId;
+        }
+        portfolioTitle?.focus();
+        ownerPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    // Новости (кнопки прикрепления)
+    if (attachImageBtn && newsImage) attachImageBtn.addEventListener('click', () => newsImage.click());
+    if (attachFileBtn && newsExtraFile) attachFileBtn.addEventListener('click', () => newsExtraFile.click());
+    
+    if (togglePollBtn && pollPanel) {
+      togglePollBtn.addEventListener('click', () => {
+        pollPanel.style.display = pollPanel.style.display === 'none' ? 'block' : 'none';
+        togglePollBtn.classList.toggle('is-active', pollPanel.style.display !== 'none');
+      });
+    }
+    if (toggleContestBtn && contestPanel) {
+      toggleContestBtn.addEventListener('click', () => {
+        contestPanel.style.display = contestPanel.style.display === 'none' ? 'block' : 'none';
+        toggleContestBtn.classList.toggle('is-active', contestPanel.style.display !== 'none');
+      });
+    }
+    if (toggleLinkBtn && linkPanel) {
+      toggleLinkBtn.addEventListener('click', () => {
+        linkPanel.style.display = linkPanel.style.display === 'none' ? 'block' : 'none';
+        toggleLinkBtn.classList.toggle('is-active', linkPanel.style.display !== 'none');
+      });
+    }
+    if (togglePinBtn) {
+      togglePinBtn.addEventListener('click', () => {
+        state.isPinnedDraft = !state.isPinnedDraft;
+        togglePinBtn.classList.toggle('is-active', state.isPinnedDraft);
+      });
+    }
+
+    // FAQ и чат кнопки
+    if (faqFab) faqFab.addEventListener('click', () => openScreen('faq'));
+    if (chatFab) {
+      chatFab.addEventListener('click', async () => {
+        if (!state.currentSession) {
+          openScreen('account');
+          return;
+        }
+        openScreen('messenger');
+        await renderMessengerDialogs();
+        if (state.supportConversationId) {
+          await openConversation(state.supportConversationId);
+        }
+      });
+    }
+
+    // Звёзды для оценки отзыва
+    stars.forEach(star => {
+      star.addEventListener('click', () => {
+        state.currentRating = Number(star.dataset.rating);
+        renderStars(state.currentRating);
+      });
+    });
+
+    // Табы "Обо мне"
+    aboutTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        aboutTabs.forEach(item => item.classList.remove('is-active'));
+        aboutPanels.forEach(item => item.classList.remove('is-active'));
+        tab.classList.add('is-active');
+        document.querySelector(`[data-about-panel="${tab.dataset.aboutTab}"]`)?.classList.add('is-active');
+      });
+    });
+
+    // Переключение форм входа/регистрации
+    if (showLoginBtn && showRegisterBtn && loginForm && registerForm) {
+      showLoginBtn.addEventListener('click', () => {
+        showLoginBtn.classList.add('is-active');
+        showRegisterBtn.classList.remove('is-active');
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+      });
+      showRegisterBtn.addEventListener('click', () => {
+        showRegisterBtn.classList.add('is-active');
+        showLoginBtn.classList.remove('is-active');
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+      });
+    }
+
+    // Отправка форм
+    loginForm?.addEventListener('submit', async e => { e.preventDefault(); await handleLogin(); });
+    registerForm?.addEventListener('submit', async e => { e.preventDefault(); await handleRegister(); });
+    reviewForm?.addEventListener('submit', async e => { e.preventDefault(); await handleReviewSend(); });
+    faqAskForm?.addEventListener('submit', async e => { e.preventDefault(); await handleFaqAsk(); });
+    folderAdminForm?.addEventListener('submit', async e => { e.preventDefault(); await handleAddFolder(); });
+    folderEditForm?.addEventListener('submit', async e => { e.preventDefault(); await handleEditFolderCover(); });
+    portfolioAdminForm?.addEventListener('submit', async e => { e.preventDefault(); await handleAddPortfolioItem(); });
+    portfolioEditForm?.addEventListener('submit', async e => { e.preventDefault(); await handleEditWork(); });
+
+    // Новости - публикация
+    if (newsAddBtn) newsAddBtn.addEventListener('click', handleAddNewsPost);
+
+    // Обновление профиля и выход
+    if (updateProfileBtn) updateProfileBtn.addEventListener('click', handleUpdateProfile);
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
+    // Поиск людей
+    if (peopleSearchBtn) {
+      peopleSearchBtn.addEventListener('click', async () => {
+        await searchPeople(peopleSearchInput?.value || '');
+      });
+    }
+    if (peopleSearchInput) {
+      peopleSearchInput.addEventListener('input', debounce(async (e) => {
+        await searchPeople(e.target.value);
+      }, 300));
+    }
+    if (backToPeopleBtn) backToPeopleBtn.addEventListener('click', () => openScreen('people'));
+
+    // Описание профиля
+    if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
+
+    // Кнопка "Написать" в публичном профиле
+    if (openProfileMessengerBtn) {
+      // Убираем старые обработчики
+      const newBtn = openProfileMessengerBtn.cloneNode(true);
+      openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
+      
+      newBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('🔘 Кнопка НАПИСАТЬ нажата');
+        console.log('🔘 data-user-id на кнопке:', this.getAttribute('data-user-id'));
+        
+        if (!state.currentSession) {
+          showNotification('Сначала войди в аккаунт', 'warning');
+          openScreen('account');
+          return;
+        }
+
+        const targetUserId = this.getAttribute('data-user-id');
+        console.log('📌 targetUserId:', targetUserId);
+        
+        if (!targetUserId) {
+          showNotification('Профиль не найден', 'warning');
+          return;
+        }
+
+        const myId = String(state.currentSession.user.id);
+        console.log('👤 myId:', myId);
+        
+        if (targetUserId === myId) {
+          showNotification('Вы не можете написать сами себе', 'info');
+          return;
+        }
+
+        showLoading('Создание чата...');
+        
+        try {
+          const conversationId = await findOrCreateDirectConversation(targetUserId);
+          console.log('💬 conversationId:', conversationId);
+          
+          if (!conversationId) {
+            showNotification('Не удалось открыть чат', 'error');
+            return;
+          }
+
+          openScreen('messenger');
+          await renderMessengerDialogs();
+          await openConversation(conversationId);
+        } catch (err) {
+          console.error('❌ Ошибка:', err);
+          showNotification('Ошибка при создании чата', 'error');
+        } finally {
+          hideLoading();
+        }
+      });
+    }
+
+    // Мессенджер: прикрепление файлов
+    if (messengerAttachImageBtn && messengerImageInput) {
+      messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
+    }
+    if (messengerAttachFileBtn && messengerFileInput) {
+      messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
+    }
+    if (messengerImageInput) {
+      messengerImageInput.addEventListener('change', () => {
+        const file = messengerImageInput.files?.[0];
+        if (!file) return;
+        state.pendingMessengerAttachment = { file, kind: 'image' };
+        if (messengerAttachMeta) messengerAttachMeta.textContent = `Фото: ${file.name}`;
+      });
+    }
+    if (messengerFileInput) {
+      messengerFileInput.addEventListener('change', () => {
+        const file = messengerFileInput.files?.[0];
+        if (!file) return;
+        state.pendingMessengerAttachment = { file, kind: 'file' };
+        if (messengerAttachMeta) messengerAttachMeta.textContent = `Файл: ${file.name}`;
+      });
+    }
+
+    // Отправка сообщения
+    if (messengerForm) {
+      messengerForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        await sendMessengerMessage();
+      });
+    }
+    if (messengerInput) {
+      messengerInput.addEventListener('keydown', async e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          await sendMessengerMessage();
+        }
+      });
+    }
+
+    // Обновление чата
+    if (messengerRefreshBtn) {
+      messengerRefreshBtn.addEventListener('click', async () => {
+        await fetchMessengerData();
+        await renderMessengerDialogs();
+        if (state.currentConversationId) {
+          await openConversation(state.currentConversationId, true);
+        }
+      });
+    }
+
+    // Открытие профиля из чата
+    if (messengerOpenProfileBtn) {
+      messengerOpenProfileBtn.addEventListener('click', async () => {
+        const profileId = messengerOpenProfileBtn.dataset.profileId;
+        if (!profileId) return;
+        await openPublicProfile(profileId);
+      });
+    }
+
+    // Закреплённый чат
+    if (pinnedOwnerChatBtn) {
+      pinnedOwnerChatBtn.addEventListener('click', async () => {
+        if (!state.currentSession) {
+          openScreen('account');
+          return;
+        }
+        await renderMessengerDialogs();
+        if (state.supportConversationId) {
+          await openConversation(state.supportConversationId);
+        }
+      });
+    }
+  }
+
 // ========== INIT ==========
 (async function init() {
   const style = document.createElement('style');
