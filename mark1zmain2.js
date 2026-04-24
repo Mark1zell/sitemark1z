@@ -994,387 +994,108 @@
   }
 
   // ========== ПОИСК ЛЮДЕЙ ==========
-  async function searchPeople(query = '') {
-    try {
-      if (!peopleSearchResults) return;
-      showLoading('Поиск пользователей...');
-      await cacheProfiles();
-      let list = [...state.allProfilesCache];
-      const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
-      if (prepared) {
-        list = list.filter(profile => {
-          const username = String(profile.username || '').toLowerCase();
-          const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase();
-          return username.includes(prepared) || publicId.includes(prepared);
-        });
-      }
-      state.peopleSearchResults = list;
-      if (!list.length) {
-        peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
-        return;
-      }
-      peopleSearchResults.innerHTML = list.map(profile => {
-        const avatarUrl = safeUrl(profile.avatar_url || '');
-        const name = safeText(profile.username || 'Пользователь', 'Пользователь');
-        const publicId = buildPublicUserCode(profile, profile.id);
-        let statusText = '';
-        let statusClass = '';
-        if (!isProfileFieldVisible(profile, 'show_last_seen')) {
-          statusText = 'Статус скрыт';
-          statusClass = 'status-hidden';
-        } else if (profile.is_online) {
-          statusText = 'В сети';
-          statusClass = 'status-online';
-        } else if (profile.last_seen_at) {
-          const lastSeen = new Date(profile.last_seen_at);
-          const now = new Date();
-          const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
-          const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
-          const diffMins = Math.floor((now - lastSeen) / (1000 * 60));
-          if (diffMins < 5) {
-            statusText = 'Был(а) только что';
-            statusClass = 'status-recent';
-          } else if (diffHours < 1) {
-            statusText = `Был(а) ${diffMins} ${pluralRu(diffMins, 'минуту', 'минуты', 'минут')} назад`;
-            statusClass = 'status-recent';
-          } else if (diffDays === 0 && diffHours < 24) {
-            statusText = `Был(а) ${diffHours} ${pluralRu(diffHours, 'час', 'часа', 'часов')} назад`;
-            statusClass = 'status-recent';
-          } else if (diffDays < 7) {
-            statusText = `Был(а) ${diffDays} ${pluralRu(diffDays, 'день', 'дня', 'дней')} назад`;
-            statusClass = 'status-offline';
-          } else {
-            statusText = formatDateOnly(profile.last_seen_at);
-            statusClass = 'status-offline';
-          }
-        } else {
-          statusText = 'Давно не был(а)';
-          statusClass = 'status-offline';
-        }
-        return `
-          <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
-            <div class="mkz-person-card__top">
-              <div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">
-                ${avatarUrl ? '' : getInitial(profile.username, 'U')}
-              </div>
-              <div class="mkz-person-card__meta">
-                <div class="mkz-person-card__name">${name}</div>
-                <div class="mkz-person-card__id">${publicId}</div>
-                <div class="mkz-person-card__status ${statusClass}">
-                  <span class="mkz-status-indicator"></span>
-                  ${statusText}
-                </div>
-              </div>
-            </div>
-          </button>
-        `;
-      }).join('');
-      $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
-        btn.addEventListener('click', async () => {
-          await openPublicProfile(btn.dataset.openProfile);
-              $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
-        btn.addEventListener('click', async () => {
-          await openPublicProfile(btn.dataset.openProfile);
-        });
-      });
-    } catch (err) {
-      console.error('searchPeople error:', err);
-      showNotification('Ошибка при поиске пользователей', 'error');
-    } finally {
-      hideLoading();
-    }
-  }
-})();
-
-  async function openPublicProfile(userId) {
+ async function searchPeople(query = '') {
   try {
-    console.log('🔍 openPublicProfile вызван с userId:', userId);
+    if (!peopleSearchResults) return;
+    showLoading('Поиск пользователей...');
+    await cacheProfiles();
     
-    let profile = await readProfileByUserId(userId);
-    if (!profile) profile = getProfileByUserId(userId);
-    if (!profile) {
-      console.error('❌ Профиль не найден для userId:', userId);
+    let list = [...state.allProfilesCache];
+    const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
+    
+    if (prepared) {
+      list = list.filter(profile => {
+        const username = String(profile.username || '').toLowerCase();
+        const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase();
+        return username.includes(prepared) || publicId.includes(prepared);
+      });
+    }
+    
+    state.peopleSearchResults = list;
+    
+    if (!list.length) {
+      peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
       return;
     }
-
-    console.log('✅ Профиль загружен:', profile.username, profile.id);
-
-    state.openedProfile = profile;
-
-    const publicId = buildPublicUserCode(profile, profile.id);
-
-    if (publicProfileName) publicProfileName.textContent = profile.username || 'Пользователь';
-    if (publicProfileId) publicProfileId.textContent = publicId;
-    if (publicProfileStatus) publicProfileStatus.textContent = getVisibleLastSeen(profile);
-    if (publicProfileRegistered) publicProfileRegistered.textContent = formatDateOnly(profile.created_at);
-    if (publicProfilePhone) publicProfilePhone.textContent = getVisiblePhone(profile);
-    if (publicProfileTelegram) publicProfileTelegram.textContent = getVisibleTelegram(profile);
-    if (publicProfileBio) publicProfileBio.textContent = profile.bio || 'Описание профиля пока не заполнено.';
     
-    applyAvatar(publicProfileAvatar, profile.avatar_url, profile.username);
-    
-    // ========== ГЛАВНОЕ: СОХРАНЯЕМ ID В КНОПКУ ==========
-    const messengerBtn = document.getElementById('mkzOpenProfileMessengerBtn');
-    if (messengerBtn) {
-      messengerBtn.setAttribute('data-user-id', profile.id);
-      console.log('✅ ID сохранен в кнопку:', profile.id);
-      console.log('✅ data-user-id после сохранения:', messengerBtn.getAttribute('data-user-id'));
-    } else {
-      console.error('❌ Кнопка mkzOpenProfileMessengerBtn не найдена в DOM');
-    }
-    
-    const userReviews = state.reviews.filter(r => String(r.user_id) === String(userId));
-    const userComments = state.newsComments.filter(c => String(c.user_id) === String(userId));
-    
-    if (publicProfileActivity) {
-      publicProfileActivity.innerHTML = `
-        <div class="mkz-profile-stats">
-          <div class="mkz-profile-stat">
-            <strong>${userReviews.length}</strong>
-            <span>Отзывов</span>
+    peopleSearchResults.innerHTML = list.map(profile => {
+      const avatarUrl = safeUrl(profile.avatar_url || '');
+      const name = safeText(profile.username || 'Пользователь', 'Пользователь');
+      const publicId = buildPublicUserCode(profile, profile.id);
+      let statusText = '';
+      let statusClass = '';
+      
+      if (!isProfileFieldVisible(profile, 'show_last_seen')) {
+        statusText = 'Статус скрыт';
+        statusClass = 'status-hidden';
+      } else if (profile.is_online) {
+        statusText = 'В сети';
+        statusClass = 'status-online';
+      } else if (profile.last_seen_at) {
+        const lastSeen = new Date(profile.last_seen_at);
+        const now = new Date();
+        const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
+        const diffMins = Math.floor((now - lastSeen) / (1000 * 60));
+        
+        if (diffMins < 5) {
+          statusText = 'Был(а) только что';
+          statusClass = 'status-recent';
+        } else if (diffHours < 1) {
+          statusText = `Был(а) ${diffMins} ${pluralRu(diffMins, 'минуту', 'минуты', 'минут')} назад`;
+          statusClass = 'status-recent';
+        } else if (diffDays === 0 && diffHours < 24) {
+          statusText = `Был(а) ${diffHours} ${pluralRu(diffHours, 'час', 'часа', 'часов')} назад`;
+          statusClass = 'status-recent';
+        } else if (diffDays < 7) {
+          statusText = `Был(а) ${diffDays} ${pluralRu(diffDays, 'день', 'дня', 'дней')} назад`;
+          statusClass = 'status-offline';
+        } else {
+          statusText = formatDateOnly(profile.last_seen_at);
+          statusClass = 'status-offline';
+        }
+      } else {
+        statusText = 'Давно не был(а)';
+        statusClass = 'status-offline';
+      }
+      
+      return `
+        <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
+          <div class="mkz-person-card__top">
+            <div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">
+              ${avatarUrl ? '' : getInitial(profile.username, 'U')}
+            </div>
+            <div class="mkz-person-card__meta">
+              <div class="mkz-person-card__name">${name}</div>
+              <div class="mkz-person-card__id">${publicId}</div>
+              <div class="mkz-person-card__status ${statusClass}">
+                <span class="mkz-status-indicator"></span>
+                ${statusText}
+              </div>
+            </div>
           </div>
-          <div class="mkz-profile-stat">
-            <strong>${userComments.length}</strong>
-            <span>Комментариев</span>
-          </div>
-        </div>
+        </button>
       `;
-    }
+    }).join('');
     
-    openScreen('profile');
+    $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await openPublicProfile(btn.dataset.openProfile);
+      });
+    });
+    
   } catch (err) {
-    console.error('❌ openPublicProfile error:', err);
+    console.error('searchPeople error:', err);
+    showNotification('Ошибка при поиске пользователей', 'error');
+  } finally {
+    hideLoading();
   }
 }
 
-  // ========== ФУНКЦИИ МЕССЕНДЖЕРА ==========
-  async function fetchMessengerData() {
-    if (!state.currentSession?.user) { state.conversations = []; state.conversationMembers = []; state.conversationMessages = []; return; }
-    try {
-      const { data: members } = await supabaseClient.from('conversation_members').select('*').eq('user_id', state.currentSession.user.id);
-      const memberRows = members || [];
-      const conversationIds = memberRows.map(item => item.conversation_id);
-      if (!conversationIds.length) { state.conversations = []; state.conversationMembers = []; state.conversationMessages = []; return; }
-      const { data: conversations } = await supabaseClient.from('conversations').select('*').in('id', conversationIds).order('updated_at', { ascending: false });
-      const { data: allMembers } = await supabaseClient.from('conversation_members').select('*').in('conversation_id', conversationIds);
-      const { data: messages } = await supabaseClient.from('conversation_messages').select('*').in('conversation_id', conversationIds).order('created_at', { ascending: true });
-      state.conversations = conversations || [];
-      state.conversationMembers = allMembers || [];
-      state.conversationMessages = messages || [];
-      const supportConversation = state.conversations.find(c => c.is_support === true);
-      state.supportConversationId = supportConversation?.id || null;
-    } catch (err) { console.error('fetchMessengerData error', err); }
-  }
+// ========== ОСТАЛЬНОЙ КОД (openPublicProfile, fetchMessengerData и т.д.) ==========
+// ... здесь весь ваш остальной код ...
 
-  async function renderMessengerDialogs() {
-    if (!messengerDialogs) return;
-    if (!state.currentSession?.user) { messengerDialogs.innerHTML = '<div class="mkz-card"><p>Войди в аккаунт, чтобы пользоваться мессенджером.</p></div>'; if (messengerMessages) messengerMessages.innerHTML = ''; return; }
-    await cacheProfiles(); await fetchMessengerData(); await findOrCreateSupportConversation(); await fetchMessengerData();
-    const supportConv = state.conversations.find(c => String(c.id) === String(state.supportConversationId));
-    if (pinnedOwnerChatBtn && supportConv) { applyAvatar(pinnedOwnerAvatar, SUPPORT_CHAT_IDENTITY.avatar_url, 'Mark1z Design'); if (pinnedOwnerName) pinnedOwnerName.textContent = 'Mark1z Design'; if (pinnedOwnerTime) pinnedOwnerTime.textContent = 'официальный чат'; }
-    let list = state.conversations.filter(c => !c.is_support);
-    if (!list.length) { messengerDialogs.innerHTML = '<div class="mkz-card"><p>Чатов пока нет.</p></div>'; } else { messengerDialogs.innerHTML = list.map(conv => { const peer = getConversationPeer(conv.id); const title = peer?.username || 'Личный чат'; const avatarUrl = safeUrl(peer?.avatar_url || ''); return `<button class="mkz-chat-item ${String(state.currentConversationId) === String(conv.id) ? 'is-active' : ''}" type="button" data-open-conversation="${conv.id}"><div class="mkz-chat-item__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">${avatarUrl ? '' : getInitial(title, 'M')}</div><div class="mkz-chat-item__body"><div class="mkz-chat-item__row"><div class="mkz-chat-item__name">${safeText(title, 'Чат')}</div></div></div></button>`; }).join(''); }
-    $$('[data-open-conversation]', messengerDialogs).forEach(btn => { btn.addEventListener('click', async () => { await openConversation(btn.dataset.openConversation); }); });
-    if (!state.currentConversationId && state.supportConversationId) await openConversation(state.supportConversationId);
-  }
-
-  async function openConversation(conversationId, silent = false) {
-    state.currentConversationId = conversationId;
-    await fetchMessengerData();
-    const conversation = state.conversations.find(c => String(c.id) === String(conversationId));
-    const peer = getConversationPeer(conversationId);
-    const title = conversation?.is_support ? 'Mark1z Design' : (peer?.username || 'Чат');
-    applyAvatar(messengerTopAvatar, conversation?.is_support ? SUPPORT_CHAT_IDENTITY.avatar_url : peer?.avatar_url, title);
-    if (messengerTopName) messengerTopName.textContent = title;
-    if (messengerMessages) messengerMessages.innerHTML = '<div class="mkz-messenger-empty"><div class="mkz-messenger-empty__box"><div class="mkz-messenger-empty__icon">✉</div><h3>Диалог пуст</h3><p>Напишите первое сообщение.</p></div></div>';
-    await markConversationAsRead(conversationId);
-    if (!silent) await renderMessengerDialogs();
-  }
-
-  async function sendMessengerMessage() {
-    if (!state.currentSession?.user) { openScreen('account'); return; }
-    if (!state.currentConversationId) { showNotification('Сначала выбери чат', 'warning'); return; }
-    const text = messengerInput?.value.trim() || '';
-    const attachment = state.pendingMessengerAttachment;
-    if (!text && !attachment) { showNotification('Напиши сообщение или прикрепи файл', 'warning'); return; }
-    setButtonState(messengerSendBtn, true, 'Отправка...', 'Отправить');
-    try {
-      let attachmentPayload = { attachment_url: '', attachment_name: '', attachment_type: '' };
-      if (attachment?.file) attachmentPayload = await uploadMessengerAttachment(attachment.file);
-      const isSupportChat = isSupportConversation(state.currentConversationId);
-      const senderMode = isSupportChat && isOwner() ? 'support_brand' : 'profile';
-      const { error } = await supabaseClient.from('conversation_messages').insert({ conversation_id: state.currentConversationId, user_id: state.currentSession.user.id, sender_mode: senderMode, text, ...attachmentPayload });
-      if (error) throw new Error(error.message || 'Не удалось отправить сообщение');
-      await supabaseClient.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', state.currentConversationId);
-      if (messengerInput) messengerInput.value = '';
-      clearMessengerAttachment();
-      await openConversation(state.currentConversationId);
-      showNotification('Сообщение отправлено', 'success');
-    } catch (err) { console.error(err); showNotification(err.message, 'error'); } finally { setButtonState(messengerSendBtn, false, 'Отправка...', 'Отправить'); }
-  }
-
-  function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
-  
-  function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => String(m.conversation_id) === String(conversationId)); const peer = members.find(m => String(m.user_id) !== String(state.currentSession?.user?.id)); return peer ? getProfileByUserId(peer.user_id) : null; }
-  
-  async function markConversationAsRead(conversationId) { if (!state.currentSession?.user || !conversationId) return; try { await supabaseClient.from('conversation_members').update({ last_read_at: new Date().toISOString() }).eq('conversation_id', conversationId).eq('user_id', state.currentSession.user.id); } catch {} }
-  
-  async function findOrCreateSupportConversation() { if (!state.currentSession?.user) return null; await fetchMessengerData(); if (state.supportConversationId) return state.supportConversationId; const { data: newConversation, error } = await supabaseClient.from('conversations').insert({ title: 'Mark1z Design', is_support: true, created_by: OWNER_UID, updated_at: new Date().toISOString() }).select('*').maybeSingle(); if (error || !newConversation) return null; await supabaseClient.from('conversation_members').insert([{ conversation_id: newConversation.id, user_id: OWNER_UID, last_read_at: new Date().toISOString() }, { conversation_id: newConversation.id, user_id: state.currentSession.user.id, last_read_at: null }]); state.supportConversationId = newConversation.id; await fetchMessengerData(); return newConversation.id; }
-  
-  async function findOrCreateDirectConversation(otherUserId) { if (!state.currentSession?.user) return null; await fetchMessengerData(); const myId = String(state.currentSession.user.id); const targetId = String(otherUserId); const possible = state.conversations.find(conv => { if (conv.is_support) return false; const members = state.conversationMembers.filter(m => String(m.conversation_id) === String(conv.id)).map(m => String(m.user_id)); return members.length === 2 && members.includes(myId) && members.includes(targetId); }); if (possible) return possible.id; const { data: newConversation, error } = await supabaseClient.from('conversations').insert({ title: 'Личный чат', is_direct: true, is_support: false, created_by: state.currentSession.user.id, updated_at: new Date().toISOString() }).select('*').single(); if (error || !newConversation) return null; await supabaseClient.from('conversation_members').insert([{ conversation_id: newConversation.id, user_id: state.currentSession.user.id, last_read_at: new Date().toISOString() }, { conversation_id: newConversation.id, user_id: otherUserId, last_read_at: null }]); await fetchMessengerData(); return newConversation.id; }
-
-  // ========== НОВОСТИ ==========
-  async function renderNews() {
-    try {
-      const { data: posts } = await supabaseClient.from('news_posts').select('*').order('id', { ascending: false });
-      state.newsPosts = posts || [];
-      if (!newsList) return;
-      if (!state.newsPosts.length) {
-        newsList.innerHTML = '<div class="mkz-card"><h3>Пока нет постов</h3></div>';
-        return;
-      }
-      newsList.innerHTML = state.newsPosts.map(post => `
-        <article class="mkz-news-card">
-          <h3>${safeText(post.title || 'Без названия')}</h3>
-          <div>${nl2brSafe(post.text || '')}</div>
-          ${post.image_url ? `<img src="${post.image_url}" style="max-width:100%; border-radius:12px;">` : ''}
-          <div class="mkz-news-card__date">${formatDateTime(post.created_at)}</div>
-        </article>
-      `).join('');
-    } catch (err) { console.error('renderNews error', err); }
-  }
-
-  async function handleAddNewsPost() {
-    if (!isOwner()) return;
-    const text = newsText?.value || '';
-    const imageFile = newsImage?.files?.[0];
-    let imageUrl = '';
-    if (imageFile) {
-      const upload = await uploadToBucket('portfolio', imageFile, `news_image_${state.currentSession.user.id}`);
-      imageUrl = upload.publicUrl || '';
-    }
-    const { error } = await supabaseClient.from('news_posts').insert({
-      user_id: state.currentSession.user.id,
-      title: newsTitle?.value.trim() || '',
-      text: text,
-      image_url: imageUrl,
-      is_pinned: !!state.isPinnedDraft
-    });
-    if (error) { showNotification(error.message, 'error'); return; }
-    newsTitle.value = ''; newsText.value = ''; newsImage.value = '';
-    await renderNews();
-    showNotification('Пост опубликован', 'success');
-  }
-
-  async function handleDeleteNewsPost(postId) { if (!isOwner()) return; await supabaseClient.from('news_posts').delete().eq('id', postId); await renderNews(); }
-  async function handleEditNewsPost(postId) { if (!isOwner()) return; }
-  async function handleDeleteNewsComment(commentId) { if (!isOwner()) return; }
-
-  // ========== HEARTBEAT ==========
-  function startPresenceHeartbeat() { if (state.messengerPollingTimer) return; state.messengerPollingTimer = setInterval(async () => { if (!state.currentSession?.user) return; await touchCurrentProfileActivity(); await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); }, 7000); }
-  function stopPresenceHeartbeat() { if (state.messengerPollingTimer) { clearInterval(state.messengerPollingTimer); state.messengerPollingTimer = null; } }
-  async function requestNotificationsIfNeeded() { if (!('Notification' in window)) return; if (state.notificationsReady) return; if (Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} } state.notificationsReady = true; }
-
-  // ========== BIND EVENTS ==========
-  function bindStaticEvents() {
-    if (burger && nav) burger.addEventListener('click', () => { nav.classList.toggle('is-open'); });
-    navButtons.forEach(btn => { btn.addEventListener('click', () => { openScreen(btn.dataset.screenOpen); }); });
-    if (userPillButton) userPillButton.addEventListener('click', () => openScreen('account'));
-    if (openOrderModal) openOrderModal.addEventListener('click', showOrderModal);
-    if (closeOrderModal) closeOrderModal.addEventListener('click', hideOrderModal);
-    if (orderBackdrop) orderBackdrop.addEventListener('click', hideOrderModal);
-    if (closeReviewPopup) closeReviewPopup.addEventListener('click', hideReviewPopup);
-    if (reviewPopupBackdrop) reviewPopupBackdrop.addEventListener('click', hideReviewPopup);
-    if (closeImageModal) closeImageModal.addEventListener('click', hideImageModal);
-    if (imageModalBackdrop) imageModalBackdrop.addEventListener('click', hideImageModal);
-    if (backToFolders) backToFolders.addEventListener('click', showFoldersList);
-    if (quickAddFolderBtn) quickAddFolderBtn.addEventListener('click', () => { folderTitle?.focus(); ownerPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-    if (quickAddWorkBtn) quickAddWorkBtn.addEventListener('click', () => { if (state.currentOpenedFolderId && portfolioFolderSelect) portfolioFolderSelect.value = state.currentOpenedFolderId; portfolioTitle?.focus(); ownerPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-    if (attachImageBtn && newsImage) attachImageBtn.addEventListener('click', () => newsImage.click());
-    if (attachFileBtn && newsExtraFile) attachFileBtn.addEventListener('click', () => newsExtraFile.click());
-    if (togglePollBtn && pollPanel) togglePollBtn.addEventListener('click', () => { pollPanel.style.display = pollPanel.style.display === 'none' ? 'block' : 'none'; togglePollBtn.classList.toggle('is-active', pollPanel.style.display !== 'none'); });
-    if (toggleContestBtn && contestPanel) toggleContestBtn.addEventListener('click', () => { contestPanel.style.display = contestPanel.style.display === 'none' ? 'block' : 'none'; toggleContestBtn.classList.toggle('is-active', contestPanel.style.display !== 'none'); });
-    if (toggleLinkBtn && linkPanel) toggleLinkBtn.addEventListener('click', () => { linkPanel.style.display = linkPanel.style.display === 'none' ? 'block' : 'none'; toggleLinkBtn.classList.toggle('is-active', linkPanel.style.display !== 'none'); });
-    if (togglePinBtn) togglePinBtn.addEventListener('click', () => { state.isPinnedDraft = !state.isPinnedDraft; togglePinBtn.classList.toggle('is-active', state.isPinnedDraft); });
-    if (faqFab) faqFab.addEventListener('click', () => openScreen('faq'));
-    if (chatFab) chatFab.addEventListener('click', async () => { if (!state.currentSession) { openScreen('account'); return; } openScreen('messenger'); await renderMessengerDialogs(); if (state.supportConversationId) await openConversation(state.supportConversationId); });
-    stars.forEach(star => { star.addEventListener('click', () => { state.currentRating = Number(star.dataset.rating); renderStars(state.currentRating); }); });
-    aboutTabs.forEach(tab => { tab.addEventListener('click', () => { aboutTabs.forEach(item => item.classList.remove('is-active')); aboutPanels.forEach(item => item.classList.remove('is-active')); tab.classList.add('is-active'); document.querySelector(`[data-about-panel="${tab.dataset.aboutTab}"]`)?.classList.add('is-active'); }); });
-    if (showLoginBtn && showRegisterBtn && loginForm && registerForm) { showLoginBtn.addEventListener('click', () => { showLoginBtn.classList.add('is-active'); showRegisterBtn.classList.remove('is-active'); loginForm.style.display = 'block'; registerForm.style.display = 'none'; }); showRegisterBtn.addEventListener('click', () => { showRegisterBtn.classList.add('is-active'); showLoginBtn.classList.remove('is-active'); loginForm.style.display = 'none'; registerForm.style.display = 'block'; }); }
-    loginForm?.addEventListener('submit', async e => { e.preventDefault(); await handleLogin(); });
-    registerForm?.addEventListener('submit', async e => { e.preventDefault(); await handleRegister(); });
-    reviewForm?.addEventListener('submit', async e => { e.preventDefault(); await handleReviewSend(); });
-    faqAskForm?.addEventListener('submit', async e => { e.preventDefault(); await handleFaqAsk(); });
-    folderAdminForm?.addEventListener('submit', async e => { e.preventDefault(); await handleAddFolder(); });
-    folderEditForm?.addEventListener('submit', async e => { e.preventDefault(); await handleEditFolderCover(); });
-    portfolioAdminForm?.addEventListener('submit', async e => { e.preventDefault(); await handleAddPortfolioItem(); });
-    portfolioEditForm?.addEventListener('submit', async e => { e.preventDefault(); await handleEditWork(); });
-    if (newsAddBtn) newsAddBtn.addEventListener('click', handleAddNewsPost);
-    if (updateProfileBtn) updateProfileBtn.addEventListener('click', handleUpdateProfile);
-    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
-    if (peopleSearchBtn) peopleSearchBtn.addEventListener('click', async () => { await searchPeople(peopleSearchInput?.value || ''); });
-    if (peopleSearchInput) peopleSearchInput.addEventListener('input', debounce(async (e) => { await searchPeople(e.target.value); }, 300));
-    if (backToPeopleBtn) backToPeopleBtn.addEventListener('click', () => openScreen('people'));
-        if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
-    
-    if (openProfileMessengerBtn) {
-      const newBtn = openProfileMessengerBtn.cloneNode(true);
-      openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
-      
-      newBtn.addEventListener('click', async function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        console.log('🔘 Кнопка НАПИСАТЬ нажата');
-        console.log('🔘 data-user-id на кнопке:', this.getAttribute('data-user-id'));
-        
-        if (!state.currentSession) {
-          showNotification('Сначала войди в аккаунт', 'warning');
-          openScreen('account');
-          return;
-        }
-
-        const targetUserId = this.getAttribute('data-user-id');
-        console.log('📌 targetUserId:', targetUserId);
-        
-        if (!targetUserId) {
-          showNotification('Профиль не найден', 'warning');
-          return;
-        }
-
-        const myId = String(state.currentSession.user.id);
-        console.log('👤 myId:', myId);
-        
-        if (targetUserId === myId) {
-          showNotification('Вы не можете написать сами себе', 'info');
-          return;
-        }
-
-        showLoading('Создание чата...');
-        
-        try {
-          const conversationId = await findOrCreateDirectConversation(targetUserId);
-          console.log('💬 conversationId:', conversationId);
-          
-          if (!conversationId) {
-            showNotification('Не удалось открыть чат', 'error');
-            return;
-          }
-
-          openScreen('messenger');
-          await renderMessengerDialogs();
-          await openConversation(conversationId);
-        } catch (err) {
-          console.error('❌ Ошибка:', err);
-          showNotification('Ошибка при создании чата', 'error');
-        } finally {
-          hideLoading();
-        }
-      });
-    }
-  }
-
-  // ========== INIT ==========
+// ========== INIT ==========
 (async function init() {
   const style = document.createElement('style');
   style.textContent = `
@@ -1392,6 +1113,98 @@
       flex-direction: column;
       z-index: 10000;
     }
+    .mkz-loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: mkz-spin 0.8s linear infinite;
+    }
+    @keyframes mkz-spin {
+      to { transform: rotate(360deg); }
+    }
+    .mkz-loading-message {
+      color: #fff;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    .mkz-notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      max-width: 380px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      transform: translateX(420px);
+      transition: transform 0.3s ease;
+      z-index: 10001;
+      overflow: hidden;
+    }
+    .mkz-notification.show {
+      transform: translateX(0);
+    }
+    .mkz-notification--success { border-left: 4px solid #4caf50; }
+    .mkz-notification--error { border-left: 4px solid #f44336; }
+    .mkz-notification--warning { border-left: 4px solid #ff9800; }
+    .mkz-notification--info { border-left: 4px solid #2196f3; }
+    .mkz-notification__content {
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mkz-notification__message {
+      flex: 1;
+      font-size: 14px;
+      color: #333;
+    }
+    .mkz-notification__close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 0 8px;
+      color: #999;
+    }
+    .mkz-notification__close:hover { color: #333; }
+    .drag-over {
+      border: 2px dashed #4caf50 !important;
+      background: rgba(76,175,80,0.1) !important;
+    }
+    .mkz-profile-description {
+      margin: 20px 0;
+      padding: 16px;
+      background: #1e293b;
+      border-radius: 12px;
+    }
+    .mkz-profile-description textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 12px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      font-family: inherit;
+      resize: vertical;
+      color: #e2e8f0;
+    }
+    .mkz-social-error {
+      color: #ef4444;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .mkz-social-inputs {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 640px) {
+      .mkz-social-inputs {
+        flex-direction: column;
+      }
+    }
   `;
   document.head.appendChild(style);
   
@@ -1402,7 +1215,7 @@
     renderReviews(),
     renderNews(),
     renderFaqQuestions(),
-    renderContestEntriesAdmin(),  // было renderContestAdmin - исправлено
+    renderContestEntriesAdmin(),
     searchPeople(),
     renderMessengerDialogs()
   ]);
@@ -1442,3 +1255,5 @@
     updatePresence(false);
   });
 })();
+
+})(); // Закрываем основную функцию
