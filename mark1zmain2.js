@@ -298,10 +298,6 @@ function nl2brSafe(value) {
   return safeText(value || '', '').replace(/\n/g, '<br>');
 }
 
-  function nl2brSafe(value) {
-  return safeText(value || '', '').replace(/\n/g, '<br>');
-}
-
   function getInitial(name, fallback = 'Г') {
     return String(name || fallback).trim().charAt(0).toUpperCase() || fallback;
   }
