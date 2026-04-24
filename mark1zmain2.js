@@ -1836,8 +1836,6 @@
     });
   })();
 
-})();
-
   // ========== ФУНКЦИИ РАБОТЫ С ПРОФИЛЕМ ==========
   async function readProfileByUserId(userId) {
     try {
