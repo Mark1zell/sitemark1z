@@ -780,16 +780,50 @@
   }
 
   async function handleLogout() {
-    stopPresenceHeartbeat();
-    await supabaseClient.auth.signOut();
-    state.currentSession = null; state.currentProfile = null; state.userLikedPosts = new Set(); state.newsLikesMap = {}; state.newsCommentsMap = {};
-    state.currentConversationId = null; state.supportConversationId = null; state.openedProfile = null; state.knownMessageIds = new Set(); state.initialMessagesHydrated = false;
-    clearMessengerAttachment();
-    renderProfile();
-    await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
-    openScreen('account');
-    showNotification('Вы вышли из аккаунта', 'info');
+  // Останавливаем heartbeat
+  stopPresenceHeartbeat();
+
+  // ВАЖНО: устанавливаем статус "не в сети" перед выходом
+  if (state.currentSession?.user) {
+    await supabaseClient
+      .from('profiles')
+      .update({
+        is_online: false,
+        last_seen_at: new Date().toISOString()
+      })
+      .eq('id', state.currentSession.user.id);
   }
+
+  await supabaseClient.auth.signOut();
+
+  state.currentSession = null;
+  state.currentProfile = null;
+  state.userLikedPosts = new Set();
+  state.newsLikesMap = {};
+  state.newsCommentsMap = {};
+  state.currentConversationId = null;
+  state.supportConversationId = null;
+  state.openedProfile = null;
+  state.knownMessageIds = new Set();
+  state.initialMessagesHydrated = false;
+  clearMessengerAttachment();
+
+  renderProfile();
+
+  await Promise.all([
+    cacheProfiles(),
+    renderPortfolio(),
+    renderReviews(),
+    renderNews(),
+    renderFaqQuestions(),
+    renderContestEntriesAdmin(),
+    searchPeople(),
+    renderMessengerDialogs()
+  ]);
+
+  openScreen('account');
+  showNotification('Вы вышли из аккаунта', 'info');
+}
 
   // ========== ФУНКЦИИ ПОРТФОЛИО ==========
   function renderPortfolioSelects() {
