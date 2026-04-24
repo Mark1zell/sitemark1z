@@ -493,7 +493,7 @@
     conversations: [], conversationMembers: [], conversationMessages: [], currentConversationId: null, supportConversationId: null,
     userLikedPosts: new Set(), newsLikesMap: {}, newsCommentsMap: {},
     profileSyncInProgress: false, isPinnedDraft: false,
-    pendingMessengerAttachment: null, messengerPollingTimer: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
+    pendingMessengerAttachment: null, messengerPollingTimer: null, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
     mediaRecorder: null, mediaChunks: [], voiceStream: null
   };
 
@@ -1393,7 +1393,47 @@ async function openPublicProfile(userId) {
     }
   }
 
-  async function renderMessengerDialogs() {
+    async function subscribeToMessages() {
+    if (!state.currentSession?.user) return;
+    
+    if (state.messagesSubscription) {
+      await supabaseClient.removeSubscription(state.messagesSubscription);
+    }
+    
+    state.messagesSubscription = supabaseClient
+      .channel('messages-channel')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'conversation_messages' },
+        async (payload) => {
+          const newMessage = payload.new;
+          
+          if (newMessage.user_id !== state.currentSession?.user?.id) {
+            const isMember = state.conversationMembers.some(
+              m => m.conversation_id === newMessage.conversation_id && 
+                   m.user_id === state.currentSession.user.id
+            );
+            
+            if (isMember) {
+              await fetchMessengerData();
+              await renderMessengerDialogs();
+              if (state.currentConversationId === newMessage.conversation_id) {
+                await openConversation(state.currentConversationId, true);
+              }
+              
+              if (Notification.permission === 'granted' && document.hidden) {
+                const sender = getProfileByUserId(newMessage.user_id);
+                new Notification(`Новое сообщение от ${sender?.username || 'Пользователя'}`, {
+                  body: newMessage.text || newMessage.attachment_name || 'Новое сообщение'
+                });
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+  }
+
+    async function renderMessengerDialogs() {
     if (!messengerDialogs) return;
     
     if (!state.currentSession?.user) {
@@ -1406,67 +1446,107 @@ async function openPublicProfile(userId) {
     await fetchMessengerData();
     await findOrCreateSupportConversation();
     await fetchMessengerData();
+    await updateConversationList();
+    await subscribeToMessages();
     
     const supportConv = state.conversations.find(c => String(c.id) === String(state.supportConversationId));
     if (pinnedOwnerChatBtn && supportConv) {
       applyAvatar(pinnedOwnerAvatar, SUPPORT_CHAT_IDENTITY.avatar_url, 'Mark1z Design');
       if (pinnedOwnerName) pinnedOwnerName.textContent = 'Mark1z Design';
       if (pinnedOwnerTime) pinnedOwnerTime.textContent = 'официальный чат';
+      
+      const lastMessage = state.conversationMessages
+        .filter(m => m.conversation_id === supportConv.id)
+        .pop();
+      if (pinnedOwnerPreview) {
+        pinnedOwnerPreview.textContent = lastMessage?.text || 'Напишите сообщение...';
+      }
+      
+      pinnedOwnerChatBtn.classList.toggle('is-active', state.currentConversationId === supportConv.id);
+      
+      const unread = getUnreadCount(supportConv.id);
+      if (pinnedOwnerUnread) {
+        pinnedOwnerUnread.style.display = unread > 0 ? 'inline-flex' : 'none';
+        pinnedOwnerUnread.textContent = unread;
+      }
     }
     
-    let list = state.conversations.filter(c => !c.is_support);
-    const query = String(messengerSearch?.value || '').trim().toLowerCase();
-    
-    if (query) {
-      list = list.filter(conv => {
-        const peer = getConversationPeer(conv.id);
-        const title = String(conv.title || '').toLowerCase();
-        const peerName = String(peer?.username || '').toLowerCase();
-        return title.includes(query) || peerName.includes(query);
-      });
+    if (!state.currentConversationId && state.supportConversationId) {
+      await openConversation(state.supportConversationId);
     }
+  }
+
+    async function updateConversationList() {
+    if (!messengerDialogs) return;
     
-    if (!list.length) {
-      messengerDialogs.innerHTML = '<div class="mkz-card"><p>Чатов пока нет.</p></div>';
-    } else {
-      messengerDialogs.innerHTML = list.map(conv => {
-        const peer = getConversationPeer(conv.id);
-        const lastMessage = [...state.conversationMessages]
-          .filter(m => String(m.conversation_id) === String(conv.id))
+    await fetchMessengerData();
+    
+    const otherMembers = state.conversationMembers
+      .filter(m => m.user_id !== state.currentSession?.user?.id)
+      .map(m => ({
+        conversationId: m.conversation_id,
+        userId: m.user_id
+      }));
+    
+    const conversationsWithProfiles = await Promise.all(
+      otherMembers.map(async (item) => {
+        const profile = await getProfileByUserId(item.userId);
+        const conversation = state.conversations.find(c => c.id === item.conversationId);
+        const lastMessage = state.conversationMessages
+          .filter(m => m.conversation_id === item.conversationId)
           .pop();
         
-        const title = peer?.username || 'Личный чат';
-        const avatarUrl = safeUrl(peer?.avatar_url || '');
-        const lastText = lastMessage?.text || lastMessage?.attachment_name || 'Сообщений пока нет';
-        const unread = getUnreadCount(conv.id);
-        
-        return `
-          <button class="mkz-chat-item ${String(state.currentConversationId) === String(conv.id) ? 'is-active' : ''}" type="button" data-open-conversation="${conv.id}">
-            <div class="mkz-chat-item__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">
-              ${avatarUrl ? '' : getInitial(title, 'M')}
-            </div>
-            <div class="mkz-chat-item__body">
-              <div class="mkz-chat-item__row">
-                <div class="mkz-chat-item__name">${safeText(title, 'Чат')}</div>
-                <div class="mkz-chat-item__time">${lastMessage ? formatDateTime(lastMessage.created_at) : ''}</div>
-              </div>
-              <div class="mkz-chat-item__preview">${safeText(lastText, '')}</div>
-            </div>
-            ${unread > 0 ? `<div class="mkz-chat-item__badge">${unread}</div>` : ''}
-          </button>
-        `;
-      }).join('');
+        return {
+          id: item.conversationId,
+          title: profile?.username || 'Пользователь',
+          avatar: profile?.avatar_url || '',
+          lastMessage: lastMessage?.text || lastMessage?.attachment_name || 'Нет сообщений',
+          lastMessageTime: lastMessage?.created_at,
+          userId: item.userId
+        };
+      })
+    );
+    
+    conversationsWithProfiles.sort((a, b) => {
+      if (!a.lastMessageTime) return 1;
+      if (!b.lastMessageTime) return -1;
+      return new Date(b.lastMessageTime) - new Date(a.lastMessageTime);
+    });
+    
+    if (!conversationsWithProfiles.length) {
+      messengerDialogs.innerHTML = '<div class="mkz-card"><p>Чатов пока нет.</p></div>';
+      return;
     }
+    
+    messengerDialogs.innerHTML = conversationsWithProfiles.map(conv => `
+      <button class="mkz-chat-item ${state.currentConversationId === conv.id ? 'is-active' : ''}" 
+              type="button" 
+              data-open-conversation="${conv.id}">
+        <div class="mkz-chat-item__avatar" style="${conv.avatar ? `background-image:url('${conv.avatar}');background-size:cover;background-position:center;` : ''}">
+          ${!conv.avatar ? getInitial(conv.title, 'U') : ''}
+        </div>
+        <div class="mkz-chat-item__body">
+          <div class="mkz-chat-item__row">
+            <div class="mkz-chat-item__name">${safeText(conv.title, 'Чат')}</div>
+            <div class="mkz-chat-item__time">${conv.lastMessageTime ? formatDateTime(conv.lastMessageTime) : ''}</div>
+          </div>
+          <div class="mkz-chat-item__preview">${safeText(conv.lastMessage, '')}</div>
+        </div>
+        ${getUnreadCount(conv.id) > 0 ? `<div class="mkz-chat-item__badge">${getUnreadCount(conv.id)}</div>` : ''}
+      </button>
+    `).join('');
     
     $$('[data-open-conversation]', messengerDialogs).forEach(btn => {
       btn.addEventListener('click', async () => {
         await openConversation(btn.dataset.openConversation);
       });
     });
-    
-    if (!state.currentConversationId && state.supportConversationId) {
-      await openConversation(state.supportConversationId);
-    }
+  }
+
+    function getConversationPeer(conversationId) {
+    const members = state.conversationMembers.filter(m => m.conversation_id === conversationId);
+    const peer = members.find(m => m.user_id !== state.currentSession?.user?.id);
+    return peer ? getProfileByUserId(peer.user_id) : null;
   }
 
   async function openConversation(conversationId, silent = false) {
@@ -1558,6 +1638,8 @@ async function openPublicProfile(userId) {
         .from('conversations')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', state.currentConversationId);
+
+      await updateConversationList();
       
       if (messengerInput) messengerInput.value = '';
       clearMessengerAttachment();
