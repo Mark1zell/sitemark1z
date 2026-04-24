@@ -1084,7 +1084,7 @@
       hideLoading();
     }
   }
-}
+})();
 
   async function openPublicProfile(userId) {
   try {
