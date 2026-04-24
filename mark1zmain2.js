@@ -134,9 +134,9 @@
   }
 
   function escapeHtml(value) {
-    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-    return String(value ?? '').replace(/[&<>"']/g, function(m) { return map[m]; });
-  }
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(value ?? '').replace(/[&<>"']/g, function(m) { return map[m]; });
+}
 
   function safeText(value, fallback = '') {
     const prepared = String(value ?? '').trim();
@@ -166,14 +166,6 @@
     if (!value) return '—';
     try { return new Date(value).toLocaleDateString('ru-RU'); } catch { return String(value); }
   }
-
-  function pluralRu(n, one, few, many) {
-    const mod10 = n % 10, mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return one;
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
-    return many;
-  }
-
 
   function generateNumericId(uuid) {
     const uuidStr = String(uuid).replace(/-/g, '');
@@ -1101,11 +1093,9 @@
       const name = safeText(profile.username || 'Пользователь', 'Пользователь');
       const publicId = buildPublicUserCode(profile, profile.id);
       
-      // ОПРЕДЕЛЯЕМ СТАТУС
       let statusText = '';
       let statusClass = '';
       
-      // Проверяем, скрыл ли пользователь статус
       if (!isProfileFieldVisible(profile, 'show_last_seen')) {
         statusText = 'Статус скрыт';
         statusClass = 'status-hidden';
@@ -1173,39 +1163,75 @@
 }
 
   async function openPublicProfile(userId) {
-    try {
-      let profile = await readProfileByUserId(userId);
-      if (!profile) profile = getProfileByUserId(userId);
-      if (!profile) return;
-      state.openedProfile = profile;
-      const publicId = buildPublicUserCode(profile, profile.id);
-      if (publicProfileName) publicProfileName.textContent = profile.username || 'Пользователь';
-      if (publicProfileId) publicProfileId.textContent = publicId;
-          if (publicProfileStatus) {
-    const statusText = getVisibleLastSeen(profile);
-    publicProfileStatus.textContent = statusText;
-  
-  // Устанавливаем data-status для CSS индикатора
-    if (statusText === 'В сети') {
-    publicProfileStatus.setAttribute('data-status', 'online');
-  } else if (statusText === 'Статус скрыт') {
-    publicProfileStatus.setAttribute('data-status', 'hidden');
-  } else if (statusText.includes('Был(а)') && !statusText.includes('давно')) {
-    publicProfileStatus.setAttribute('data-status', 'recent');
-  } else {
-    publicProfileStatus.setAttribute('data-status', 'offline');
-  }
-}
-      if (publicProfileRegistered) publicProfileRegistered.textContent = formatDateOnly(profile.created_at);
-      if (publicProfilePhone) publicProfilePhone.textContent = getVisiblePhone(profile);
-      if (publicProfileTelegram) publicProfileTelegram.textContent = getVisibleTelegram(profile);
-      if (publicProfileBio) publicProfileBio.textContent = profile.bio || 'Описание профиля пока не заполнено.';
-      applyAvatar(publicProfileAvatar, profile.avatar_url, profile.username);
-      const userReviews = state.reviews.filter(r => String(r.user_id) === String(userId));
-      const userComments = state.newsComments.filter(c => String(c.user_id) === String(userId));
-      if (publicProfileActivity) { publicProfileActivity.innerHTML = `<div class="mkz-profile-stats"><div class="mkz-profile-stat"><strong>${userReviews.length}</strong><span>Отзывов</span></div><div class="mkz-profile-stat"><strong>${userComments.length}</strong><span>Комментариев</span></div></div>`; }
-      openScreen('profile');
-    } catch (err) { console.error('openPublicProfile error', err); }
+  try {
+    let profile = await readProfileByUserId(userId);
+    if (!profile) profile = getProfileByUserId(userId);
+    if (!profile) return;
+
+    state.openedProfile = profile;
+
+    const publicId = buildPublicUserCode(profile, profile.id);
+
+    if (publicProfileName) publicProfileName.textContent = profile.username || 'Пользователь';
+    if (publicProfileId) publicProfileId.textContent = publicId;
+    if (publicProfileStatus) publicProfileStatus.textContent = getVisibleLastSeen(profile);
+    if (publicProfileRegistered) publicProfileRegistered.textContent = formatDateOnly(profile.created_at);
+    if (publicProfilePhone) publicProfilePhone.textContent = getVisiblePhone(profile);
+    if (publicProfileTelegram) publicProfileTelegram.textContent = getVisibleTelegram(profile);
+    if (publicProfileBio) publicProfileBio.textContent = profile.bio || 'Описание профиля пока не заполнено.';
+    
+    applyAvatar(publicProfileAvatar, profile.avatar_url, profile.username);
+    
+      // ========== КНОПКА НАПИСАТЬ В ПРОФИЛЕ ==========
+  if (openProfileMessengerBtn) {
+    // Убираем старые обработчики, чтобы не было дублирования
+    const newBtn = openProfileMessengerBtn.cloneNode(true);
+    openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
+    
+    newBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (!state.currentSession) {
+        showNotification('Сначала войди в аккаунт', 'warning');
+        openScreen('account');
+        return;
+      }
+
+      const targetUserId = this.getAttribute('data-user-id');
+      
+      if (!targetUserId) {
+        showNotification('Профиль не найден', 'warning');
+        return;
+      }
+
+      const myId = String(state.currentSession.user.id);
+      
+      if (targetUserId === myId) {
+        showNotification('Вы не можете написать сами себе', 'info');
+        return;
+      }
+
+      showLoading('Создание чата...');
+      
+      try {
+        const conversationId = await findOrCreateDirectConversation(targetUserId);
+
+        if (!conversationId) {
+          showNotification('Не удалось открыть чат', 'error');
+          return;
+        }
+
+        openScreen('messenger');
+        await renderMessengerDialogs();
+        await openConversation(conversationId);
+      } catch (err) {
+        console.error('Error creating conversation:', err);
+        showNotification('Ошибка при создании чата: ' + err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    });
   }
 
   // ========== МЕССЕНДЖЕР ==========
