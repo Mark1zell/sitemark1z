@@ -100,7 +100,7 @@
 
   async function cachedQuery(key, queryFn, ttl = 60000) {
     const cached = queryCache.get(key);
-    if (cached && new Date().toISOString() - cached.timestamp < ttl) return cached.data;
+    if (cached && Date.now() - cached.timestamp < ttl) return cached.data;
     const data = await queryFn();
     queryCache.set(key, { data, timestamp: new Date().toISOString() });
     return data;
@@ -117,7 +117,7 @@
       else validateFile(file, 2);
       const optimizedFile = await optimizeImage(file);
       const ext = (optimizedFile.name.split('.').pop() || 'bin').toLowerCase();
-      const path = `${prefix}_${new Date().toISOString()}.${ext}`;
+      const path = `${prefix}_${Date.now()}.${ext}`;
       const { error } = await supabaseClient.storage.from(bucket).upload(path, optimizedFile, { upsert: true });
       if (error) throw error;
       const { data } = supabaseClient.storage.from(bucket).getPublicUrl(path);
@@ -134,9 +134,9 @@
   }
 
   function escapeHtml(value) {
-    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-    return String(value ?? '').replace(/[&<>"']/g, function(m) { return map[m]; });
-  }
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(value ?? '').replace(/[&<>"']/g, function(m) { return map[m]; });
+}
 
   function safeText(value, fallback = '') {
     const prepared = String(value ?? '').trim();
@@ -183,7 +183,7 @@
 
   function formatLastSeen(value) {
     if (!value) return 'Не в сети';
-    const diffMs = new Date().toISOString() - new Date(value).getTime();
+    const diffMs = Date.now() - new Date(value).getTime();
     const diffMin = Math.max(0, Math.floor(diffMs / 60000));
     if (diffMin < 1) return 'Был(а) только что';
     if (diffMin < 60) return `Был(а) ${diffMin} ${pluralRu(diffMin, 'минуту', 'минуты', 'минут')} назад`;
@@ -1072,15 +1072,19 @@
       $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
         btn.addEventListener('click', async () => {
           await openPublicProfile(btn.dataset.openProfile);
+              $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await openPublicProfile(btn.dataset.openProfile);
         });
       });
     } catch (err) {
-      console.error('searchPeople error', err);
+      console.error('searchPeople error:', err);
       showNotification('Ошибка при поиске пользователей', 'error');
     } finally {
       hideLoading();
     }
   }
+}
 
   async function openPublicProfile(userId) {
   try {
@@ -1371,16 +1375,70 @@
   }
 
   // ========== INIT ==========
-  (async function init() {
-    const style = document.createElement('style');
-    style.textContent = `.mkz-loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);display:none;justify-content:center;align-items:center;flex-direction:column;z-index:10000}.mkz-loading-spinner{width:50px;height:50px;border:4px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:mkz-spin 0.8s linear infinite}@keyframes mkz-spin{to{transform:rotate(360deg)}}.mkz-loading-message{color:#fff;margin-top:20px;font-size:14px}.mkz-notification{position:fixed;top:20px;right:20px;max-width:380px;background:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);transform:translateX(420px);transition:transform 0.3s ease;z-index:10001;overflow:hidden}.mkz-notification.show{transform:translateX(0)}.mkz-notification--success{border-left:4px solid #4caf50}.mkz-notification--error{border-left:4px solid #f44336}.mkz-notification--warning{border-left:4px solid #ff9800}.mkz-notification--info{border-left:4px solid #2196f3}.mkz-notification__content{padding:14px 16px;display:flex;justify-content:space-between;align-items:center}.mkz-notification__message{flex:1;font-size:14px;color:#333}.mkz-notification__close{background:none;border:none;font-size:22px;cursor:pointer;padding:0 8px;color:#999}.mkz-notification__close:hover{color:#333}.drag-over{border:2px dashed #4caf50!important;background:rgba(76,175,80,0.1)!important}.mkz-profile-description{margin:20px 0;padding:16px;background:#f8f9fa;border-radius:12px}.mkz-profile-description textarea{width:100%;min-height:100px;padding:12px;border:1px solid #ddd;border-radius:8px;font-family:inherit;resize:vertical}.mkz-social-error{color:#ef4444;font-size:12px;margin-top:4px}`;
-    document.head.appendChild(style);
-    await fetchSessionAndProfile();
-    await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
-    await loadUserBio();
-    bindStaticEvents();
-    supabaseClient.auth.onAuthStateChange(function (_event, session) { state.currentSession = session || null; if (state.currentSession) { startPresenceHeartbeat(); requestNotificationsIfNeeded(); updatePresence(true); } else { stopPresenceHeartbeat(); } setTimeout(async () => { await fetchSessionAndProfile(); await loadUserBio(); await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]); }, 0); });
-    document.addEventListener('visibilitychange', async () => { await updatePresence(!document.hidden); });
-    window.addEventListener('beforeunload', () => { updatePresence(false); });
-  })();
+(async function init() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .mkz-loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 10000;
+    }
+  `;
+  document.head.appendChild(style);
+  
+  await fetchSessionAndProfile();
+  await Promise.all([
+    cacheProfiles(),
+    renderPortfolio(),
+    renderReviews(),
+    renderNews(),
+    renderFaqQuestions(),
+    renderContestEntriesAdmin(),  // было renderContestAdmin - исправлено
+    searchPeople(),
+    renderMessengerDialogs()
+  ]);
+  await loadUserBio();
+  bindStaticEvents();
+  
+  supabaseClient.auth.onAuthStateChange(function (_event, session) {
+    state.currentSession = session || null;
+    if (state.currentSession) {
+      startPresenceHeartbeat();
+      requestNotificationsIfNeeded();
+      updatePresence(true);
+    } else {
+      stopPresenceHeartbeat();
+    }
+    setTimeout(async () => {
+      await fetchSessionAndProfile();
+      await loadUserBio();
+      await Promise.all([
+        cacheProfiles(),
+        renderPortfolio(),
+        renderReviews(),
+        renderNews(),
+        renderFaqQuestions(),
+        renderContestEntriesAdmin(),
+        searchPeople(),
+        renderMessengerDialogs()
+      ]);
+    }, 0);
+  });
+
+  document.addEventListener('visibilitychange', async () => {
+    await updatePresence(!document.hidden);
+  });
+
+  window.addEventListener('beforeunload', () => {
+    updatePresence(false);
+  });
 })();
