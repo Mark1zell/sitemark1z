@@ -750,6 +750,43 @@
     showNotification('Вы вышли из аккаунта', 'info');
   }
 
+    // ========== PRESENCE HEARTBEAT ==========
+  function startPresenceHeartbeat() {
+    if (state.messengerPollingTimer) return;
+    
+    state.messengerPollingTimer = setInterval(async () => {
+      if (!state.currentSession?.user) return;
+      
+      await touchCurrentProfileActivity();
+      await fetchMessengerData();
+      await renderMessengerDialogs();
+      
+      if (state.currentConversationId) {
+        await openConversation(state.currentConversationId, true);
+      }
+    }, 7000);
+  }
+
+  function stopPresenceHeartbeat() {
+    if (state.messengerPollingTimer) {
+      clearInterval(state.messengerPollingTimer);
+      state.messengerPollingTimer = null;
+    }
+  }
+
+  async function requestNotificationsIfNeeded() {
+    if (!('Notification' in window)) return;
+    if (state.notificationsReady) return;
+    
+    if (Notification.permission === 'default') {
+      try {
+        await Notification.requestPermission();
+      } catch {}
+    }
+    
+    state.notificationsReady = true;
+  }
+
   // ========== ФУНКЦИИ ПОРТФОЛИО ==========
   function renderPortfolioSelects() {
     if (portfolioFolderSelect) portfolioFolderSelect.innerHTML = state.folders.map(folder => `<option value="${folder.id}">${safeText(folder.title, 'Папка')}</option>`).join('');
@@ -1711,6 +1748,79 @@ async function openPublicProfile(userId) {
     
     await fetchMessengerData();
     return newConversation.id;
+  }
+
+    function getUnreadCount(conversationId) {
+    const member = state.conversationMembers.find(
+      m => String(m.conversation_id) === String(conversationId) && 
+           String(m.user_id) === String(state.currentSession?.user?.id)
+    );
+    
+    const lastReadAt = member?.last_read_at ? new Date(member.last_read_at).getTime() : 0;
+    
+    return state.conversationMessages.filter(message => {
+      const isMineStandard = String(message.user_id) === String(state.currentSession?.user?.id) && 
+                            message.sender_mode !== 'support_brand';
+      return (
+        String(message.conversation_id) === String(conversationId) &&
+        !isMineStandard &&
+        new Date(message.created_at).getTime() > lastReadAt
+      );
+    }).length;
+  }
+
+  function renderConversationMessage(message) {
+    const isOutgoing = String(message.user_id) === String(state.currentSession?.user?.id) && 
+                       message.sender_mode !== 'support_brand';
+    const author = getMessageAuthorIdentity(message);
+    const authorName = safeText(
+      author?.username || (isOutgoing ? 'Вы' : 'Mark1z Design'),
+      isOutgoing ? 'Вы' : 'Mark1z Design'
+    );
+    
+    const attachmentUrl = safeUrl(message.attachment_url || '');
+    const attachmentName = safeText(message.attachment_name || 'Файл', 'Файл');
+    const attachmentType = String(message.attachment_type || '').toLowerCase();
+    
+    const isImage = attachmentUrl && attachmentType.startsWith('image/');
+    const hasText = Boolean(message.text && String(message.text).trim());
+    
+    const rowClass = isOutgoing ? 'mkz-message-row mkz-message-row--me' : 'mkz-message-row mkz-message-row--them';
+    const msgClass = isOutgoing ? 'mkz-message mkz-message--me' : 'mkz-message mkz-message--them';
+    
+    return `
+      <div class="${rowClass}">
+        <div class="${msgClass}">
+          <span class="mkz-message__title">${authorName}</span>
+          ${hasText ? `<div class="mkz-message__text">${nl2brSafe(message.text)}</div>` : ''}
+          ${isImage ? `<div class="mkz-message__image"><img src="${attachmentUrl}" alt="${attachmentName}" data-zoom-image="${attachmentUrl}" data-zoom-title="${attachmentName}"></div>` : ''}
+          ${attachmentUrl && !isImage ? `<div class="mkz-message__file"><a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">${attachmentName}</a></div>` : ''}
+          <div class="mkz-message__footer">
+            <span class="mkz-message__time">${formatDateTime(message.created_at)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function markConversationAsRead(conversationId) {
+    if (!state.currentSession?.user || !conversationId) return;
+    try {
+      await supabaseClient
+        .from('conversation_members')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('conversation_id', conversationId)
+        .eq('user_id', state.currentSession.user.id);
+    } catch (err) {
+      console.error('markConversationAsRead error:', err);
+    }
+  }
+
+    function clearMessengerAttachment() {
+    state.pendingMessengerAttachment = null;
+    if (messengerImageInput) messengerImageInput.value = '';
+    if (messengerFileInput) messengerFileInput.value = '';
+    if (messengerAttachMeta) messengerAttachMeta.textContent = '';
   }
 
     // ========== BIND STATIC EVENTS ==========
