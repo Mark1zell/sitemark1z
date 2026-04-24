@@ -4207,5 +4207,381 @@
       updatePresence(false);
     });
   })();
+
+  // ========== ВАШ ОРИГИНАЛЬНЫЙ КОД ЗДЕСЬ ==========
+// ... весь ваш код ...
+
+// ========== ДОБАВЬТЕ ЭТОТ КОД ПЕРЕД ПОСЛЕДНЕЙ СТРОКОЙ ==========
+
+// Функции для описания профиля
+async function loadUserBio() {
+  if (!state.currentSession?.user) return;
   
+  try {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('bio')
+      .eq('id', state.currentSession.user.id)
+      .single();
+      
+    if (error) throw error;
+    
+    if (updateBio && data?.bio) {
+      updateBio.value = data.bio;
+    }
+  } catch (err) {
+    console.error('Error loading bio:', err);
+  }
+}
+
+async function saveUserBio() {
+  if (!state.currentSession?.user) {
+    showNotification('Сначала войдите в аккаунт', 'warning');
+    return;
+  }
+  
+  const bio = updateBio?.value.trim() || '';
+  
+  setButtonState(updateBioBtn, true, 'Сохранение...', 'Сохранить описание');
+  
+  try {
+    const { error } = await supabaseClient
+      .from('profiles')
+      .update({ bio: bio })
+      .eq('id', state.currentSession.user.id);
+      
+    if (error) throw error;
+    
+    if (state.currentProfile) {
+      state.currentProfile.bio = bio;
+    }
+    
+    showNotification('Описание профиля обновлено', 'success');
+  } catch (err) {
+    console.error('Error saving bio:', err);
+    showNotification('Ошибка сохранения описания', 'error');
+  } finally {
+    setButtonState(updateBioBtn, false, 'Сохранение...', 'Сохранить описание');
+  }
+}
+
+// Функции для валидации соцсетей
+function validateSocialContacts(telegram, vk) {
+  const hasTelegram = telegram && telegram.trim().length > 0;
+  const hasVk = vk && vk.trim().length > 0;
+  
+  if (!hasTelegram && !hasVk) {
+    return { valid: false, message: 'Укажите хотя бы один контакт: Telegram или ВКонтакте' };
+  }
+  
+  if (hasTelegram) {
+    let tg = telegram.trim();
+    if (!tg.startsWith('@')) {
+      tg = '@' + tg.replace(/^@+/, '');
+    }
+    if (!/^@[a-zA-Z0-9_]{5,32}$/.test(tg)) {
+      return { valid: false, message: 'Неверный формат Telegram username. Пример: @username или username (от 5 до 32 символов, только буквы, цифры и _)' };
+    }
+  }
+  
+  if (hasVk) {
+    let vkClean = vk.trim();
+    let vkId = vkClean;
+    const vkUrlMatch = vkClean.match(/(?:vk\.com\/)([a-zA-Z0-9_.]+)/i);
+    if (vkUrlMatch) {
+      vkId = vkUrlMatch[1];
+    }
+    if (vkId.length < 1 || vkId.length > 50) {
+      return { valid: false, message: 'Неверный формат ВКонтакте. Укажите ID страницы или username (от 1 до 50 символов)' };
+    }
+  }
+  
+  return { valid: true, message: '' };
+}
+
+// Обновленная функция handleRegister (замените существующую)
+// Нужно полностью заменить вашу старую функцию handleRegister на эту
+async function handleRegister() {
+  if (!registerForm?.reportValidity()) return;
+  
+  const telegramUsername = telegramInput?.value.trim() || '';
+  const vkUsername = vkInput?.value.trim() || '';
+  
+  const socialValidation = validateSocialContacts(telegramUsername, vkUsername);
+  if (!socialValidation.valid) {
+    if (socialError) socialError.textContent = socialValidation.message;
+    showNotification(socialValidation.message, 'warning');
+    return;
+  }
+  
+  if (socialError) socialError.textContent = '';
+  
+  setButtonState(registerBtn, true, 'Регистрация...', 'Зарегистрироваться');
+
+  try {
+    const username = nameInput?.value.trim() || '';
+    const phone = phoneInput?.value.trim() || '';
+    const avatarFile = avatarInput?.files?.[0];
+
+    let formattedTelegram = telegramUsername;
+    if (formattedTelegram && !formattedTelegram.startsWith('@')) {
+      formattedTelegram = '@' + formattedTelegram.replace(/^@+/, '');
+    }
+
+    const { data, error } = await supabaseClient.auth.signUp({
+      email: registerEmail.value.trim(),
+      password: registerPassword.value.trim(),
+      options: {
+        data: {
+          username,
+          telegram_username: formattedTelegram,
+          vk_username: vkUsername
+        }
+      }
+    });
+
+    if (error) {
+      showNotification('Ошибка регистрации: ' + error.message, 'error');
+      return;
+    }
+
+    let avatarUrl = '';
+
+    if (data?.user && avatarFile) {
+      try {
+        const upload = await uploadToBucket('avatars', avatarFile, data.user.id);
+        avatarUrl = upload.publicUrl;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (data?.session) {
+      state.currentSession = data.session;
+    } else {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      state.currentSession = sessionData?.session || null;
+    }
+
+    if (state.currentSession) {
+      await ensureProfileForCurrentUser({
+        username,
+        phone,
+        avatar_url: avatarUrl,
+        telegram_username: formattedTelegram,
+        vk_username: vkUsername
+      });
+
+      state.currentProfile =
+        (await readProfileByUserId(state.currentSession.user.id)) ||
+        state.currentProfile;
+
+      renderProfile();
+      await cacheProfiles();
+      await searchPeople();
+      await loadUserBio();
+      openScreen('account');
+      showNotification('Регистрация завершена', 'success');
+    } else {
+      showNotification('Аккаунт создан. Теперь войдите в него.', 'info');
+      registerForm.reset();
+      if (vkInput) vkInput.value = '';
+      showLoginBtn?.click();
+    }
+  } catch (err) {
+    console.error(err);
+    showNotification('Ошибка регистрации', 'error');
+  } finally {
+    setButtonState(registerBtn, false, 'Регистрация...', 'Зарегистрироваться');
+  }
+}
+
+// Обновленная функция handleUpdateProfile с сохранением био и приватности
+// Замените существующую функцию handleUpdateProfile на эту
+async function handleUpdateProfile() {
+  if (!state.currentSession) return;
+  setButtonState(updateProfileBtn, true, 'Сохранение...', 'Обновить профиль');
+
+  try {
+    let avatarUrl = state.currentProfile?.avatar_url || '';
+    const file = updateAvatar?.files?.[0];
+
+    if (file) {
+      const upload = await uploadToBucket('avatars', file, state.currentSession.user.id);
+      avatarUrl = upload.publicUrl;
+    }
+
+    let telegramUsername = updateTelegram?.value.trim() || '';
+    if (telegramUsername && !telegramUsername.startsWith('@')) {
+      telegramUsername = '@' + telegramUsername.replace(/^@+/, '');
+    }
+
+    const payload = {
+      username: updateName?.value.trim() || state.currentProfile?.username || 'Пользователь',
+      full_name: updateName?.value.trim() || state.currentProfile?.full_name || state.currentProfile?.username || 'Пользователь',
+      phone: updatePhone?.value.trim() || state.currentProfile?.phone || '',
+      telegram_username: telegramUsername,
+      email: state.currentSession.user.email || state.currentProfile?.email || '',
+      avatar_url: avatarUrl,
+      bio: updateBio?.value.trim() || state.currentProfile?.bio || '',
+      last_seen_at: new Date().toISOString(),
+      show_phone: privacyShowPhone?.checked === true,
+      show_telegram: privacyShowTelegram?.checked === true,
+      show_last_seen: privacyShowLastSeen?.checked === true,
+      is_online: !document.hidden
+    };
+
+    const { error } = await supabaseClient
+      .from('profiles')
+      .update(payload)
+      .eq('id', state.currentSession.user.id);
+
+    if (error) {
+      showNotification(error.message, 'error');
+      return;
+    }
+
+    state.currentProfile = await readProfileByUserId(state.currentSession.user.id) || { ...state.currentProfile, ...payload };
+
+    renderProfile();
+    await cacheProfiles();
+    await searchPeople();
+    showNotification('Профиль обновлён', 'success');
+  } catch (err) {
+    console.error(err);
+    showNotification('Ошибка обновления профиля', 'error');
+  } finally {
+    setButtonState(updateProfileBtn, false, 'Сохранение...', 'Обновить профиль');
+  }
+}
+
+// Обновленная функция renderProfile с описанием
+// Замените существующую функцию renderProfile на эту
+function renderProfile() {
+  const profile = state.currentProfile;
+  const name = profile?.username || state.currentSession?.user?.email?.split('@')[0] || 'Гость';
+  const phone = profile?.phone || (state.currentSession ? 'Телефон не указан' : 'Не авторизован');
+  const publicId = buildPublicUserCode(profile, state.currentSession?.user?.id);
+
+  if (userNameTop) userNameTop.textContent = name;
+  if (inlineUsername) inlineUsername.textContent = name;
+  if (previewName) previewName.textContent = name;
+  if (previewPhone) previewPhone.textContent = phone;
+  if (previewUserId) previewUserId.textContent = `ID: ${publicId}`;
+
+  applyAvatar(topAvatar, profile?.avatar_url, name);
+  applyAvatar(previewAvatar, profile?.avatar_url, name);
+
+  if (updateName) updateName.value = profile?.username || '';
+  if (updatePhone) updatePhone.value = profile?.phone || '';
+  if (updateTelegram) updateTelegram.value = profile?.telegram_username || '';
+  if (updateBio) updateBio.value = profile?.bio || '';
+
+  if (privacyShowPhone) privacyShowPhone.checked = profile?.show_phone !== false;
+  if (privacyShowTelegram) privacyShowTelegram.checked = profile?.show_telegram !== false;
+  if (privacyShowLastSeen) privacyShowLastSeen.checked = profile?.show_last_seen !== false;
+
+  updateAuthUI();
+}
+
+// Обновленная функция updateAuthUI (убираем текст про админ-панель)
+// Замените существующую функцию updateAuthUI на эту
+function updateAuthUI() {
+  const loggedIn = !!state.currentSession;
+  const owner = isOwner();
+
+  if (authBlock) authBlock.style.display = loggedIn ? 'none' : 'block';
+  if (accountActions) accountActions.style.display = loggedIn ? 'grid' : 'none';
+  if (reviewSendBtn) reviewSendBtn.disabled = !loggedIn;
+  if (reviewLoginNote) reviewLoginNote.classList.toggle('is-visible', !loggedIn);
+  if (ownerPanel) ownerPanel.style.display = owner ? 'block' : 'none';
+  if (newsAdminPanel) newsAdminPanel.style.display = owner ? 'block' : 'none';
+  if (faqQuestionsAdminWrap) faqQuestionsAdminWrap.style.display = owner ? 'block' : 'none';
+  if (quickAddFolderBtn) quickAddFolderBtn.style.display = owner ? 'inline-flex' : 'none';
+  if (quickAddWorkBtn) quickAddWorkBtn.style.display = owner && state.currentOpenedFolderId ? 'inline-flex' : 'none';
+  if (participantsNavBtn) participantsNavBtn.style.display = owner ? 'inline-flex' : 'none';
+  if (participantsBottomBtn) participantsBottomBtn.style.display = owner ? 'inline-flex' : 'none';
+}
+
+// Добавляем объявление новых переменных в начало файла (в раздел с DOM элементами)
+// Добавьте эти строки туда, где объявлены все const переменные
+const updateBio = $('#mkzUpdateBio');
+const updateBioBtn = $('#mkzUpdateBioBtn');
+const vkInput = $('#mkzVkUsername');
+const socialError = $('#mkzSocialError');
+
+// Добавляем обработчики событий в bindStaticEvents
+// Найдите функцию bindStaticEvents и добавьте туда эти строки:
+if (updateBioBtn) {
+  updateBioBtn.addEventListener('click', saveUserBio);
+}
+
+// Добавляем загрузку био в init функцию
+// В самом конце, где происходит инициализация, добавьте await loadUserBio()
+// Например, после searchPeople():
+
+await loadUserBio();
+
+// Добавляем стили
+const additionalStyles = document.createElement('style');
+additionalStyles.textContent = `
+  .mkz-profile-description {
+    margin: 20px 0;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 12px;
+  }
+  
+  .mkz-profile-description label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+  }
+  
+  .mkz-profile-description textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  
+  .mkz-profile-description textarea:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+  
+  .mkz-social-error {
+    color: #ef4444;
+    font-size: 12px;
+    margin-top: 4px;
+    display: block;
+  }
+  
+  .mkz-social-inputs {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .mkz-social-inputs .mkz-field {
+    flex: 1;
+  }
+  
+  @media (max-width: 640px) {
+    .mkz-social-inputs {
+      flex-direction: column;
+      gap: 12px;
+    }
+  }
+`;
+document.head.appendChild(additionalStyles);
+
+// ========== КОНЕЦ ДОБАВЛЕННОГО КОДА ==========
+
+// ЗДЕСЬ ВАША ПОСЛЕДНЯЯ СТРОКА })(); 
 })();
