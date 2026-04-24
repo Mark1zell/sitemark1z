@@ -1083,31 +1083,65 @@
   }
 
   async function openPublicProfile(userId) {
-    try {
-      let profile = await readProfileByUserId(userId);
-      if (!profile) profile = getProfileByUserId(userId);
-      if (!profile) return;
-      state.openedProfile = profile;
-      const publicId = buildPublicUserCode(profile, profile.id);
-      if (publicProfileName) publicProfileName.textContent = profile.username || 'Пользователь';
-      if (publicProfileId) publicProfileId.textContent = publicId;
-      if (publicProfileStatus) publicProfileStatus.textContent = getVisibleLastSeen(profile);
-      if (publicProfileRegistered) publicProfileRegistered.textContent = formatDateOnly(profile.created_at);
-      if (publicProfilePhone) publicProfilePhone.textContent = getVisiblePhone(profile);
-      if (publicProfileTelegram) publicProfileTelegram.textContent = getVisibleTelegram(profile);
-      if (publicProfileBio) publicProfileBio.textContent = profile.bio || 'Описание профиля пока не заполнено.';
-      applyAvatar(publicProfileAvatar, profile.avatar_url, profile.username);
-      if (openProfileMessengerBtn) {
-        openProfileMessengerBtn.setAttribute('data-user-id', profile.id);
-      }
-      const userReviews = state.reviews.filter(r => String(r.user_id) === String(userId));
-      const userComments = state.newsComments.filter(c => String(c.user_id) === String(userId));
-      if (publicProfileActivity) {
-        publicProfileActivity.innerHTML = `<div class="mkz-profile-stats"><div class="mkz-profile-stat"><strong>${userReviews.length}</strong><span>Отзывов</span></div><div class="mkz-profile-stat"><strong>${userComments.length}</strong><span>Комментариев</span></div></div>`;
-      }
-      openScreen('profile');
-    } catch (err) { console.error('openPublicProfile error', err); }
+  try {
+    console.log('🔍 openPublicProfile вызван с userId:', userId);
+    
+    let profile = await readProfileByUserId(userId);
+    if (!profile) profile = getProfileByUserId(userId);
+    if (!profile) {
+      console.error('❌ Профиль не найден для userId:', userId);
+      return;
+    }
+
+    console.log('✅ Профиль загружен:', profile.username, profile.id);
+
+    state.openedProfile = profile;
+
+    const publicId = buildPublicUserCode(profile, profile.id);
+
+    if (publicProfileName) publicProfileName.textContent = profile.username || 'Пользователь';
+    if (publicProfileId) publicProfileId.textContent = publicId;
+    if (publicProfileStatus) publicProfileStatus.textContent = getVisibleLastSeen(profile);
+    if (publicProfileRegistered) publicProfileRegistered.textContent = formatDateOnly(profile.created_at);
+    if (publicProfilePhone) publicProfilePhone.textContent = getVisiblePhone(profile);
+    if (publicProfileTelegram) publicProfileTelegram.textContent = getVisibleTelegram(profile);
+    if (publicProfileBio) publicProfileBio.textContent = profile.bio || 'Описание профиля пока не заполнено.';
+    
+    applyAvatar(publicProfileAvatar, profile.avatar_url, profile.username);
+    
+    // ========== ГЛАВНОЕ: СОХРАНЯЕМ ID В КНОПКУ ==========
+    const messengerBtn = document.getElementById('mkzOpenProfileMessengerBtn');
+    if (messengerBtn) {
+      messengerBtn.setAttribute('data-user-id', profile.id);
+      console.log('✅ ID сохранен в кнопку:', profile.id);
+      console.log('✅ data-user-id после сохранения:', messengerBtn.getAttribute('data-user-id'));
+    } else {
+      console.error('❌ Кнопка mkzOpenProfileMessengerBtn не найдена в DOM');
+    }
+    
+    const userReviews = state.reviews.filter(r => String(r.user_id) === String(userId));
+    const userComments = state.newsComments.filter(c => String(c.user_id) === String(userId));
+    
+    if (publicProfileActivity) {
+      publicProfileActivity.innerHTML = `
+        <div class="mkz-profile-stats">
+          <div class="mkz-profile-stat">
+            <strong>${userReviews.length}</strong>
+            <span>Отзывов</span>
+          </div>
+          <div class="mkz-profile-stat">
+            <strong>${userComments.length}</strong>
+            <span>Комментариев</span>
+          </div>
+        </div>
+      `;
+    }
+    
+    openScreen('profile');
+  } catch (err) {
+    console.error('❌ openPublicProfile error:', err);
   }
+}
 
   // ========== ФУНКЦИИ МЕССЕНДЖЕРА ==========
   async function fetchMessengerData() {
@@ -1279,29 +1313,61 @@
     if (backToPeopleBtn) backToPeopleBtn.addEventListener('click', () => openScreen('people'));
     if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
     if (openProfileMessengerBtn) {
-      const newBtn = openProfileMessengerBtn.cloneNode(true);
-      openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
-      newBtn.addEventListener('click', async function(e) {
-        e.preventDefault(); e.stopPropagation();
-        if (!state.currentSession) { showNotification('Сначала войди в аккаунт', 'warning'); openScreen('account'); return; }
-        const targetUserId = this.getAttribute('data-user-id');
-        if (!targetUserId) { showNotification('Профиль не найден', 'warning'); return; }
-        const myId = String(state.currentSession.user.id);
-        if (targetUserId === myId) { showNotification('Вы не можете написать сами себе', 'info'); return; }
-        showLoading('Создание чата...');
-        try {
-          const conversationId = await findOrCreateDirectConversation(targetUserId);
-          if (!conversationId) { showNotification('Не удалось открыть чат', 'error'); return; }
-          openScreen('messenger'); await renderMessengerDialogs(); await openConversation(conversationId);
-        } catch (err) { console.error('Error:', err); showNotification('Ошибка при создании чата', 'error'); } finally { hideLoading(); }
-      });
+  // Убираем старые обработчики
+  const newBtn = openProfileMessengerBtn.cloneNode(true);
+  openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
+  
+  newBtn.addEventListener('click', async function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔘 Кнопка НАПИСАТЬ нажата');
+    console.log('🔘 data-user-id на кнопке:', this.getAttribute('data-user-id'));
+    
+    if (!state.currentSession) {
+      showNotification('Сначала войди в аккаунт', 'warning');
+      openScreen('account');
+      return;
     }
-    if (messengerAttachImageBtn && messengerImageInput) messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
-    if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
-    if (messengerForm) messengerForm.addEventListener('submit', async e => { e.preventDefault(); await sendMessengerMessage(); });
-    if (pinnedOwnerChatBtn) pinnedOwnerChatBtn.addEventListener('click', async () => { if (!state.currentSession) { openScreen('account'); return; } await renderMessengerDialogs(); if (state.supportConversationId) await openConversation(state.supportConversationId); });
-    if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
-  }
+
+    const targetUserId = this.getAttribute('data-user-id');
+    console.log('📌 targetUserId:', targetUserId);
+    
+    if (!targetUserId) {
+      showNotification('Профиль не найден', 'warning');
+      return;
+    }
+
+    const myId = String(state.currentSession.user.id);
+    console.log('👤 myId:', myId);
+    
+    if (targetUserId === myId) {
+      showNotification('Вы не можете написать сами себе', 'info');
+      return;
+    }
+
+    showLoading('Создание чата...');
+    
+    try {
+      const conversationId = await findOrCreateDirectConversation(targetUserId);
+      console.log('💬 conversationId:', conversationId);
+      
+      if (!conversationId) {
+        showNotification('Не удалось открыть чат', 'error');
+        return;
+      }
+
+      openScreen('messenger');
+      await renderMessengerDialogs();
+      await openConversation(conversationId);
+    } catch (err) {
+      console.error('❌ Ошибка:', err);
+      showNotification('Ошибка при создании чата', 'error');
+    } finally {
+      hideLoading();
+    }
+  });
+}
 
   // ========== INIT ==========
   (async function init() {
