@@ -1088,14 +1088,40 @@
       return;
     }
   
+    async function searchPeople(query = '') {
+  try {
+    if (!peopleSearchResults) return;
+
+    showLoading('Поиск пользователей...');
+
+    await cacheProfiles();
+
+    let list = [...state.allProfilesCache];
+    const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
+
+    if (prepared) {
+      list = list.filter(profile => {
+        const username = String(profile.username || '').toLowerCase();
+        const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase();
+        return username.includes(prepared) || publicId.includes(prepared);
+      });
+    }
+
+    state.peopleSearchResults = list;
+
+    if (!list.length) {
+      peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
+      return;
+    }
+
     peopleSearchResults.innerHTML = list.map(profile => {
       const avatarUrl = safeUrl(profile.avatar_url || '');
       const name = safeText(profile.username || 'Пользователь', 'Пользователь');
       const publicId = buildPublicUserCode(profile, profile.id);
-      
+
       let statusText = '';
       let statusClass = '';
-      
+
       if (!isProfileFieldVisible(profile, 'show_last_seen')) {
         statusText = 'Статус скрыт';
         statusClass = 'status-hidden';
@@ -1108,7 +1134,7 @@
         const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
         const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
         const diffMins = Math.floor((now - lastSeen) / (1000 * 60));
-        
+
         if (diffMins < 5) {
           statusText = 'Был(а) только что';
           statusClass = 'status-recent';
@@ -1129,7 +1155,7 @@
         statusText = 'Давно не был(а)';
         statusClass = 'status-offline';
       }
-  
+
       return `
         <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
           <div class="mkz-person-card__top">
@@ -1148,7 +1174,7 @@
         </button>
       `;
     }).join('');
-  
+
     $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
       btn.addEventListener('click', async () => {
         await openPublicProfile(btn.dataset.openProfile);
