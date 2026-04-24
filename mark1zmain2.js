@@ -3951,6 +3951,6 @@ window.addEventListener('beforeunload', () => {
     searchPeople(),
     renderMessengerDialogs()
   ]);
- })();
+})();
 
 })();
