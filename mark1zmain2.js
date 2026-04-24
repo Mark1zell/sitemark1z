@@ -1203,10 +1203,10 @@
       }
     }
 
-    // ========== ДОБАВЬТЕ ЭТУ СТРОЧКУ ==========
-    // Сохраняем ID пользователя в data-атрибут кнопки
+    // ========== ДОБАВЬТЕ ЭТУ СТРОКУ ==========
+    // Сохраняем ID пользователя в атрибут кнопки
     if (openProfileMessengerBtn) {
-      openProfileMessengerBtn.setAttribute('data-profile-id', profile.id);
+      openProfileMessengerBtn.setAttribute('data-user-id', profile.id);
     }
 
     const userReviews = state.reviews.filter(r => String(r.user_id) === String(userId));
@@ -1226,9 +1226,7 @@
         </div>
       `;
     }
-    if (openProfileMessengerBtn) {
-      openProfileMessengerBtn.setAttribute('data-profile-id', profile.id);
-    }
+
     openScreen('profile');
   } catch (err) {
     console.error('openPublicProfile error', err);
@@ -1348,15 +1346,20 @@
   async function markConversationAsRead(conversationId) { if (!state.currentSession?.user || !conversationId) return; try { await supabaseClient.from('conversation_members').update({ last_read_at: new Date().toISOString() }).eq('conversation_id', conversationId).eq('user_id', state.currentSession.user.id); } catch {} }
   async function findOrCreateSupportConversation() { if (!state.currentSession?.user) return null; await fetchMessengerData(); if (state.supportConversationId) return state.supportConversationId; const { data: newConversation, error } = await supabaseClient.from('conversations').insert({ title: 'Mark1z Design', is_support: true, created_by: OWNER_UID, updated_at: new Date().toISOString() }).select('*').maybeSingle(); if (error || !newConversation) return null; await supabaseClient.from('conversation_members').insert([{ conversation_id: newConversation.id, user_id: OWNER_UID, last_read_at: new Date().toISOString() }, { conversation_id: newConversation.id, user_id: state.currentSession.user.id, last_read_at: null }]); state.supportConversationId = newConversation.id; await fetchMessengerData(); return newConversation.id; }
   async function findOrCreateDirectConversation(otherUserId) {
-  if (!state.currentSession?.user) return null;
+  if (!state.currentSession?.user) {
+    console.error('No user session');
+    return null;
+  }
 
   await fetchMessengerData();
 
   const myId = String(state.currentSession.user.id);
   const targetId = String(otherUserId);
 
-  // Ищем существующий личный чат
-  const possible = state.conversations.find(conv => {
+  console.log('Finding conversation between', myId, 'and', targetId);
+
+  // Ищем существующий чат
+  const existingConversation = state.conversations.find(conv => {
     if (conv.is_support) return false;
     const members = state.conversationMembers
       .filter(m => String(m.conversation_id) === String(conv.id))
@@ -1364,9 +1367,14 @@
     return members.length === 2 && members.includes(myId) && members.includes(targetId);
   });
 
-  if (possible) return possible.id;
+  if (existingConversation) {
+    console.log('Existing conversation found:', existingConversation.id);
+    return existingConversation.id;
+  }
 
   // Создаем новый чат
+  console.log('Creating new conversation...');
+  
   const { data: newConversation, error } = await supabaseClient
     .from('conversations')
     .insert({
@@ -1379,10 +1387,12 @@
     .select('*')
     .single();
 
-  if (error || !newConversation) {
-    console.error('create conversation error', error);
+  if (error) {
+    console.error('Create conversation error:', error);
     return null;
   }
+
+  console.log('New conversation created:', newConversation.id);
 
   // Добавляем участников
   const { error: membersError } = await supabaseClient
@@ -1401,7 +1411,7 @@
     ]);
 
   if (membersError) {
-    console.error('create conversation members error', membersError);
+    console.error('Add members error:', membersError);
     return null;
   }
 
@@ -1857,49 +1867,65 @@
     if (peopleSearchInput) peopleSearchInput.addEventListener('input', debounce(async (e) => { await searchPeople(e.target.value); }, 300));
     if (backToPeopleBtn) backToPeopleBtn.addEventListener('click', () => openScreen('people'));
       // КНОПКА НАПИСАТЬ В ПРОФИЛЕ
-  if (openProfileMessengerBtn) {
-    openProfileMessengerBtn.addEventListener('click', async () => {
-      if (!state.currentSession) {
-        showNotification('Сначала войди в аккаунт', 'warning');
-        openScreen('account');
+  // КНОПКА НАПИСАТЬ В ПРОФИЛЕ
+if (openProfileMessengerBtn) {
+  // Убираем старые обработчики, чтобы не было дублирования
+  const newBtn = openProfileMessengerBtn.cloneNode(true);
+  openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
+  window.openProfileMessengerBtn = newBtn;
+  
+  newBtn.addEventListener('click', async function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Кнопка нажата'); // Для отладки
+    
+    if (!state.currentSession) {
+      showNotification('Сначала войди в аккаунт', 'warning');
+      openScreen('account');
+      return;
+    }
+
+    // Получаем ID сохраненный в атрибуте
+    const targetUserId = this.getAttribute('data-user-id');
+    
+    console.log('Target user ID:', targetUserId); // Для отладки
+    
+    if (!targetUserId) {
+      showNotification('Профиль не найден', 'warning');
+      return;
+    }
+
+    const myId = String(state.currentSession.user.id);
+    
+    if (targetUserId === myId) {
+      showNotification('Вы не можете написать сами себе', 'info');
+      return;
+    }
+
+    showLoading('Создание чата...');
+    
+    try {
+      const conversationId = await findOrCreateDirectConversation(targetUserId);
+      
+      console.log('Conversation ID:', conversationId); // Для отладки
+
+      if (!conversationId) {
+        showNotification('Не удалось открыть чат', 'error');
         return;
       }
 
-      const targetUserId = openProfileMessengerBtn.getAttribute('data-profile-id');
-      
-      if (!targetUserId) {
-        showNotification('Профиль не найден', 'warning');
-        return;
-      }
-
-      const myId = String(state.currentSession.user.id);
-      
-      if (targetUserId === myId) {
-        showNotification('Вы не можете написать сами себе', 'info');
-        return;
-      }
-
-      showLoading('Создание чата...');
-      
-      try {
-        const conversationId = await findOrCreateDirectConversation(targetUserId);
-
-        if (!conversationId) {
-          showNotification('Не удалось открыть чат', 'error');
-          return;
-        }
-
-        openScreen('messenger');
-        await renderMessengerDialogs();
-        await openConversation(conversationId);
-      } catch (err) {
-        console.error('Error creating conversation:', err);
-        showNotification('Ошибка при создании чата', 'error');
-      } finally {
-        hideLoading();
-      }
-    });
-  }
+      openScreen('messenger');
+      await renderMessengerDialogs();
+      await openConversation(conversationId);
+    } catch (err) {
+      console.error('Error:', err);
+      showNotification('Ошибка при создании чата: ' + err.message, 'error');
+    } finally {
+      hideLoading();
+    }
+  });
+}
     if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
     if (messengerAttachImageBtn && messengerImageInput) messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
