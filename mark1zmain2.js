@@ -1084,16 +1084,9 @@
 
   async function openPublicProfile(userId) {
   try {
-    console.log('🔍 openPublicProfile вызван с userId:', userId);
-    
     let profile = await readProfileByUserId(userId);
     if (!profile) profile = getProfileByUserId(userId);
-    if (!profile) {
-      console.error('❌ Профиль не найден для userId:', userId);
-      return;
-    }
-
-    console.log('✅ Профиль загружен:', profile.username, profile.id);
+    if (!profile) return;
 
     state.openedProfile = profile;
 
@@ -1109,14 +1102,13 @@
     
     applyAvatar(publicProfileAvatar, profile.avatar_url, profile.username);
     
-    // ========== ГЛАВНОЕ: СОХРАНЯЕМ ID В КНОПКУ ==========
+    // ========== СОХРАНЯЕМ ID В КНОПКУ НАПИСАТЬ ==========
     const messengerBtn = document.getElementById('mkzOpenProfileMessengerBtn');
     if (messengerBtn) {
       messengerBtn.setAttribute('data-user-id', profile.id);
       console.log('✅ ID сохранен в кнопку:', profile.id);
-      console.log('✅ data-user-id после сохранения:', messengerBtn.getAttribute('data-user-id'));
     } else {
-      console.error('❌ Кнопка mkzOpenProfileMessengerBtn не найдена в DOM');
+      console.error('❌ Кнопка mkzOpenProfileMessengerBtn не найдена');
     }
     
     const userReviews = state.reviews.filter(r => String(r.user_id) === String(userId));
@@ -1139,7 +1131,7 @@
     
     openScreen('profile');
   } catch (err) {
-    console.error('❌ openPublicProfile error:', err);
+    console.error('openPublicProfile error:', err);
   }
 }
 
@@ -1314,61 +1306,59 @@
         if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
     
     if (openProfileMessengerBtn) {
-      const newBtn = openProfileMessengerBtn.cloneNode(true);
-      openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
-      
-      newBtn.addEventListener('click', async function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        console.log('🔘 Кнопка НАПИСАТЬ нажата');
-        console.log('🔘 data-user-id на кнопке:', this.getAttribute('data-user-id'));
-        
-        if (!state.currentSession) {
-          showNotification('Сначала войди в аккаунт', 'warning');
-          openScreen('account');
-          return;
-        }
-
-        const targetUserId = this.getAttribute('data-user-id');
-        console.log('📌 targetUserId:', targetUserId);
-        
-        if (!targetUserId) {
-          showNotification('Профиль не найден', 'warning');
-          return;
-        }
-
-        const myId = String(state.currentSession.user.id);
-        console.log('👤 myId:', myId);
-        
-        if (targetUserId === myId) {
-          showNotification('Вы не можете написать сами себе', 'info');
-          return;
-        }
-
-        showLoading('Создание чата...');
-        
-        try {
-          const conversationId = await findOrCreateDirectConversation(targetUserId);
-          console.log('💬 conversationId:', conversationId);
-          
-          if (!conversationId) {
-            showNotification('Не удалось открыть чат', 'error');
-            return;
-          }
-
-          openScreen('messenger');
-          await renderMessengerDialogs();
-          await openConversation(conversationId);
-        } catch (err) {
-          console.error('❌ Ошибка:', err);
-          showNotification('Ошибка при создании чата', 'error');
-        } finally {
-          hideLoading();
-        }
-      });
+  // Убираем старые обработчики
+  const newBtn = openProfileMessengerBtn.cloneNode(true);
+  openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
+  
+  newBtn.addEventListener('click', async function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔘 Кнопка НАПИСАТЬ нажата');
+    
+    if (!state.currentSession) {
+      showNotification('Сначала войди в аккаунт', 'warning');
+      openScreen('account');
+      return;
     }
-  }
+
+    const targetUserId = this.getAttribute('data-user-id');
+    console.log('📌 targetUserId:', targetUserId);
+    
+    if (!targetUserId) {
+      showNotification('Профиль не найден', 'warning');
+      return;
+    }
+
+    const myId = String(state.currentSession.user.id);
+    
+    if (targetUserId === myId) {
+      showNotification('Вы не можете написать сами себе', 'info');
+      return;
+    }
+
+    showLoading('Создание чата...');
+    
+    try {
+      const conversationId = await findOrCreateDirectConversation(targetUserId);
+      console.log('💬 conversationId:', conversationId);
+      
+      if (!conversationId) {
+        showNotification('Не удалось открыть чат', 'error');
+        return;
+      }
+
+      openScreen('messenger');
+      await renderMessengerDialogs();
+      await openConversation(conversationId);
+    } catch (err) {
+      console.error('❌ Ошибка:', err);
+      showNotification('Ошибка при создании чата', 'error');
+    } finally {
+      hideLoading();
+    }
+  });
+}
 
   // ========== INIT ==========
   (async function init() {
