@@ -1062,32 +1062,6 @@
   }
 
   // ========== ПОИСК ЛЮДЕЙ ==========
-  async function searchPeople(query = '') {
-  try {
-    if (!peopleSearchResults) return;
-  
-    showLoading('Поиск пользователей...');
-    
-    await cacheProfiles();
-  
-    let list = [...state.allProfilesCache];
-    const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
-  
-    if (prepared) {
-      list = list.filter(profile => {
-        const username = String(profile.username || '').toLowerCase();
-        const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase();
-        return username.includes(prepared) || publicId.includes(prepared);
-      });
-    }
-  
-    state.peopleSearchResults = list;
-  
-    if (!list.length) {
-      peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
-      return;
-    }
-  
     async function searchPeople(query = '') {
   try {
     if (!peopleSearchResults) return;
