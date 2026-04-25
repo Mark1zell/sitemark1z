@@ -493,7 +493,7 @@
     conversations: [], conversationMembers: [], conversationMessages: [], currentConversationId: null, supportConversationId: null,
     userLikedPosts: new Set(), newsLikesMap: {}, newsCommentsMap: {},
     profileSyncInProgress: false, isPinnedDraft: false,
-    pendingMessengerAttachment: null,  supportSendMode: 'brand', messengerPollingTimer: null, messagesChannel: null, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
+    pendingMessengerAttachment: null,  supportSendMode: 'brand', messengerPollingTimer: null, messagesChannel: null, isSubscribed: false, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
     mediaRecorder: null, mediaChunks: [], voiceStream: null
   };
 
@@ -729,6 +729,15 @@
 
   async function handleLogout() {
     stopPresenceHeartbeat();
+      
+  if (state.messagesChannel) {
+    try {
+      await supabaseClient.removeChannel(state.messagesChannel);
+    } catch(e) {}
+    state.messagesChannel = null;
+    state.isSubscribed = false;
+  }
+    
     if (state.currentSession?.user) {
       await supabaseClient.from('profiles').update({ is_online: false, last_seen_at: new Date().toISOString() }).eq('id', state.currentSession.user.id);
     }
@@ -1394,6 +1403,12 @@ async function openPublicProfile(userId) {
   }
 
       async function subscribeToMessages() {
+  // Если уже подписаны - выходим
+  if (state.isSubscribed) {
+    console.log('✅ Уже подписаны, пропускаем');
+    return;
+  }
+  
   if (!state.currentSession?.user) {
     console.log('❌ Нет пользователя, подписка не создаётся');
     return;
@@ -1403,68 +1418,38 @@ async function openPublicProfile(userId) {
   if (state.messagesChannel) {
     try {
       await supabaseClient.removeChannel(state.messagesChannel);
-      console.log('✅ Старый канал закрыт');
     } catch(e) {
       console.warn('removeChannel error:', e);
     }
   }
   
-  console.log('🔄 Создаём новый канал для user:', state.currentSession.user.id);
+  console.log('🔄 Создаём новый канал...');
   
-  // Создаём новый канал с обработкой ошибок
   state.messagesChannel = supabaseClient
     .channel('messages-channel')
-    .on(
-      'postgres_changes',
-      { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'conversation_messages'
-      },
+    .on('postgres_changes', 
+      { event: 'INSERT', schema: 'public', table: 'conversation_messages' },
       async (payload) => {
         const newMessage = payload.new;
-        console.log('📨 Получено новое сообщение:', newMessage);
+        if (newMessage.user_id === state.currentSession?.user?.id) return;
         
-        // Не обрабатываем свои сообщения
-        if (newMessage.user_id === state.currentSession?.user?.id) {
-          console.log('⏭️ Своё сообщение, пропускаем');
-          return;
-        }
-        
-        // Проверяем, участвует ли пользователь в этом чате
         const isMember = state.conversationMembers.some(
-          m => m.conversation_id === newMessage.conversation_id && 
-               m.user_id === state.currentSession.user.id
+          m => m.conversation_id === newMessage.conversation_id && m.user_id === state.currentSession.user.id
         );
         
         if (isMember) {
-          console.log('✅ Новое сообщение для текущего пользователя, обновляем чат');
-          
-          // Обновляем данные
           await fetchMessengerData();
           await renderMessengerDialogs();
-          
-          // Если открыт этот чат - обновляем сообщения
           if (state.currentConversationId === newMessage.conversation_id) {
             await openConversation(state.currentConversationId, true);
-          }
-          
-          // Показываем уведомление
-          if (Notification.permission === 'granted' && document.hidden) {
-            const sender = getProfileByUserId(newMessage.user_id);
-            new Notification(`Новое сообщение от ${sender?.username || 'Пользователя'}`, {
-              body: newMessage.text || newMessage.attachment_name || 'Новое сообщение'
-            });
           }
         }
       }
     )
-    .subscribe((status, err) => {
+    .subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        console.log('✅ Realtime подписка активна!');
-      }
-      if (err) {
-        console.error('❌ Realtime ошибка:', err);
+        console.log('✅ Realtime подписка активна');
+        state.isSubscribed = true;
       }
     });
 }
@@ -1484,7 +1469,9 @@ async function openPublicProfile(userId) {
     await fetchMessengerData();
     await updateConversationList();
     await subscribeToMessages();
+    if (!state.isSubscribed) {
     await subscribeToMessages();
+  }
     
     const supportConv = state.conversations.find(c => String(c.id) === String(state.supportConversationId));
     if (pinnedOwnerChatBtn && supportConv) {
