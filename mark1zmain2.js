@@ -2029,43 +2029,9 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     initSupportDialogsBackButton();
   }
 
-  // ========== CSS СТИЛИ ==========
-  const style = document.createElement('style');
-  style.textContent = `
-    .mkz-support-mode-selector {
-      background: linear-gradient(135deg, rgba(255,47,174,0.1), rgba(122,60,255,0.1));
-      border-radius: 20px; padding: 14px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.1);
-    }
-    .mkz-support-mode-title { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-    .mkz-support-mode-buttons { display: flex; gap: 12px; }
-    .mkz-mode-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border: none; border-radius: 14px; background: rgba(255,255,255,0.08); color: #fff; font-size: 14px; cursor: pointer; transition: all 0.2s; }
-    .mkz-mode-btn--brand.is-active { background: linear-gradient(135deg, #ff2fae, #7a3cff); box-shadow: 0 0 15px rgba(255,47,174,0.3); }
-    .mkz-mode-btn--admin.is-active { background: linear-gradient(135deg, #3b82f6, #8b5cf6); box-shadow: 0 0 15px rgba(59,130,246,0.3); }
-    .mkz-support-mode-hint { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 10px; text-align: center; }
-    .mkz-support-dialogs-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
-    .mkz-support-dialog-card { background: linear-gradient(180deg, rgba(20,12,38,.96), rgba(8,6,20,.98)); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; padding: 18px; cursor: pointer; transition: all 0.2s; }
-    .mkz-support-dialog-card:hover { transform: translateY(-2px); border-color: rgba(255,47,174,.3); }
-    .mkz-support-dialog-card.unread { border-left: 4px solid #ff2fae; background: linear-gradient(180deg, rgba(255,47,174,.1), rgba(8,6,20,.98)); }
-    .mkz-support-dialog-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #ff2fae, #7a3cff); display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center; }
-    .mkz-support-dialog-name { font-size: 16px; font-weight: 700; color: #fff; }
-    .mkz-support-dialog-time { font-size: 11px; color: rgba(255,255,255,0.4); }
-    .mkz-support-dialog-preview { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mkz-unread-badge { background: #ff2fae; color: #fff; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 20px; margin-left: 10px; }
-    .mkz-loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; flex-direction: column; z-index: 10000; }
-    .mkz-loading-spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: mkz-spin 0.8s linear infinite; }
-    @keyframes mkz-spin { to { transform: rotate(360deg); } }
-    .mkz-loading-message { color: #fff; margin-top: 20px; font-size: 14px; }
-    .mkz-message__actions { display: none; gap: 4px; margin-left: 8px; }
-    .mkz-message__bubble:hover .mkz-message__actions { display: inline-flex; }
-    .mkz-message--mine .mkz-message__actions { display: inline-flex; }
-    .mkz-msg-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 6px; opacity: 0.7; transition: all 0.15s; }
-    .mkz-msg-btn:hover { opacity: 1; background: rgba(255,255,255,0.15); }
-    .mkz-msg-btn--delete:hover { color: #ff4d4d; }
-    .mkz-msg-btn--edit:hover { color: #ffb800; }
-    .mkz-message__author-name { font-size: 0.75em; font-weight: 600; margin-bottom: 2px; opacity: 0.8; padding-left: 4px; }
-    .mkz-message__meta { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 4px; }
-    .mkz-message__time { font-size: 0.7em; opacity: 0.5; }
-  `;
+    // ========== CSS STYLING ==========
+  var style = document.createElement('style');
+  style.textContent = '.mkz-support-mode-selector{background:linear-gradient(135deg,rgba(255,47,174,0.1),rgba(122,60,255,0.1));border-radius:20px;padding:14px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.1)}.mkz-support-mode-title{font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.mkz-support-mode-buttons{display:flex;gap:12px}.mkz-mode-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border:none;border-radius:14px;background:rgba(255,255,255,0.08);color:#fff;font-size:14px;cursor:pointer;transition:all 0.2s}.mkz-mode-btn--brand.is-active{background:linear-gradient(135deg,#ff2fae,#7a3cff);box-shadow:0 0 15px rgba(255,47,174,0.3)}.mkz-mode-btn--admin.is-active{background:linear-gradient(135deg,#3b82f6,#8b5cf6);box-shadow:0 0 15px rgba(59,130,246,0.3)}.mkz-support-mode-hint{font-size:11px;color:rgba(255,255,255,0.5);margin-top:10px;padding:8px;background:rgba(0,0,0,0.2);border-radius:10px;text-align:center}.mkz-support-dialogs-list{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}.mkz-support-dialog-card{background:linear-gradient(180deg,rgba(20,12,38,.96),rgba(8,6,20,.98));border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:18px;cursor:pointer;transition:all 0.2s}.mkz-support-dialog-card:hover{transform:translateY(-2px);border-color:rgba(255,47,174,.3)}.mkz-support-dialog-card.unread{border-left:4px solid #ff2fae;background:linear-gradient(180deg,rgba(255,47,174,.1),rgba(8,6,20,.98))}.mkz-support-dialog-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ff2fae,#7a3cff);display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center}.mkz-support-dialog-name{font-size:16px;font-weight:700;color:#fff}.mkz-support-dialog-time{font-size:11px;color:rgba(255,255,255,0.4)}.mkz-support-dialog-preview{font-size:13px;color:rgba(255,255,255,0.6);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mkz-unread-badge{background:#ff2fae;color:#fff;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:20px;margin-left:10px}.mkz-loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);display:none;justify-content:center;align-items:center;flex-direction:column;z-index:10000}.mkz-loading-spinner{width:50px;height:50px;border:4px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:mkz-spin 0.8s linear infinite}@keyframes mkz-spin{to{transform:rotate(360deg)}}.mkz-loading-message{color:#fff;margin-top:20px;font-size:14px}.mkz-message__actions{display:none;gap:4px;margin-left:8px}.mkz-message__bubble:hover .mkz-message__actions{display:inline-flex}.mkz-message--mine .mkz-message__actions{display:inline-flex}.mkz-msg-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:6px;opacity:0.7;transition:all 0.15s}.mkz-msg-btn:hover{opacity:1;background:rgba(255,255,255,0.15)}.mkz-msg-btn--delete:hover{color:#ff4d4d}.mkz-msg-btn--edit:hover{color:#ffb800}.mkz-message__author-name{font-size:0.75em;font-weight:600;margin-bottom:2px;opacity:0.8;padding-left:4px}.mkz-message__meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px}.mkz-message__time{font-size:0.7em;opacity:0.5}';
   document.head.appendChild(style);
 
   // ========== INIT ==========
