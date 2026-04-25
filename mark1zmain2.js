@@ -493,7 +493,7 @@
     conversations: [], conversationMembers: [], conversationMessages: [], currentConversationId: null, supportConversationId: null,
     userLikedPosts: new Set(), newsLikesMap: {}, newsCommentsMap: {},
     profileSyncInProgress: false, isPinnedDraft: false,
-    pendingMessengerAttachment: null, messengerPollingTimer: null, messagesChannel: null, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
+    pendingMessengerAttachment: null,  supportSendMode: 'brand', messengerPollingTimer: null, messagesChannel: null, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
     mediaRecorder: null, mediaChunks: [], voiceStream: null
   };
 
@@ -1514,71 +1514,83 @@ async function openPublicProfile(userId) {
   }
 
     async function updateConversationList() {
-    if (!messengerDialogs) return;
+  if (!messengerDialogs) return;
+  
+  await fetchMessengerData();
+  
+  if (!state.currentSession?.user) return;
+  
+  // Собираем все чаты, где есть текущий пользователь
+  const myConversations = state.conversationMembers
+    .filter(m => m.user_id === state.currentSession.user.id)
+    .map(m => m.conversation_id);
+  
+  const conversationsList = state.conversations.filter(c => myConversations.includes(c.id));
+  
+  if (!conversationsList.length) {
+    messengerDialogs.innerHTML = '<div class="mkz-card"><p>Чатов пока нет.</p></div>';
+    return;
+  }
+  
+  // Сортируем по дате последнего сообщения
+  conversationsList.sort((a, b) => {
+    const aLastMsg = state.conversationMessages.filter(m => m.conversation_id === a.id).pop();
+    const bLastMsg = state.conversationMessages.filter(m => m.conversation_id === b.id).pop();
+    return new Date(bLastMsg?.created_at || 0) - new Date(aLastMsg?.created_at || 0);
+  });
+  
+  messengerDialogs.innerHTML = conversationsList.map(conv => {
+    const isSupport = conv.is_support;
+    let title = isSupport ? 'Mark1z Design' : 'Личный чат';
+    let avatarStyle = isSupport ? 'background: linear-gradient(135deg, #ff2fae, #7a3cff);' : '';
     
-    await fetchMessengerData();
-    
-    const otherMembers = state.conversationMembers
-      .filter(m => m.user_id !== state.currentSession?.user?.id)
-      .map(m => ({
-        conversationId: m.conversation_id,
-        userId: m.user_id
-      }));
-    
-    const conversationsWithProfiles = await Promise.all(
-      otherMembers.map(async (item) => {
-        const profile = await getProfileByUserId(item.userId);
-        const conversation = state.conversations.find(c => c.id === item.conversationId);
-        const lastMessage = state.conversationMessages
-          .filter(m => m.conversation_id === item.conversationId)
-          .pop();
-        
-        return {
-          id: item.conversationId,
-          title: profile?.username || 'Пользователь',
-          avatar: profile?.avatar_url || '',
-          lastMessage: lastMessage?.text || lastMessage?.attachment_name || 'Нет сообщений',
-          lastMessageTime: lastMessage?.created_at,
-          userId: item.userId
-        };
-      })
-    );
-    
-    conversationsWithProfiles.sort((a, b) => {
-      if (!a.lastMessageTime) return 1;
-      if (!b.lastMessageTime) return -1;
-      return new Date(b.lastMessageTime) - new Date(a.lastMessageTime);
-    });
-    
-    if (!conversationsWithProfiles.length) {
-      messengerDialogs.innerHTML = '<div class="mkz-card"><p>Чатов пока нет.</p></div>';
-      return;
+    // Для личных чатов пытаемся найти собеседника
+    if (!isSupport) {
+      const otherMember = state.conversationMembers.find(
+        m => m.conversation_id === conv.id && m.user_id !== state.currentSession.user.id
+      );
+      if (otherMember) {
+        const peerProfile = getProfileByUserId(otherMember.user_id);
+        if (peerProfile) {
+          title = peerProfile.username || 'Пользователь';
+          if (peerProfile.avatar_url) {
+            avatarStyle = `background-image: url('${peerProfile.avatar_url}'); background-size: cover;`;
+          }
+        }
+      }
     }
     
-    messengerDialogs.innerHTML = conversationsWithProfiles.map(conv => `
+    const lastMessage = state.conversationMessages.filter(m => m.conversation_id === conv.id).pop();
+    const lastMessageText = lastMessage?.text || lastMessage?.attachment_name || 'Нет сообщений';
+    const lastMessageTime = lastMessage?.created_at;
+    const unreadCount = getUnreadCount(conv.id);
+    
+    return `
       <button class="mkz-chat-item ${state.currentConversationId === conv.id ? 'is-active' : ''}" 
               type="button" 
               data-open-conversation="${conv.id}">
-        <div class="mkz-chat-item__avatar" style="${conv.avatar ? `background-image:url('${conv.avatar}');background-size:cover;background-position:center;` : ''}">
-          ${!conv.avatar ? getInitial(conv.title, 'U') : ''}
+        <div class="mkz-chat-item__avatar" style="${avatarStyle}">
+          ${!avatarStyle.includes('background-image') ? (isSupport ? 'MD' : (title.charAt(0) || 'U')) : ''}
         </div>
         <div class="mkz-chat-item__body">
           <div class="mkz-chat-item__row">
-            <div class="mkz-chat-item__name">${safeText(conv.title, 'Чат')}</div>
-            <div class="mkz-chat-item__time">${conv.lastMessageTime ? formatDateTime(conv.lastMessageTime) : ''}</div>
+            <div class="mkz-chat-item__name">${safeText(title, 'Чат')}</div>
+            <div class="mkz-chat-item__time">${lastMessageTime ? formatDateTime(lastMessageTime) : ''}</div>
           </div>
-          <div class="mkz-chat-item__preview">${safeText(conv.lastMessage, '')}</div>
+          <div class="mkz-chat-item__preview">${safeText(lastMessageText, '')}</div>
         </div>
-        ${getUnreadCount(conv.id) > 0 ? `<div class="mkz-chat-item__badge">${getUnreadCount(conv.id)}</div>` : ''}
+        ${unreadCount > 0 ? `<div class="mkz-chat-item__badge">${unreadCount}</div>` : ''}
       </button>
-    `).join('');
-    
-    $$('[data-open-conversation]', messengerDialogs).forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await openConversation(btn.dataset.openConversation);
-      });
+    `;
+  }).join('');
+  
+  // Переназначаем обработчики
+  $$('[data-open-conversation]', messengerDialogs).forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await openConversation(btn.dataset.openConversation);
     });
-  }
+  });
+}
 
     function getConversationPeer(conversationId) {
     const members = state.conversationMembers.filter(m => m.conversation_id === conversationId);
@@ -1629,88 +1641,97 @@ async function openPublicProfile(userId) {
     }
   }
 
-  async function sendMessengerMessage() {
-    if (!state.currentSession?.user) {
-      openScreen('account');
-      return;
-    }
-    
-    if (!state.currentConversationId) {
-      showNotification('Сначала выбери чат', 'warning');
-      return;
-    }
-    
-    const text = messengerInput?.value.trim() || '';
-    const attachment = state.pendingMessengerAttachment;
-    
-    if (!text && !attachment) {
-      showNotification('Напиши сообщение или прикрепи файл', 'warning');
-      return;
-    }
-    
-    setButtonState(messengerSendBtn, true, 'Отправка...', 'Отправить');
-    
-    try {
-      let attachmentPayload = { attachment_url: '', attachment_name: '', attachment_type: '' };
-      if (attachment?.file) {
-        attachmentPayload = await uploadMessengerAttachment(attachment.file);
-      }
-      
-      const isSupportChat = isSupportConversation(state.currentConversationId);
-      const senderMode = isSupportChat && isOwner() ? 'support_brand' : 'profile';
-      
-      const { error } = await supabaseClient
-        .from('conversation_messages')
-        .insert({
-          conversation_id: state.currentConversationId,
-          user_id: state.currentSession.user.id,
-          sender_mode: senderMode,
-          text,
-          ...attachmentPayload
-        });
-      
-      if (error) throw new Error(error.message || 'Не удалось отправить сообщение');
-      
-      await supabaseClient
-        .from('conversations')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', state.currentConversationId);
-
-      await updateConversationList();
-      
-      if (messengerInput) messengerInput.value = '';
-      clearMessengerAttachment();
-      
-      if (isSupportChat && !isOwner()) {
-        const supportMessages = state.conversationMessages.filter(
-          m => String(m.conversation_id) === String(state.currentConversationId)
-        );
-        
-        const alreadyAutoAnswered = supportMessages.some(
-          m => m.sender_mode === 'support_brand' && String(m.text || '').includes('В ближайшее время вам ответят')
-        );
-        
-        if (!alreadyAutoAnswered) {
-          await supabaseClient
-            .from('conversation_messages')
-            .insert({
-              conversation_id: state.currentConversationId,
-              user_id: OWNER_UID,
-              sender_mode: 'support_brand',
-              text: 'Спасибо за сообщение. В ближайшее время вам ответят.'
-            });
-        }
-      }
-      
-      await openConversation(state.currentConversationId);
-      showNotification('Сообщение отправлено', 'success');
-    } catch (err) {
-      console.error('sendMessengerMessage error:', err);
-      showNotification(err.message, 'error');
-    } finally {
-      setButtonState(messengerSendBtn, false, 'Отправка...', 'Отправить');
-    }
+ async function sendMessengerMessage() {
+  if (!state.currentSession?.user) {
+    openScreen('account');
+    return;
   }
+  
+  if (!state.currentConversationId) {
+    showNotification('Сначала выбери чат', 'warning');
+    return;
+  }
+  
+  const text = messengerInput?.value.trim() || '';
+  const attachment = state.pendingMessengerAttachment;
+  
+  if (!text && !attachment) {
+    showNotification('Напиши сообщение или прикрепи файл', 'warning');
+    return;
+  }
+  
+  setButtonState(messengerSendBtn, true, 'Отправка...', 'Отправить');
+  
+  try {
+    let attachmentPayload = { attachment_url: '', attachment_name: '', attachment_type: '' };
+    if (attachment?.file) {
+      attachmentPayload = await uploadMessengerAttachment(attachment.file);
+    }
+    
+    // ========== ОПРЕДЕЛЯЕМ РЕЖИМ ОТПРАВКИ ==========
+    let senderMode = 'profile';
+    let user_id = state.currentSession.user.id;
+    
+    if (isSupportConversation(state.currentConversationId)) {
+      if (isOwner()) {
+        // Админ в чате поддержки - используем выбранный режим
+        if (state.supportSendMode === 'brand') {
+          senderMode = 'support_brand'; // От Mark1z Design (видят все)
+          user_id = OWNER_UID;
+        } else {
+          senderMode = 'admin_private'; // Личное сообщение админа (видят только админы)
+        }
+      } else {
+        // Обычный пользователь пишет в поддержку
+        senderMode = 'user_to_support';
+      }
+    }
+    
+    console.log('📤 Отправка сообщения:', { mode: senderMode, text: text || '[вложение]' });
+    
+    const { error } = await supabaseClient
+      .from('conversation_messages')
+      .insert({
+        conversation_id: state.currentConversationId,
+        user_id: user_id,
+        sender_mode: senderMode,
+        text: text || '',
+        ...attachmentPayload
+      });
+    
+    if (error) throw new Error(error.message || 'Не удалось отправить сообщение');
+    
+    // Обновляем время последнего сообщения в чате
+    await supabaseClient
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', state.currentConversationId);
+    
+    // Очищаем поля ввода
+    if (messengerInput) messengerInput.value = '';
+    clearMessengerAttachment();
+    
+    // Обновляем список чатов и сообщения
+    await updateConversationList();
+    await openConversation(state.currentConversationId);
+    
+    showNotification('Сообщение отправлено', 'success');
+    
+    // ========== ВЫЗЫВАЕМ AI БОТА ==========
+    // Если это чат поддержки, сообщение от обычного пользователя, и есть текст - отвечаем ботом
+    if (isSupportConversation(state.currentConversationId) && !isOwner() && text) {
+      await callAIBot(state.currentConversationId, text);
+    }
+    
+  } catch (err) {
+    console.error('sendMessengerMessage error:', err);
+    showNotification(err.message, 'error');
+  } finally {
+    setButtonState(messengerSendBtn, false, 'Отправка...', 'Отправить');
+  }
+}
+
+  
 
   function clearMessengerAttachment() {
     state.pendingMessengerAttachment = null;
@@ -1737,55 +1758,21 @@ async function openPublicProfile(userId) {
   }
 
   function getUnreadCount(conversationId) {
-    const member = state.conversationMembers.find(
-      m => String(m.conversation_id) === String(conversationId) && String(m.user_id) === String(state.currentSession?.user?.id)
-    );
-    
-    const lastReadAt = member?.last_read_at ? new Date(member.last_read_at).getTime() : 0;
-    
-    return state.conversationMessages.filter(message => {
-      const isMineStandard = String(message.user_id) === String(state.currentSession?.user?.id) && message.sender_mode !== 'support_brand';
-      return (
-        String(message.conversation_id) === String(conversationId) &&
-        !isMineStandard &&
-        new Date(message.created_at).getTime() > lastReadAt
-      );
-    }).length;
-  }
-
-  function renderConversationMessage(message) {
-    const isOutgoing = String(message.user_id) === String(state.currentSession?.user?.id) && message.sender_mode !== 'support_brand';
-    const author = getMessageAuthorIdentity(message);
-    const authorName = safeText(author?.username || (isOutgoing ? 'Вы' : 'Mark1z Design'), isOutgoing ? 'Вы' : 'Mark1z Design');
-    
-    const attachmentUrl = safeUrl(message.attachment_url || '');
-    const attachmentName = safeText(message.attachment_name || 'Файл', 'Файл');
-    const attachmentType = String(message.attachment_type || '').toLowerCase();
-    
-    const isImage = attachmentUrl && attachmentType.startsWith('image/');
-    const isAudio = attachmentUrl && attachmentType.startsWith('audio/');
-    
-    const rowClass = isOutgoing ? 'mkz-message-row mkz-message-row--me' : 'mkz-message-row mkz-message-row--them';
-    const msgClass = isOutgoing ? 'mkz-message mkz-message--me' : 'mkz-message mkz-message--them';
-    const hasText = Boolean(message.text && String(message.text).trim());
-    const hasImage = Boolean(isImage);
-    const isImageOnly = hasImage && !hasText;
-    
-    return `
-      <div class="${rowClass}">
-        <div class="${msgClass} ${isImageOnly ? 'mkz-message--image-only' : ''}">
-          <span class="mkz-message__title">${authorName}</span>
-          ${hasText ? `<div class="mkz-message__text">${nl2brSafe(message.text)}</div>` : ''}
-          ${isImage ? `<div class="mkz-message__image"><img src="${attachmentUrl}" alt="${attachmentName}" data-zoom-image="${attachmentUrl}" data-zoom-title="${attachmentName}"></div>` : ''}
-          ${isAudio ? `<div class="mkz-message__audio"><audio controls src="${attachmentUrl}"></audio></div>` : ''}
-          ${attachmentUrl && !isImage && !isAudio ? `<div class="mkz-message__file"><a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">${attachmentName}</a></div>` : ''}
-          <div class="mkz-message__footer">
-            <span class="mkz-message__time">${formatDateTime(message.created_at)}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
+  if (!state.currentSession?.user) return 0;
+  
+  const member = state.conversationMembers.find(
+    m => m.conversation_id === conversationId && m.user_id === state.currentSession.user.id
+  );
+  
+  const lastReadAt = member?.last_read_at ? new Date(member.last_read_at).getTime() : 0;
+  
+  return state.conversationMessages.filter(msg => {
+    // Свои сообщения не считаем за непрочитанные
+    if (msg.user_id === state.currentSession.user.id) return false;
+    // Проверяем, что сообщение из нужного чата и новее last_read_at
+    return msg.conversation_id === conversationId && new Date(msg.created_at).getTime() > lastReadAt;
+  }).length;
+}
 
   async function findOrCreateSupportConversation() {
     if (!state.currentSession?.user) return null;
@@ -1817,6 +1804,62 @@ async function openPublicProfile(userId) {
     await fetchMessengerData();
     return newConversation.id;
   }
+
+async function callAIBot(conversationId, userMessage) {
+  if (!isSupportConversation(conversationId)) return;
+  if (isOwner()) return;
+  
+  const lowerMessage = userMessage.toLowerCase();
+  let botResponse = '';
+  
+  if (lowerMessage.includes('заказать') || lowerMessage.includes('хочу заказать')) {
+    botResponse = '🎨 Отлично! Чтобы заказать дизайн, напишите в Telegram @Mark1zell или нажмите кнопку "Заказать" на главной. А пока расскажите, что именно нужно: логотип, баннер, сайт?';
+  }
+  else if (lowerMessage.includes('логотип')) {
+    botResponse = '✨ Логотип — 600 ₽. Срок 1-3 дня. Сделаю уникальный, в вашем стиле! Напишите подробнее о проекте.';
+  }
+  else if (lowerMessage.includes('баннер') || lowerMessage.includes('постер')) {
+    botResponse = '🖼️ Баннер/постер — 500 ₽. Отдам в форматах PNG, JPG, PDF. Могу сделать анимированный за доп. оплату.';
+  }
+  else if (lowerMessage.includes('сайт')) {
+    botResponse = '💻 Дизайн сайта: макет — 3000 ₽, 5 страниц — 13 000 ₽, полноценный сайт — 25 000 ₽. Вёрстка + помощь с сервером — 15 000 ₽. Что вам нужно?';
+  }
+  else if (lowerMessage.includes('срок') || lowerMessage.includes('долго')) {
+    botResponse = '⏰ Стандартные сроки: логотип — 1-3 дня, баннер — 1-2 дня, сайт — 5-10 дней. Индивидуально обсуждаем!';
+  }
+  else if (lowerMessage.includes('скидка') || lowerMessage.includes('акция')) {
+    botResponse = '🎁 Следите за акциями в разделе "Лента"! Подпишитесь на Telegram: https://t.me/Mark1zdzn';
+  }
+  else if (lowerMessage.includes('пример') || lowerMessage.includes('портфолио')) {
+    botResponse = '🎨 Портфолио в разделе "Портфолио". Там примеры моих работ: логотипы, баннеры, сайты.';
+  }
+  else if (lowerMessage.includes('спасибо')) {
+    botResponse = '🙏 Пожалуйста! Обращайтесь, если нужен дизайн. Всегда на связи!';
+  }
+  else if (lowerMessage.includes('привет') || lowerMessage.includes('здравствуй')) {
+    botResponse = '👋 Привет! Я AI-помощник Mark1z Design. Могу помочь с заказом дизайна, ответить на вопросы о ценах или портфолио. Что вас интересует?';
+  }
+  else if (lowerMessage.length > 10) {
+    botResponse = '📝 Спасибо за сообщение! Администратор скоро ответит. А пока уточните, нужен ли вам дизайн-проект? У нас есть логотипы, баннеры, сайты.';
+  }
+  else {
+    botResponse = '😊 Я AI-помощник Mark1z Design. Расскажите, что хотите заказать: логотип, баннер, дизайн сайта? Или задайте вопрос о ценах/сроках.';
+  }
+  
+  setTimeout(async () => {
+    await supabaseClient.from('conversation_messages').insert({
+      conversation_id: conversationId,
+      user_id: OWNER_UID,
+      sender_mode: 'support_brand',
+      text: botResponse
+    });
+    await fetchMessengerData();
+    await renderMessengerDialogs();
+    if (state.currentConversationId === conversationId) {
+      await openConversation(conversationId, true);
+    }
+  }, 1500);
+}
 
   async function findOrCreateDirectConversation(otherUserId) {
     if (!state.currentSession?.user) return null;
@@ -2018,6 +2061,45 @@ async function openPublicProfile(userId) {
         togglePinBtn.classList.toggle('is-active', state.isPinnedDraft);
       });
     }
+
+    function initSupportModeSelector() {
+  const selector = document.getElementById('mkzSupportModeSelector');
+  const brandBtn = document.getElementById('mkzModeBrandBtn');
+  const adminBtn = document.getElementById('mkzModeAdminBtn');
+  const hint = document.getElementById('mkzModeHint');
+
+  if (!selector || !brandBtn || !adminBtn) return;
+
+  if (!isOwner()) {
+    selector.style.display = 'none';
+    return;
+  }
+
+  const setActiveMode = (mode) => {
+    state.supportSendMode = mode;
+    if (mode === 'brand') {
+      brandBtn.classList.add('is-active');
+      adminBtn.classList.remove('is-active');
+      if (hint) hint.innerHTML = '💡 Посетители видят только сообщения от Mark1z Design';
+    } else {
+      adminBtn.classList.add('is-active');
+      brandBtn.classList.remove('is-active');
+      if (hint) hint.innerHTML = '👤 Это ваше личное сообщение, посетители его НЕ увидят';
+    }
+  };
+
+  brandBtn.addEventListener('click', () => {
+    setActiveMode('brand');
+    showNotification('🏢 Теперь вы отвечаете от имени Mark1z Design', 'success');
+  });
+
+  adminBtn.addEventListener('click', () => {
+    setActiveMode('admin');
+    showNotification('👤 Теперь вы пишете от своего имени (посетители не увидят)', 'info');
+  });
+
+  setActiveMode('brand');
+}
 
     // FAQ и чат кнопки
     if (faqFab) faqFab.addEventListener('click', () => openScreen('faq'));
