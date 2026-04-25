@@ -1965,6 +1965,95 @@ async function callAIBot(conversationId, userMessage) {
     `;
   }
 
+  async function loadSupportDialogs() {
+  const container = document.getElementById('mkzSupportDialogsList');
+  if (!container) return;
+  showLoading('Загрузка диалогов...');
+  try {
+    const supportConversations = state.conversations.filter(c => c.is_support === true);
+    if (!supportConversations.length) {
+      container.innerHTML = '<div class="mkz-card"><p>Нет сообщений в поддержку</p></div>';
+      hideLoading();
+      return;
+    }
+    const dialogs = await Promise.all(supportConversations.map(async (conv) => {
+      const member = state.conversationMembers.find(m => m.conversation_id === conv.id && m.user_id !== OWNER_UID);
+      let userProfile = null;
+      if (member) userProfile = await readProfileByUserId(member.user_id);
+      const messages = state.conversationMessages.filter(m => m.conversation_id === conv.id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const lastMessage = messages[0];
+      const unreadCount = messages.filter(m => {
+        const isUserMessage = m.user_id !== OWNER_UID && m.sender_mode !== 'support_brand';
+        const isUnread = isUserMessage && (!member?.last_read_at || new Date(m.created_at) > new Date(member.last_read_at));
+        return isUnread;
+      }).length;
+      return {
+        conversationId: conv.id,
+        username: userProfile?.username || 'Пользователь',
+        avatarUrl: userProfile?.avatar_url,
+        lastMessageText: lastMessage?.text || lastMessage?.attachment_name || 'Вложение',
+        lastMessageTime: lastMessage?.created_at,
+        unreadCount
+      };
+    }));
+    dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+    container.innerHTML = dialogs.map(dialog => `
+      <div class="mkz-support-dialog-card ${dialog.unreadCount > 0 ? 'unread' : ''}" data-conversation-id="${dialog.conversationId}">
+        <div class="mkz-support-dialog-header">
+          <div class="mkz-support-dialog-avatar" style="${dialog.avatarUrl ? `background-image: url('${dialog.avatarUrl}'); background-size: cover;` : ''}">${!dialog.avatarUrl ? getInitial(dialog.username, 'U') : ''}</div>
+          <div class="mkz-support-dialog-info">
+            <div class="mkz-support-dialog-name">${safeText(dialog.username, 'Пользователь')}${dialog.unreadCount > 0 ? `<span class="mkz-unread-badge">${dialog.unreadCount}</span>` : ''}</div>
+            <div class="mkz-support-dialog-time">${dialog.lastMessageTime ? formatDateTime(dialog.lastMessageTime) : ''}</div>
+          </div>
+        </div>
+        <div class="mkz-support-dialog-preview">${safeText(dialog.lastMessageText, '')}</div>
+      </div>
+    `).join('');
+    $$('.mkz-support-dialog-card', container).forEach(card => {
+      card.addEventListener('click', () => {
+        openConversation(card.dataset.conversationId);
+        openScreen('messenger');
+      });
+    });
+  } catch (err) {
+    console.error('loadSupportDialogs error:', err);
+    container.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки диалогов</p></div>';
+  } finally { hideLoading(); }
+}
+
+  function initSupportDialogsButton() {
+  const btn = document.getElementById('mkzOpenSupportChatsBtn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    await loadSupportDialogs();
+    openScreen('support-dialogs');
+  });
+  async function updateUnreadCounter() {
+    const supportConversations = state.conversations.filter(c => c.is_support === true);
+    let totalUnread = 0;
+    for (const conv of supportConversations) {
+      const member = state.conversationMembers.find(m => m.conversation_id === conv.id && m.user_id !== OWNER_UID);
+      if (member) {
+        const messages = state.conversationMessages.filter(m => m.conversation_id === conv.id);
+        const unread = messages.filter(m => {
+          const isUserMessage = m.user_id !== OWNER_UID && m.sender_mode !== 'support_brand';
+          return isUserMessage && (!member.last_read_at || new Date(m.created_at) > new Date(member.last_read_at));
+        }).length;
+        totalUnread += unread;
+      }
+    }
+    const counterSpan = document.getElementById('mkzUnreadSupportCount');
+    if (counterSpan) counterSpan.textContent = totalUnread;
+  }
+  updateUnreadCounter();
+  setInterval(updateUnreadCounter, 10000);
+}
+
+  function initSupportDialogsBackButton() {
+  const backBtn = document.getElementById('mkzBackToAdminBtn');
+  if (backBtn) backBtn.addEventListener('click', () => openScreen('account'));
+}
+
   async function markConversationAsRead(conversationId) {
     if (!state.currentSession?.user || !conversationId) return;
     try {
@@ -2301,21 +2390,24 @@ async function callAIBot(conversationId, userMessage) {
         await openPublicProfile(profileId);
       });
     }
+  initSupportDialogsButton();
+  initSupportDialogsBackButton();
+}
 
-    // Закреплённый чат
-    if (pinnedOwnerChatBtn) {
-      pinnedOwnerChatBtn.addEventListener('click', async () => {
+    // Закрепленный чат
+if (pinnedOwnerChatBtn) {
+    pinnedOwnerChatBtn.addEventListener('click', async () => {
         if (!state.currentSession) {
-          openScreen('account');
-          return;
+            openScreen('account');
+            return;
         }
+        // ДОБАВЬ ЭТИ СТРОКИ:
         await renderMessengerDialogs();
         if (state.supportConversationId) {
-          await openConversation(state.supportConversationId);
+            await openConversation(state.supportConversationId);
         }
-      });
-    }
-  }
+    });
+}
 
 // ========== INIT ==========
 (async function init() {
