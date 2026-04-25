@@ -1468,7 +1468,6 @@ async function openPublicProfile(userId) {
     await findOrCreateSupportConversation();
     await fetchMessengerData();
     await updateConversationList();
-    await subscribeToMessages();
     if (!state.isSubscribed) {
     await subscribeToMessages();
   }
