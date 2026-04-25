@@ -1103,10 +1103,10 @@
     if (!peopleSearchResults) return;
     showLoading('Поиск пользователей...');
     await cacheProfiles();
-    
+
     let list = [...state.allProfilesCache];
     const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
-    
+
     if (prepared) {
       list = list.filter(profile => {
         const username = String(profile.username || '').toLowerCase();
@@ -1114,21 +1114,21 @@
         return username.includes(prepared) || publicId.includes(prepared);
       });
     }
-    
+
     state.peopleSearchResults = list;
-    
+
     if (!list.length) {
       peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
       return;
     }
-    
+
     peopleSearchResults.innerHTML = list.map(profile => {
       const avatarUrl = safeUrl(profile.avatar_url || '');
       const name = safeText(profile.username || 'Пользователь', 'Пользователь');
       const publicId = buildPublicUserCode(profile, profile.id);
       let statusText = '';
       let statusClass = '';
-      
+
       if (!isProfileFieldVisible(profile, 'show_last_seen')) {
         statusText = 'Статус скрыт';
         statusClass = 'status-hidden';
@@ -1141,7 +1141,7 @@
         const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
         const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
         const diffMins = Math.floor((now - lastSeen) / (1000 * 60));
-        
+
         if (diffMins < 5) {
           statusText = 'Был(а) только что';
           statusClass = 'status-recent';
@@ -1162,7 +1162,7 @@
         statusText = 'Давно не был(а)';
         statusClass = 'status-offline';
       }
-      
+
       return `
         <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
           <div class="mkz-person-card__top">
@@ -1181,13 +1181,13 @@
         </button>
       `;
     }).join('');
-    
+
     $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
       btn.addEventListener('click', async () => {
         await openPublicProfile(btn.dataset.openProfile);
       });
     });
-    
+
   } catch (err) {
     console.error('searchPeople error:', err);
     showNotification('Ошибка при поиске пользователей', 'error');
@@ -1256,106 +1256,6 @@ async function openPublicProfile(userId) {
     console.error('❌ openPublicProfile error:', err);
   }
 }
-
-    // ========== ПОИСК ЛЮДЕЙ ==========
-  async function searchPeople(query = '') {
-    try {
-      if (!peopleSearchResults) return;
-      showLoading('Поиск пользователей...');
-      await cacheProfiles();
-
-      let list = [...state.allProfilesCache];
-      const prepared = String(query || peopleSearchInput?.value || '').trim().toLowerCase();
-
-      if (prepared) {
-        list = list.filter(profile => {
-          const username = String(profile.username || '').toLowerCase();
-          const publicId = String(buildPublicUserCode(profile, profile.id) || '').toLowerCase();
-          return username.includes(prepared) || publicId.includes(prepared);
-        });
-      }
-
-      state.peopleSearchResults = list;
-
-      if (!list.length) {
-        peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
-        return;
-      }
-
-      peopleSearchResults.innerHTML = list.map(profile => {
-        const avatarUrl = safeUrl(profile.avatar_url || '');
-        const name = safeText(profile.username || 'Пользователь', 'Пользователь');
-        const publicId = buildPublicUserCode(profile, profile.id);
-        let statusText = '';
-        let statusClass = '';
-
-        if (!isProfileFieldVisible(profile, 'show_last_seen')) {
-          statusText = 'Статус скрыт';
-          statusClass = 'status-hidden';
-        } else if (profile.is_online) {
-          statusText = 'В сети';
-          statusClass = 'status-online';
-        } else if (profile.last_seen_at) {
-          const lastSeen = new Date(profile.last_seen_at);
-          const now = new Date();
-          const diffDays = Math.floor((now - lastSeen) / (1000 * 60 * 60 * 24));
-          const diffHours = Math.floor((now - lastSeen) / (1000 * 60 * 60));
-          const diffMins = Math.floor((now - lastSeen) / (1000 * 60));
-
-          if (diffMins < 5) {
-            statusText = 'Был(а) только что';
-            statusClass = 'status-recent';
-          } else if (diffHours < 1) {
-            statusText = `Был(а) ${diffMins} ${pluralRu(diffMins, 'минуту', 'минуты', 'минут')} назад`;
-            statusClass = 'status-recent';
-          } else if (diffDays === 0 && diffHours < 24) {
-            statusText = `Был(а) ${diffHours} ${pluralRu(diffHours, 'час', 'часа', 'часов')} назад`;
-            statusClass = 'status-recent';
-          } else if (diffDays < 7) {
-            statusText = `Был(а) ${diffDays} ${pluralRu(diffDays, 'день', 'дня', 'дней')} назад`;
-            statusClass = 'status-offline';
-          } else {
-            statusText = formatDateOnly(profile.last_seen_at);
-            statusClass = 'status-offline';
-          }
-        } else {
-          statusText = 'Давно не был(а)';
-          statusClass = 'status-offline';
-        }
-
-        return `
-          <button class="mkz-person-card" type="button" data-open-profile="${profile.id}">
-            <div class="mkz-person-card__top">
-              <div class="mkz-person-card__avatar" style="${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center;` : ''}">
-                ${avatarUrl ? '' : getInitial(profile.username, 'U')}
-              </div>
-              <div class="mkz-person-card__meta">
-                <div class="mkz-person-card__name">${name}</div>
-                <div class="mkz-person-card__id">${publicId}</div>
-                <div class="mkz-person-card__status ${statusClass}">
-                  <span class="mkz-status-indicator"></span>
-                  ${statusText}
-                </div>
-              </div>
-            </div>
-          </button>
-        `;
-      }).join('');
-
-      $$('[data-open-profile]', peopleSearchResults).forEach(btn => {
-        btn.addEventListener('click', async () => {
-          await openPublicProfile(btn.dataset.openProfile);
-        });
-      });
-
-    } catch (err) {
-      console.error('searchPeople error:', err);
-      showNotification('Ошибка при поиске пользователей', 'error');
-    } finally {
-      hideLoading();
-    }
-  }
-
     // ========== ФУНКЦИИ МЕССЕНДЖЕРА ==========
   async function fetchMessengerData() {
     if (!state.currentSession?.user) {
@@ -1407,54 +1307,7 @@ async function openPublicProfile(userId) {
       console.error('fetchMessengerData error:', err);
     }
   }
-
-  async function startPollingMessages() {
-  if (state.messagesPolling) return;
   
-  console.log('🔄 Запуск polling (проверка каждые 3 секунды)');
-  
-  state.messagesPolling = setInterval(async () => {
-    if (!state.currentSession?.user) return;
-    if (!state.conversations.length) return;
-    
-    const lastMessageTime = state.conversationMessages.length > 0 
-      ? state.conversationMessages[state.conversationMessages.length - 1]?.created_at 
-      : new Date(0).toISOString();
-    
-    const { data: newMessages, error } = await supabaseClient
-      .from('conversation_messages')
-      .select('*')
-      .gt('created_at', lastMessageTime)
-      .in('conversation_id', state.conversations.map(c => c.id));
-    
-    if (error) {
-      console.error('Polling error:', error);
-      return;
-    }
-    
-    if (newMessages && newMessages.length > 0) {
-      console.log('📨 Найдено новых сообщений (polling):', newMessages.length);
-      
-      state.conversationMessages = [...state.conversationMessages, ...newMessages];
-      
-      await renderMessengerDialogs();
-      
-      if (state.currentConversationId) {
-        await openConversation(state.currentConversationId, true);
-      }
-      
-      newMessages.forEach(msg => {
-        if (msg.user_id !== state.currentSession?.user?.id && Notification.permission === 'granted') {
-          const sender = getProfileByUserId(msg.user_id);
-          new Notification(`Новое сообщение от ${sender?.username || 'Пользователь'}`, {
-            body: msg.text || msg.attachment_name || 'Новое сообщение'
-          });
-        }
-      });
-    }
-  }, 3000);
-}
-
       async function subscribeToMessages() {
   // Если уже подписаны - выходим
   if (state.isSubscribed) {
@@ -2011,45 +1864,44 @@ async function callAIBot(conversationId, userMessage) {
   async function loadSupportDialogs() {
   const container = document.getElementById('mkzSupportDialogsList');
   if (!container) return;
-  
+
   showLoading('Загрузка диалогов...');
-  
+
   try {
     const supportConversations = state.conversations.filter(c => c.is_support === true);
-    
+
     if (!supportConversations.length) {
       container.innerHTML = '<div class="mkz-card"><p>Нет сообщений в поддержку</p></div>';
       hideLoading();
       return;
     }
-    
+
     const dialogs = await Promise.all(supportConversations.map(async (conv) => {
       const member = state.conversationMembers.find(
         m => m.conversation_id === conv.id && m.user_id !== OWNER_UID
       );
-      
+
       let userProfile = null;
       if (member) {
         userProfile = await readProfileByUserId(member.user_id);
       }
-      
+
       const messages = state.conversationMessages
         .filter(m => m.conversation_id === conv.id)
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      
+
       const lastMessage = messages[0];
       const lastMessageTime = lastMessage?.created_at;
       const lastMessageText = lastMessage?.text || lastMessage?.attachment_name || 'Вложение';
-      
+
       const unreadCount = messages.filter(m => {
         const isUserMessage = m.user_id !== OWNER_UID && m.sender_mode !== 'support_brand';
         const isUnread = isUserMessage && (!member?.last_read_at || new Date(m.created_at) > new Date(member.last_read_at));
         return isUnread;
       }).length;
-      
+
       return {
         conversationId: conv.id,
-        userId: member?.user_id,
         username: userProfile?.username || 'Пользователь',
         avatarUrl: userProfile?.avatar_url,
         lastMessageText,
@@ -2057,9 +1909,9 @@ async function callAIBot(conversationId, userMessage) {
         unreadCount
       };
     }));
-    
+
     dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
-    
+
     container.innerHTML = dialogs.map(dialog => `
       <div class="mkz-support-dialog-card ${dialog.unreadCount > 0 ? 'unread' : ''}" data-conversation-id="${dialog.conversationId}">
         <div class="mkz-support-dialog-header">
@@ -2077,15 +1929,14 @@ async function callAIBot(conversationId, userMessage) {
         <div class="mkz-support-dialog-preview">${safeText(dialog.lastMessageText, '')}</div>
       </div>
     `).join('');
-    
+
     $$('.mkz-support-dialog-card', container).forEach(card => {
       card.addEventListener('click', () => {
-        const conversationId = card.dataset.conversationId;
-        openConversation(conversationId);
+        openConversation(card.dataset.conversationId);
         openScreen('messenger');
       });
     });
-    
+
   } catch (err) {
     console.error('loadSupportDialogs error:', err);
     container.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки диалогов</p></div>';
@@ -2093,59 +1944,6 @@ async function callAIBot(conversationId, userMessage) {
     hideLoading();
   }
 }
-
-  function initSupportDialogsButton() {
-  const btn = document.getElementById('mkzOpenSupportChatsBtn');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    await loadSupportDialogs();
-    openScreen('support-dialogs');
-  });
-  async function updateUnreadCounter() {
-    const supportConversations = state.conversations.filter(c => c.is_support === true);
-    let totalUnread = 0;
-    for (const conv of supportConversations) {
-      const member = state.conversationMembers.find(m => m.conversation_id === conv.id && m.user_id !== OWNER_UID);
-      if (member) {
-        const messages = state.conversationMessages.filter(m => m.conversation_id === conv.id);
-        const unread = messages.filter(m => {
-          const isUserMessage = m.user_id !== OWNER_UID && m.sender_mode !== 'support_brand';
-          return isUserMessage && (!member.last_read_at || new Date(m.created_at) > new Date(member.last_read_at));
-        }).length;
-        totalUnread += unread;
-      }
-    }
-    const counterSpan = document.getElementById('mkzUnreadSupportCount');
-    if (counterSpan) counterSpan.textContent = totalUnread;
-  }
-  updateUnreadCounter();
-  setInterval(updateUnreadCounter, 10000);
-}
-
-  function initSupportDialogsBackButton() {
-  const backBtn = document.getElementById('mkzBackToAdminBtn');
-  if (backBtn) backBtn.addEventListener('click', () => openScreen('account'));
-}
-
-  async function markConversationAsRead(conversationId) {
-    if (!state.currentSession?.user || !conversationId) return;
-    try {
-      await supabaseClient
-        .from('conversation_members')
-        .update({ last_read_at: new Date().toISOString() })
-        .eq('conversation_id', conversationId)
-        .eq('user_id', state.currentSession.user.id);
-    } catch (err) {
-      console.error('markConversationAsRead error:', err);
-    }
-  }
-
-    function clearMessengerAttachment() {
-    state.pendingMessengerAttachment = null;
-    if (messengerImageInput) messengerImageInput.value = '';
-    if (messengerFileInput) messengerFileInput.value = '';
-    if (messengerAttachMeta) messengerAttachMeta.textContent = '';
-  }
 
     // ========== BIND STATIC EVENTS ==========
   function bindStaticEvents() {
@@ -2483,9 +2281,128 @@ if (pinnedOwnerChatBtn) {
 }
 
 // ========== INIT ==========
+// ========== INIT ==========
 (async function init() {
+  // Добавляем стили для новых компонентов
   const style = document.createElement('style');
   style.textContent = `
+    .mkz-support-mode-selector {
+      background: linear-gradient(135deg, rgba(255,47,174,0.1), rgba(122,60,255,0.1));
+      border-radius: 20px;
+      padding: 14px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .mkz-support-mode-title {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .mkz-support-mode-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    .mkz-mode-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mkz-mode-btn--brand.is-active {
+      background: linear-gradient(135deg, #ff2fae, #7a3cff);
+      box-shadow: 0 0 15px rgba(255,47,174,0.3);
+    }
+    .mkz-mode-btn--admin.is-active {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      box-shadow: 0 0 15px rgba(59,130,246,0.3);
+    }
+    .mkz-support-mode-hint {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      text-align: center;
+    }
+    .mkz-support-dialogs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .mkz-support-dialog-card {
+      background: linear-gradient(180deg, rgba(20,12,38,.96), rgba(8,6,20,.98));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      padding: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mkz-support-dialog-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255,47,174,.3);
+    }
+    .mkz-support-dialog-card.unread {
+      border-left: 4px solid #ff2fae;
+      background: linear-gradient(180deg, rgba(255,47,174,.1), rgba(8,6,20,.98));
+    }
+    .mkz-support-dialog-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .mkz-support-dialog-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff2fae, #7a3cff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-size: cover;
+      background-position: center;
+    }
+    .mkz-support-dialog-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .mkz-support-dialog-time {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+    }
+    .mkz-support-dialog-preview {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mkz-unread-badge {
+      background: #ff2fae;
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 10px;
+    }
     .mkz-loading-overlay {
       position: fixed;
       top: 0;
@@ -2516,86 +2433,11 @@ if (pinnedOwnerChatBtn) {
       margin-top: 20px;
       font-size: 14px;
     }
-    .mkz-notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      max-width: 380px;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      transform: translateX(420px);
-      transition: transform 0.3s ease;
-      z-index: 10001;
-      overflow: hidden;
-    }
-    .mkz-notification.show {
-      transform: translateX(0);
-    }
-    .mkz-notification--success { border-left: 4px solid #4caf50; }
-    .mkz-notification--error { border-left: 4px solid #f44336; }
-    .mkz-notification--warning { border-left: 4px solid #ff9800; }
-    .mkz-notification--info { border-left: 4px solid #2196f3; }
-    .mkz-notification__content {
-      padding: 14px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .mkz-notification__message {
-      flex: 1;
-      font-size: 14px;
-      color: #333;
-    }
-    .mkz-notification__close {
-      background: none;
-      border: none;
-      font-size: 22px;
-      cursor: pointer;
-      padding: 0 8px;
-      color: #999;
-    }
-    .mkz-notification__close:hover { color: #333; }
-    .drag-over {
-      border: 2px dashed #4caf50 !important;
-      background: rgba(76,175,80,0.1) !important;
-    }
-    .mkz-profile-description {
-      margin: 20px 0;
-      padding: 16px;
-      background: #1e293b;
-      border-radius: 12px;
-    }
-    .mkz-profile-description textarea {
-      width: 100%;
-      min-height: 100px;
-      padding: 12px;
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      font-family: inherit;
-      resize: vertical;
-      color: #e2e8f0;
-    }
-    .mkz-social-error {
-      color: #ef4444;
-      font-size: 12px;
-      margin-top: 4px;
-    }
-    .mkz-social-inputs {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-    @media (max-width: 640px) {
-      .mkz-social-inputs {
-        flex-direction: column;
-      }
-    }
   `;
   document.head.appendChild(style);
-  
+
   await fetchSessionAndProfile();
+
   await Promise.all([
     cacheProfiles(),
     renderPortfolio(),
@@ -2606,9 +2448,14 @@ if (pinnedOwnerChatBtn) {
     searchPeople(),
     renderMessengerDialogs()
   ]);
+
   await loadUserBio();
   bindStaticEvents();
-  
+
+  // Инициализация кнопок поддержки
+  initSupportDialogsButton();
+  initSupportDialogsBackButton();
+
   supabaseClient.auth.onAuthStateChange(function (_event, session) {
     state.currentSession = session || null;
     if (state.currentSession) {
@@ -2643,46 +2490,44 @@ if (pinnedOwnerChatBtn) {
   });
 })();
 
-}
     // ========== ОПРЕДЕЛЕНИЕ ПОЛЛИНГА ==========
   async function startPollingMessages() {
-    if (state.messagesPolling) return;
-    
-    console.log('🔄 Запуск polling (проверка каждые 3 секунды)');
-    
-    state.messagesPolling = setInterval(async () => {
-      if (!state.currentSession?.user) return;
-      if (!state.conversations.length) return;
-      
-      const lastMessageTime = state.conversationMessages.length > 0 
-        ? state.conversationMessages[state.conversationMessages.length - 1]?.created_at 
-        : new Date(0).toISOString();
-      
-      const { data: newMessages, error } = await supabaseClient
-        .from('conversation_messages')
-        .select('*')
-        .gt('created_at', lastMessageTime)
-        .in('conversation_id', state.conversations.map(c => c.id));
-      
-      if (error) {
-        console.error('Polling error:', error);
-        return;
+  if (state.messagesPolling) return;
+
+  console.log('🔄 Запуск polling (проверка каждые 3 секунды)');
+
+  state.messagesPolling = setInterval(async () => {
+    if (!state.currentSession?.user) return;
+    if (!state.conversations.length) return;
+
+    const lastMessageTime = state.conversationMessages.length > 0 
+      ? state.conversationMessages[state.conversationMessages.length - 1]?.created_at 
+      : new Date(0).toISOString();
+
+    const { data: newMessages, error } = await supabaseClient
+      .from('conversation_messages')
+      .select('*')
+      .gt('created_at', lastMessageTime)
+      .in('conversation_id', state.conversations.map(c => c.id));
+
+    if (error) {
+      console.error('Polling error:', error);
+      return;
+    }
+
+    if (newMessages && newMessages.length > 0) {
+      console.log('📨 Найдено новых сообщений (polling):', newMessages.length);
+
+      state.conversationMessages = [...state.conversationMessages, ...newMessages];
+
+      await renderMessengerDialogs();
+
+      if (state.currentConversationId) {
+        await openConversation(state.currentConversationId, true);
       }
-      
-      if (newMessages && newMessages.length > 0) {
-        console.log('📨 Найдено новых сообщений (polling):', newMessages.length);
-        
-        state.conversationMessages = [...state.conversationMessages, ...newMessages];
-        
-        await renderMessengerDialogs();
-        
-        if (state.currentConversationId) {
-          await openConversation(state.currentConversationId, true);
-        }
-      }
-    }, 3000);
-  }
-  
+    }
+  }, 3000);
+}
   // ========== ФУНКЦИИ МЕССЕНДЖЕРА ==========
   async function fetchMessengerData() {
     if (!state.currentSession?.user) {
@@ -3128,106 +2973,20 @@ if (pinnedOwnerChatBtn) {
 
   // ========== ИНИЦИАЛИЗАЦИЯ КНОПОК ПОДДЕРЖКИ ==========
   function initSupportDialogsButton() {
-    const btn = document.getElementById('mkzOpenSupportChatsBtn');
-    if (!btn) return;
-    
-    btn.addEventListener('click', async () => {
-      await loadSupportDialogs();
-      openScreen('support-dialogs');
-    });
+  const btn = document.getElementById('mkzOpenSupportChatsBtn');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    await loadSupportDialogs();
+    openScreen('support-dialogs');
+  });
+}
+
+function initSupportDialogsBackButton() {
+  const backBtn = document.getElementById('mkzBackToAdminBtn');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => openScreen('account'));
   }
-  
-  function initSupportDialogsBackButton() {
-    const backBtn = document.getElementById('mkzBackToAdminBtn');
-    if (backBtn) {
-      backBtn.addEventListener('click', () => openScreen('account'));
-    }
-  }
-  
-  async function loadSupportDialogs() {
-    const container = document.getElementById('mkzSupportDialogsList');
-    if (!container) return;
-    
-    showLoading('Загрузка диалогов...');
-    
-    try {
-      const supportConversations = state.conversations.filter(c => c.is_support === true);
+}
       
-      if (!supportConversations.length) {
-        container.innerHTML = '<div class="mkz-card"><p>Нет сообщений в поддержку</p></div>';
-        hideLoading();
-        return;
-      }
-      
-      const dialogs = await Promise.all(supportConversations.map(async (conv) => {
-        const member = state.conversationMembers.find(
-          m => m.conversation_id === conv.id && m.user_id !== OWNER_UID
-        );
-        
-        let userProfile = null;
-        if (member) {
-          userProfile = await readProfileByUserId(member.user_id);
-        }
-        
-        const messages = state.conversationMessages
-          .filter(m => m.conversation_id === conv.id)
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        
-        const lastMessage = messages[0];
-        const lastMessageTime = lastMessage?.created_at;
-        const lastMessageText = lastMessage?.text || lastMessage?.attachment_name || 'Вложение';
-        
-        const unreadCount = messages.filter(m => {
-          const isUserMessage = m.user_id !== OWNER_UID && m.sender_mode !== 'support_brand';
-          const isUnread = isUserMessage && (!member?.last_read_at || new Date(m.created_at) > new Date(member.last_read_at));
-          return isUnread;
-        }).length;
-        
-        return {
-          conversationId: conv.id,
-          userId: member?.user_id,
-          username: userProfile?.username || 'Пользователь',
-          avatarUrl: userProfile?.avatar_url,
-          lastMessageText,
-          lastMessageTime,
-          unreadCount
-        };
-      }));
-      
-      dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
-      
-      container.innerHTML = dialogs.map(dialog => `
-        <div class="mkz-support-dialog-card ${dialog.unreadCount > 0 ? 'unread' : ''}" 
-             data-conversation-id="${dialog.conversationId}">
-          <div class="mkz-support-dialog-header">
-            <div class="mkz-support-dialog-avatar" style="${dialog.avatarUrl ? `background-image: url('${dialog.avatarUrl}'); background-size: cover;` : ''}">
-              ${!dialog.avatarUrl ? getInitial(dialog.username, 'U') : ''}
-            </div>
-            <div class="mkz-support-dialog-info">
-              <div class="mkz-support-dialog-name">
-                ${safeText(dialog.username, 'Пользователь')}
-                ${dialog.unreadCount > 0 ? `<span class="mkz-unread-badge">${dialog.unreadCount}</span>` : ''}
-              </div>
-              <div class="mkz-support-dialog-time">${dialog.lastMessageTime ? formatDateTime(dialog.lastMessageTime) : ''}</div>
-            </div>
-          </div>
-          <div class="mkz-support-dialog-preview">${safeText(dialog.lastMessageText, '')}</div>
-        </div>
-      `).join('');
-      
-      $$('.mkz-support-dialog-card', container).forEach(card => {
-        card.addEventListener('click', () => {
-          const conversationId = card.dataset.conversationId;
-          openConversation(conversationId);
-          openScreen('messenger');
-        });
-      });
-      
-    } catch (err) {
-      console.error('loadSupportDialogs error:', err);
-      container.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки диалогов</p></div>';
-    } finally {
-      hideLoading();
-    }
-  }
 })();
