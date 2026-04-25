@@ -1187,48 +1187,61 @@ async function findExistingConversation(userId) {
 
     // ========== НАЧАТЬ ЧАТ С ПОЛЬЗОВАТЕЛЕМ ==========
   async function startConversationWithUser(userId) {
-    if (!state.currentSession?.user) {
-      showNotification('Сначала войдите в аккаунт', 'warning');
-      return;
-    }
-    
-    // 1. Проверяем, есть ли уже чат
-    const existingId = await findExistingConversation(userId);
-    if (existingId) {
-      await openConversation(existingId);
-      openScreen('messenger');
-      return;
-    }
-    
-    // 2. Создаём новый чат
+  if (!state.currentSession?.user) {
+    showNotification('Сначала войдите в аккаунт', 'warning');
+    return null;
+  }
+
+  const myId = state.currentSession.user.id;
+  
+  // 1. Проверяем существующий чат
+  const existingId = await findExistingConversation(userId);
+  if (existingId) {
+    console.log('✅ Чат уже существует:', existingId);
+    return existingId;
+  }
+
+  // 2. Создаём новый чат
+  try {
     const { data: newChat, error: chatError } = await supabaseClient
       .from('chats')
       .insert({ is_group: false })
       .select('id')
       .single();
-    
-    if (chatError || !newChat) {
-      showNotification('Ошибка создания чата', 'error');
-      return;
+
+    if (chatError) {
+      console.error('Ошибка создания чата:', chatError);
+      throw new Error('Не удалось создать чат: ' + chatError.message);
     }
     
-    // 3. Добавляем обоих участников
+    if (!newChat?.id) {
+      throw new Error('Не удалось создать чат: пустой ответ');
+    }
+
+    // 3. Добавляем участников
     const { error: membersError } = await supabaseClient
       .from('chat_members')
       .insert([
-        { chat_id: newChat.id, user_id: state.currentSession.user.id },
+        { chat_id: newChat.id, user_id: myId },
         { chat_id: newChat.id, user_id: userId }
       ]);
-    
+
     if (membersError) {
-      showNotification('Ошибка добавления участников', 'error');
-      return;
+      console.error('Ошибка добавления участников:', membersError);
+      // Удаляем пустой чат
+      await supabaseClient.from('chats').delete().eq('id', newChat.id);
+      throw new Error('Не удалось добавить участников: ' + membersError.message);
     }
-    
-    // 4. Открываем
-    await openConversation(newChat.id);
-    openScreen('messenger');
+
+    console.log('🆕 Чат создан:', newChat.id);
+    return newChat.id;
+
+  } catch (err) {
+    console.error('startConversationWithUser error:', err);
+    showNotification(err.message, 'error');
+    return null;
   }
+}
 
   // ========== ФУНКЦИИ МЕССЕНДЖЕРА ==========
   async function fetchMessengerData() {
@@ -1861,7 +1874,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           return;
         }
 
-        showLoading('Открываем чат...');
+                showLoading('Открываем чат...');
         
         try {
           // 1. Сначала ищем существующий чат
@@ -1883,8 +1896,16 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             .select('id')
             .single();
           
-          if (chatError || !newChat) {
-            throw new Error('Не удалось создать чат');
+          // 🔴 ДЕТАЛЬНАЯ ОШИБКА
+          if (chatError) {
+            console.error('❌ chatError детали:', JSON.stringify(chatError, null, 2));
+            throw new Error('Ошибка создания чата: ' + chatError.message + 
+                           ' (code: ' + (chatError.code || 'нет') + ')');
+          }
+          
+          if (!newChat?.id) {
+            console.error('❌ newChat пустой:', newChat);
+            throw new Error('Чат создан, но ID не получен. Ответ: ' + JSON.stringify(newChat));
           }
           
           // 3. Добавляем участников
@@ -1896,7 +1917,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             ]);
           
           if (membersError) {
-            throw new Error('Не удалось добавить участников');
+            console.error('❌ membersError детали:', JSON.stringify(membersError, null, 2));
+            // Пытаемся удалить пустой чат
+            await supabaseClient.from('chats').delete().eq('id', newChat.id);
+            throw new Error('Ошибка добавления участников: ' + membersError.message);
           }
           
           console.log('💬 Новый чат создан:', newChat.id);
@@ -1906,13 +1930,11 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           await openConversation(newChat.id);
           
         } catch (err) {
-          console.error('❌ Ошибка:', err);
-          showNotification('Ошибка при создании чата: ' + err.message, 'error');
+          console.error('❌ Полная ошибка:', err);
+          showNotification('Ошибка: ' + err.message, 'error');
         } finally {
           hideLoading();
         }
-      });
-    }
 
     if (messengerAttachImageBtn && messengerImageInput) messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
