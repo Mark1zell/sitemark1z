@@ -2612,5 +2612,3 @@ if (pinnedOwnerChatBtn) {
     updatePresence(false);
   });
 })();
-
-})(); // Закрываем основную функцию
