@@ -1994,7 +1994,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       showNotification('Сообщение изменено', 'success');
     });
 
-    // ========== УДАЛЕНИЕ СООБЩЕНИЯ ==========
+       // ========== УДАЛЕНИЕ СООБЩЕНИЯ ==========
     document.addEventListener('click', async function(e) {
       var deleteBtn = e.target.closest('[data-delete-message]');
       if (!deleteBtn) { return; }
@@ -2024,10 +2024,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       await openConversation(state.currentConversationId, true);
       showNotification('Сообщение удалено', 'success');
     });
-
-    initSupportDialogsButton();
-    initSupportDialogsBackButton();
-  }
 
     // ========== CSS STYLING ==========
   var style = document.createElement('style');
