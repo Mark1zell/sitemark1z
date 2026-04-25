@@ -1942,15 +1942,16 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (pinnedOwnerChatBtn) pinnedOwnerChatBtn.addEventListener('click', async () => { if (!state.currentSession) { openScreen('account'); return; } await renderMessengerDialogs(); if (state.supportConversationId) await openConversation(state.supportConversationId); });
     if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
     
-        // ========== РЕДАКТИРОВАНИЕ СООБЩЕНИЯ ==========
+            // ========== РЕДАКТИРОВАНИЕ СООБЩЕНИЯ ==========
     document.addEventListener('click', async function(e) {
       var editBtn = e.target.closest('[data-edit-message]');
       if (!editBtn) return;
       e.stopPropagation();
       
       var messageId = editBtn.getAttribute('data-edit-message');
-      var msg = state.conversationMessages.find(function(m) { return m.id === messageId; });
-      if (!msg) return;
+      var msgList = state.conversationMessages.filter(function(m) { return m.id === messageId; });
+      if (!msgList.length) return;
+      var msg = msgList[0];
       
       var newText = prompt('Редактировать сообщение:', msg.content || '');
       if (newText === null || newText.trim() === String(msg.content || '')) return;
@@ -1959,12 +1960,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         return;
       }
       
-      var error = (await supabaseClient
+      var result = await supabaseClient
         .from('messages')
         .update({ content: newText.trim(), is_edited: true })
-        .eq('id', messageId)).error;
+        .eq('id', messageId);
       
-      if (error) {
+      if (result.error) {
         showNotification('Ошибка редактирования', 'error');
         return;
       }
@@ -1985,12 +1986,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       
       if (!confirm('Удалить это сообщение?')) return;
       
-      var error = (await supabaseClient
+      var result = await supabaseClient
         .from('messages')
         .delete()
-        .eq('id', messageId)).error;
+        .eq('id', messageId);
       
-      if (error) {
+      if (result.error) {
         showNotification('Ошибка удаления', 'error');
         return;
       }
