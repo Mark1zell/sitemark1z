@@ -1146,6 +1146,90 @@
   }
 }
 
+    // ========== ПОИСК СУЩЕСТВУЮЩЕГО ЧАТА 1-на-1 ==========
+async function findExistingConversation(userId) {
+  if (!state.currentSession?.user) return null;
+  const myUserId = state.currentSession.user.id;
+  
+  const { data: myChats } = await supabaseClient
+    .from('chat_members')
+    .select('chat_id')
+    .eq('user_id', myUserId);
+  
+  if (!myChats?.length) return null;
+  
+  const myChatIds = myChats.map(m => m.chat_id);
+  
+  const { data: allMembers } = await supabaseClient
+    .from('chat_members')
+    .select('chat_id, user_id')
+    .in('chat_id', myChatIds);
+  
+  const chatsMap = {};
+  for (const m of allMembers || []) {
+    if (!chatsMap[m.chat_id]) chatsMap[m.chat_id] = new Set();
+    chatsMap[m.chat_id].add(m.user_id);
+  }
+  
+  for (const [chatId, userIds] of Object.entries(chatsMap)) {
+    if (userIds.size === 2 && userIds.has(myUserId) && userIds.has(userId)) {
+      const { data: chat } = await supabaseClient
+        .from('chats')
+        .select('is_group')
+        .eq('id', chatId)
+        .single();
+      if (chat && !chat.is_group) return chatId;
+    }
+  }
+  
+  return null;
+}
+
+    // ========== НАЧАТЬ ЧАТ С ПОЛЬЗОВАТЕЛЕМ ==========
+  async function startConversationWithUser(userId) {
+    if (!state.currentSession?.user) {
+      showNotification('Сначала войдите в аккаунт', 'warning');
+      return;
+    }
+    
+    // 1. Проверяем, есть ли уже чат
+    const existingId = await findExistingConversation(userId);
+    if (existingId) {
+      await openConversation(existingId);
+      openScreen('messenger');
+      return;
+    }
+    
+    // 2. Создаём новый чат
+    const { data: newChat, error: chatError } = await supabaseClient
+      .from('chats')
+      .insert({ is_group: false })
+      .select('id')
+      .single();
+    
+    if (chatError || !newChat) {
+      showNotification('Ошибка создания чата', 'error');
+      return;
+    }
+    
+    // 3. Добавляем обоих участников
+    const { error: membersError } = await supabaseClient
+      .from('chat_members')
+      .insert([
+        { chat_id: newChat.id, user_id: state.currentSession.user.id },
+        { chat_id: newChat.id, user_id: userId }
+      ]);
+    
+    if (membersError) {
+      showNotification('Ошибка добавления участников', 'error');
+      return;
+    }
+    
+    // 4. Открываем
+    await openConversation(newChat.id);
+    openScreen('messenger');
+  }
+
   // ========== ФУНКЦИИ МЕССЕНДЖЕРА ==========
   async function fetchMessengerData() {
     if (!state.currentSession?.user) {
@@ -1286,60 +1370,159 @@
   });
 }
 
-  async function openConversation(conversationId, silent = false) {
-    await fetchMessengerData();
+    // ========== ОТКРЫТЬ ДИАЛОГ ==========
+  async function openConversation(conversationId, isPollingUpdate = false) {
+    if (!conversationId) return;
     state.currentConversationId = conversationId;
-    await fetchMessengerData();
-    const conversation = state.conversations.find(c => String(c.id) === String(conversationId));
-    const peer = getConversationPeer(conversationId);
-    const title = conversation?.is_support ? 'Mark1z Design' : (peer?.username || 'Чат');
-    applyAvatar(messengerTopAvatar, conversation?.is_support ? SUPPORT_CHAT_IDENTITY.avatar_url : peer?.avatar_url, title);
-    if (messengerTopName) messengerTopName.textContent = title;
-    if (messengerTopSub) messengerTopSub.textContent = conversation?.is_support ? 'Официальный чат бренда и бот-помощник' : getVisibleLastSeen(peer);
-    const messages = state.conversationMessages.filter(m => String(m.conversation_id) === String(conversationId));
-    if (messengerMessages) {
-      if (messages.length) {
-        messengerMessages.innerHTML = messages.map(renderConversationMessage).join('');
-        messengerMessages.scrollTop = messengerMessages.scrollHeight;
-      } else {
-        messengerMessages.innerHTML = `<div class="mkz-messenger-empty"><div class="mkz-messenger-empty__box"><div class="mkz-messenger-empty__icon">✉</div><h3 class="mkz-messenger-empty__title">Диалог пуст</h3><p class="mkz-messenger-empty__text">Напишите первое сообщение.</p></div></div>`;
-      }
-    }
-    await markConversationAsRead(conversationId);
-    await fetchMessengerData();
-    if (!silent) await renderMessengerDialogs();
-  }
-
-  async function sendMessengerMessage() {
-    if (!state.currentSession?.user) { openScreen('account'); return; }
-    if (!state.currentConversationId) { showNotification('Сначала выбери чат', 'warning'); return; }
-    const text = messengerInput?.value.trim() || '';
-    const attachment = state.pendingMessengerAttachment;
-    if (!text && !attachment) { showNotification('Напиши сообщение или прикрепи файл', 'warning'); return; }
-    setButtonState(messengerSendBtn, true, 'Отправка...', 'Отправить');
+    
     try {
-      let attachmentPayload = { attachment_url: '', attachment_name: '', attachment_type: '' };
-      if (attachment?.file) attachmentPayload = await uploadMessengerAttachment(attachment.file);
-      let senderMode = 'profile';
-      let user_id = state.currentSession.user.id;
-      if (isSupportConversation(state.currentConversationId)) {
-        if (isOwner()) {
-          if (state.supportSendMode === 'brand') { senderMode = 'support_brand'; user_id = OWNER_UID; }
-          else { senderMode = 'admin_private'; }
-        } else { senderMode = 'user_to_support'; }
+      // --- Загружаем чат ---
+      const { data: chat } = await supabaseClient
+        .from('chats')
+        .select('*')
+        .eq('id', conversationId)
+        .single();
+      
+      // --- Загружаем участников ---
+      const { data: members } = await supabaseClient
+        .from('chat_members')
+        .select('user_id')
+        .eq('chat_id', conversationId);
+      
+      // --- Определяем собеседника (не себя) ---
+      const myUserId = state.currentSession?.user?.id;
+      const otherUserId = members?.find(m => m.user_id !== myUserId)?.user_id;
+      
+      // --- Профиль собеседника ---
+      let otherProfile = null;
+      if (otherUserId) {
+        const { data: profile } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', otherUserId)
+          .single();
+        otherProfile = profile;
+        // Кешируем
+        if (profile && !state.allProfilesCache.find(p => p.id === profile.id)) {
+          state.allProfilesCache.push(profile);
+        }
       }
-      const { error } = await supabaseClient.from('conversation_messages').insert({ conversation_id: state.currentConversationId, user_id: user_id, sender_mode: senderMode, text: text || '', ...attachmentPayload });
-      if (error) throw new Error(error.message || 'Не удалось отправить сообщение');
-      await supabaseClient.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', state.currentConversationId);
-      if (messengerInput) messengerInput.value = '';
-      clearMessengerAttachment();
-      await updateConversationList();
-      await openConversation(state.currentConversationId);
-      showNotification('Сообщение отправлено', 'success');
-    } catch (err) { console.error('sendMessengerMessage error:', err); showNotification(err.message, 'error');
-    } finally { setButtonState(messengerSendBtn, false, 'Отправка...', 'Отправить'); }
+      
+      // --- Обновляем хедер ---
+      if (messengerTopName) {
+        if (chat?.is_group) {
+          messengerTopName.textContent = chat.name || 'Группа';
+        } else if (otherProfile?.username) {
+          messengerTopName.textContent = otherProfile.username;
+        } else if (otherUserId === 'support_mark1z_design') {
+          messengerTopName.textContent = 'Mark1z Design';
+        } else {
+          messengerTopName.textContent = 'Пользователь';
+        }
+      }
+      
+      // Аватарка
+      if (messengerTopAvatar) {
+        if (chat?.is_group) {
+          applyAvatar(messengerTopAvatar, chat.avatar_url || '', chat.name || 'Г');
+        } else if (otherProfile) {
+          applyAvatar(messengerTopAvatar, otherProfile.avatar_url || '', otherProfile.username || 'П');
+        } else if (otherUserId === 'support_mark1z_design') {
+          applyAvatar(messengerTopAvatar, '', 'Mark1z Design');
+        } else {
+          applyAvatar(messengerTopAvatar, '', 'П');
+        }
+      }
+      
+      // Подзаголовок (статус)
+      if (messengerTopSub) {
+        if (otherUserId === 'support_mark1z_design' || otherProfile?.is_virtual_support) {
+          messengerTopSub.textContent = 'Официальный чат';
+        } else if (chat?.is_group) {
+          messengerTopSub.textContent = `${members?.length || 0} участников`;
+        } else {
+          messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
+        }
+      }
+      
+      // --- Загружаем сообщения ---
+      const { data: messages, error: msgError } = await supabaseClient
+        .from('messages')
+        .select('*')
+        .eq('chat_id', conversationId)
+        .order('created_at', { ascending: true });
+      
+      if (msgError) {
+        console.error('Ошибка загрузки сообщений:', msgError);
+        return;
+      }
+      
+      state.conversationMessages = messages || [];
+      
+      // --- РЕНДЕР СООБЩЕНИЙ ---
+      if (messengerMessages) {
+        if (!state.conversationMessages.length) {
+          messengerMessages.innerHTML = `
+            <div class="mkz-messenger-empty">
+              <div class="mkz-messenger-empty__icon">💬</div>
+              <p>Сообщений пока нет</p>
+              <small>Напишите первое сообщение</small>
+            </div>`;
+        } else {
+          messengerMessages.innerHTML = state.conversationMessages.map(msg => {
+            const isMine = msg.sender_id === myUserId;
+            const author = getMessageAuthorIdentity(msg);
+            const content = nl2brSafe(msg.content || '');
+            const time = formatDateTime(msg.created_at);
+            const edited = msg.is_edited ? ' <span style="opacity:0.6;font-size:0.75em;">(изм.)</span>' : '';
+            
+            let attachmentHtml = '';
+            if (msg.file_url || msg.attachment_url) {
+              const url = msg.file_url || msg.attachment_url;
+              const name = msg.attachment_name || 'Вложение';
+              if (msg.type === 'image' || (url && url.match(/\.(jpg|jpeg|png|gif|webp)/i))) {
+                attachmentHtml = `<div class="mkz-message__image"><img src="${safeUrl(url)}" alt="${safeText(name)}" style="max-width:240px;border-radius:12px;cursor:pointer;" data-zoom-image="${safeUrl(url)}" data-zoom-title="${safeText(name)}"></div>`;
+              } else {
+                attachmentHtml = `<div class="mkz-message__file"><a href="${safeUrl(url)}" target="_blank" style="color:inherit;">📎 ${safeText(name)}</a></div>`;
+              }
+            }
+            
+            return `
+              <div class="mkz-message ${isMine ? 'mkz-message--mine' : ''}" data-message-id="${msg.id}">
+                ${!isMine ? `<div class="mkz-message__author-name">${safeText(author?.username || 'Пользователь')}</div>` : ''}
+                <div class="mkz-message__bubble">
+                  <div class="mkz-message__content">${content}</div>
+                  ${attachmentHtml}
+                  <div class="mkz-message__meta">
+                    <span class="mkz-message__time">${time}${edited}</span>
+                    ${isMine ? `
+                      <span class="mkz-message__actions">
+                        <button type="button" class="mkz-msg-btn mkz-msg-btn--edit" data-edit-message="${msg.id}" title="Редактировать">✏️</button>
+                        <button type="button" class="mkz-msg-btn mkz-msg-btn--delete" data-delete-message="${msg.id}" title="Удалить">🗑️</button>
+                      </span>
+                    ` : ''}
+                  </div>
+                </div>
+              </div>`;
+          }).join('');
+        }
+      }
+      
+      // Скролл вниз
+      if (messengerMessages) {
+        messengerMessages.scrollTop = messengerMessages.scrollHeight;
+      }
+      
+      // Прячем empty state
+      if (messengerEmptyState) {
+        messengerEmptyState.style.display = 'none';
+      }
+      
+    } catch (err) {
+      console.error('openConversation error:', err);
+    }
   }
-
+  
   function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
   function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
   function getUnreadCount(conversationId) { if (!state.currentSession?.user) return 0; const member = state.conversationMembers.find(m => m.conversation_id === conversationId && m.user_id === state.currentSession.user.id); const lastReadAt = member?.last_read_at ? new Date(member.last_read_at).getTime() : 0; return state.conversationMessages.filter(msg => { if (msg.user_id === state.currentSession.user.id) return false; return msg.conversation_id === conversationId && new Date(msg.created_at).getTime() > lastReadAt; }).length; }
@@ -1539,7 +1722,9 @@
     if (peopleSearchInput) peopleSearchInput.addEventListener('input', debounce(async (e) => { await searchPeople(e.target.value); }, 300));
     if (backToPeopleBtn) backToPeopleBtn.addEventListener('click', () => openScreen('people'));
     if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
-        if (openProfileMessengerBtn) {
+
+    // ========== КНОПКА «НАПИСАТЬ» ИЗ ПРОФИЛЯ (ФИКС 2 В 1: нет дублей + проверки) ==========
+    if (openProfileMessengerBtn) {
       // Убираем старые обработчики
       const newBtn = openProfileMessengerBtn.cloneNode(true);
       openProfileMessengerBtn.parentNode.replaceChild(newBtn, openProfileMessengerBtn);
@@ -1573,20 +1758,50 @@
           return;
         }
 
-        showLoading('Создание чата...');
+        showLoading('Открываем чат...');
         
         try {
-          const conversationId = await findOrCreateDirectConversation(targetUserId);
-          console.log('💬 conversationId:', conversationId);
+          // 1. Сначала ищем существующий чат
+          const existingId = await findExistingConversation(targetUserId);
           
-          if (!conversationId) {
-            showNotification('Не удалось открыть чат', 'error');
+          if (existingId) {
+            console.log('✅ Найден существующий чат:', existingId);
+            openScreen('messenger');
+            await renderMessengerDialogs();
+            await openConversation(existingId);
             return;
           }
-
+          
+          // 2. Если не нашли — создаём новый
+          console.log('🆕 Создаём новый чат');
+          const { data: newChat, error: chatError } = await supabaseClient
+            .from('chats')
+            .insert({ is_group: false })
+            .select('id')
+            .single();
+          
+          if (chatError || !newChat) {
+            throw new Error('Не удалось создать чат');
+          }
+          
+          // 3. Добавляем участников
+          const { error: membersError } = await supabaseClient
+            .from('chat_members')
+            .insert([
+              { chat_id: newChat.id, user_id: myId },
+              { chat_id: newChat.id, user_id: targetUserId }
+            ]);
+          
+          if (membersError) {
+            throw new Error('Не удалось добавить участников');
+          }
+          
+          console.log('💬 Новый чат создан:', newChat.id);
+          
           openScreen('messenger');
           await renderMessengerDialogs();
-          await openConversation(conversationId);
+          await openConversation(newChat.id);
+          
         } catch (err) {
           console.error('❌ Ошибка:', err);
           showNotification('Ошибка при создании чата: ' + err.message, 'error');
@@ -1595,11 +1810,71 @@
         }
       });
     }
+
     if (messengerAttachImageBtn && messengerImageInput) messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
     if (messengerForm) messengerForm.addEventListener('submit', async e => { e.preventDefault(); await sendMessengerMessage(); });
     if (pinnedOwnerChatBtn) pinnedOwnerChatBtn.addEventListener('click', async () => { if (!state.currentSession) { openScreen('account'); return; } await renderMessengerDialogs(); if (state.supportConversationId) await openConversation(state.supportConversationId); });
     if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
+    
+    // ========== РЕДАКТИРОВАНИЕ СООБЩЕНИЯ ✏️ ==========
+    document.addEventListener('click', async (e) => {
+      const editBtn = e.target.closest('[data-edit-message]');
+      if (!editBtn) return;
+      e.stopPropagation();
+      
+      const messageId = editBtn.dataset.editMessage;
+      const msg = state.conversationMessages.find(m => m.id === messageId);
+      if (!msg) return;
+      
+      const newText = prompt('Редактировать сообщение:', msg.content || '');
+      if (newText === null || newText.trim() === String(msg.content || '')) return;
+      if (!newText.trim()) {
+        showNotification('Сообщение не может быть пустым', 'warning');
+        return;
+      }
+      
+      const { error } = await supabaseClient
+        .from('messages')
+        .update({ content: newText.trim(), is_edited: true })
+        .eq('id', messageId);
+      
+      if (error) {
+        showNotification('Ошибка редактирования: ' + error.message, 'error');
+        return;
+      }
+      
+      msg.content = newText.trim();
+      msg.is_edited = true;
+      await openConversation(state.currentConversationId, true);
+      showNotification('Сообщение изменено', 'success');
+    });
+    
+    // ========== УДАЛЕНИЕ СООБЩЕНИЯ 🗑️ ==========
+    document.addEventListener('click', async (e) => {
+      const deleteBtn = e.target.closest('[data-delete-message]');
+      if (!deleteBtn) return;
+      e.stopPropagation();
+      
+      const messageId = deleteBtn.dataset.deleteMessage;
+      
+      if (!confirm('Удалить это сообщение?')) return;
+      
+      const { error } = await supabaseClient
+        .from('messages')
+        .delete()
+        .eq('id', messageId);
+      
+      if (error) {
+        showNotification('Ошибка удаления: ' + error.message, 'error');
+        return;
+      }
+      
+      state.conversationMessages = state.conversationMessages.filter(m => m.id !== messageId);
+      await openConversation(state.currentConversationId, true);
+      showNotification('Сообщение удалено', 'success');
+    });
+
     initSupportDialogsButton();
     initSupportDialogsBackButton();
   }
@@ -1649,6 +1924,65 @@
     });
     document.addEventListener('visibilitychange', async () => { await updatePresence(!document.hidden); });
     window.addEventListener('beforeunload', () => { updatePresence(false); });
+      // ========== РЕДАКТИРОВАНИЕ СООБЩЕНИЯ ==========
+  document.addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('[data-edit-message]');
+    if (!editBtn) return;
+    e.stopPropagation();
+    
+    const messageId = editBtn.dataset.editMessage;
+    const msg = state.conversationMessages.find(m => m.id === messageId);
+    if (!msg) return;
+    
+    const newText = prompt('Редактировать сообщение:', msg.content || '');
+    if (newText === null || newText.trim() === String(msg.content || '')) return;
+    if (!newText.trim()) {
+      showNotification('Сообщение не может быть пустым', 'warning');
+      return;
+    }
+    
+    const { error } = await supabaseClient
+      .from('messages')
+      .update({ content: newText.trim(), is_edited: true })
+      .eq('id', messageId);
+    
+    if (error) {
+      showNotification('Ошибка редактирования: ' + error.message, 'error');
+      return;
+    }
+    
+    // Обновляем локально
+    msg.content = newText.trim();
+    msg.is_edited = true;
+    await openConversation(state.currentConversationId, true);
+    showNotification('Сообщение изменено', 'success');
+  });
+  
+  // ========== УДАЛЕНИЕ СООБЩЕНИЯ ==========
+  document.addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('[data-delete-message]');
+    if (!deleteBtn) return;
+    e.stopPropagation();
+    
+    const messageId = deleteBtn.dataset.deleteMessage;
+    
+    if (!confirm('Удалить это сообщение?')) return;
+    
+    const { error } = await supabaseClient
+      .from('messages')
+      .delete()
+      .eq('id', messageId);
+    
+    if (error) {
+      showNotification('Ошибка удаления: ' + error.message, 'error');
+      return;
+    }
+    
+    // Удаляем локально
+    state.conversationMessages = state.conversationMessages.filter(m => m.id !== messageId);
+    await openConversation(state.currentConversationId, true);
+    showNotification('Сообщение удалено', 'success');
+  });
   })();
 
 })();
