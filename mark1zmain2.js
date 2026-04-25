@@ -493,7 +493,7 @@
     conversations: [], conversationMembers: [], conversationMessages: [], currentConversationId: null, supportConversationId: null,
     userLikedPosts: new Set(), newsLikesMap: {}, newsCommentsMap: {},
     profileSyncInProgress: false, isPinnedDraft: false,
-    pendingMessengerAttachment: null,  supportSendMode: 'brand', messengerPollingTimer: null, messagesChannel: null, isSubscribed: false, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
+    pendingMessengerAttachment: null,  supportSendMode: 'brand', messengerPollingTimer: null, messagesChannel: null, messagesPolling: null, isSubscribed: false, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
     mediaRecorder: null, mediaChunks: [], voiceStream: null
   };
 
@@ -729,6 +729,12 @@
 
   async function handleLogout() {
     stopPresenceHeartbeat();
+
+      // Останавливаем polling при выходе
+  if (state.messagesPolling) {
+    clearInterval(state.messagesPolling);
+    state.messagesPolling = null;
+  }
       
   if (state.messagesChannel) {
     try {
@@ -1402,6 +1408,53 @@ async function openPublicProfile(userId) {
     }
   }
 
+  async function startPollingMessages() {
+  if (state.messagesPolling) return;
+  
+  console.log('🔄 Запуск polling (проверка каждые 3 секунды)');
+  
+  state.messagesPolling = setInterval(async () => {
+    if (!state.currentSession?.user) return;
+    if (!state.conversations.length) return;
+    
+    const lastMessageTime = state.conversationMessages.length > 0 
+      ? state.conversationMessages[state.conversationMessages.length - 1]?.created_at 
+      : new Date(0).toISOString();
+    
+    const { data: newMessages, error } = await supabaseClient
+      .from('conversation_messages')
+      .select('*')
+      .gt('created_at', lastMessageTime)
+      .in('conversation_id', state.conversations.map(c => c.id));
+    
+    if (error) {
+      console.error('Polling error:', error);
+      return;
+    }
+    
+    if (newMessages && newMessages.length > 0) {
+      console.log('📨 Найдено новых сообщений (polling):', newMessages.length);
+      
+      state.conversationMessages = [...state.conversationMessages, ...newMessages];
+      
+      await renderMessengerDialogs();
+      
+      if (state.currentConversationId) {
+        await openConversation(state.currentConversationId, true);
+      }
+      
+      newMessages.forEach(msg => {
+        if (msg.user_id !== state.currentSession?.user?.id && Notification.permission === 'granted') {
+          const sender = getProfileByUserId(msg.user_id);
+          new Notification(`Новое сообщение от ${sender?.username || 'Пользователь'}`, {
+            body: msg.text || msg.attachment_name || 'Новое сообщение'
+          });
+        }
+      });
+    }
+  }, 3000);
+}
+
       async function subscribeToMessages() {
   // Если уже подписаны - выходим
   if (state.isSubscribed) {
@@ -1470,6 +1523,8 @@ async function openPublicProfile(userId) {
     await updateConversationList();
     if (!state.isSubscribed) {
     await subscribeToMessages();
+    if (!state.messagesPolling) {
+    startPollingMessages();
   }
     
     const supportConv = state.conversations.find(c => String(c.id) === String(state.supportConversationId));
@@ -1585,6 +1640,8 @@ async function openPublicProfile(userId) {
   }
 
   async function openConversation(conversationId, silent = false) {
+      // Принудительно обновляем сообщения при открытии чата
+    await fetchMessengerData();
     state.currentConversationId = conversationId;
     await fetchMessengerData();
     
