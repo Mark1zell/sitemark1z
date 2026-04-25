@@ -2000,8 +2000,9 @@ document.addEventListener('click', async (e) => {
   showNotification('Сообщение удалено', 'success');
 }); // ← ЗДЕСЬ ЗАКРЫТИЕ ВТОРОГО ОБРАБОТЧИКА
 
-initSupportDialogsButton();
-initSupportDialogsBackButton();
+    initSupportDialogsButton();
+    initSupportDialogsBackButton();
+  }
 
   // ========== CSS СТИЛИ ==========
   const style = document.createElement('style');
