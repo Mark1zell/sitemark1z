@@ -1942,67 +1942,66 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (pinnedOwnerChatBtn) pinnedOwnerChatBtn.addEventListener('click', async () => { if (!state.currentSession) { openScreen('account'); return; } await renderMessengerDialogs(); if (state.supportConversationId) await openConversation(state.supportConversationId); });
     if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
     
-    // ========== РЕДАКТИРОВАНИЕ СООБЩЕНИЯ ✏️ ==========
-    document.addEventListener('click', async (e) => {
-      const editBtn = e.target.closest('[data-edit-message]');
-      if (!editBtn) return;
-      e.stopPropagation();
-      
-      const messageId = editBtn.dataset.editMessage;
-      const msg = state.conversationMessages.find(m => m.id === messageId);
-      if (!msg) return;
-      
-      const newText = prompt('Редактировать сообщение:', msg.content || '');
-      if (newText === null || newText.trim() === String(msg.content || '')) return;
-      if (!newText.trim()) {
-        showNotification('Сообщение не может быть пустым', 'warning');
-        return;
-      }
-      
-      const { error } = await supabaseClient
-        .from('messages')
-        .update({ content: newText.trim(), is_edited: true })
-        .eq('id', messageId);
-      
-      if (error) {
-        showNotification('Ошибка редактирования: ' + error.message, 'error');
-        return;
-      }
-      
-      msg.content = newText.trim();
-      msg.is_edited = true;
-      await openConversation(state.currentConversationId, true);
-      showNotification('Сообщение изменено', 'success');
-    });
-    
-    // ========== УДАЛЕНИЕ СООБЩЕНИЯ 🗑️ ==========
-    document.addEventListener('click', async (e) => {
-      const deleteBtn = e.target.closest('[data-delete-message]');
-      if (!deleteBtn) return;
-      e.stopPropagation();
-      
-      const messageId = deleteBtn.dataset.deleteMessage;
-      
-      if (!confirm('Удалить это сообщение?')) return;
-      
-      const { error } = await supabaseClient
-        .from('messages')
-        .delete()
-        .eq('id', messageId);
-      
-      if (error) {
-        showNotification('Ошибка удаления: ' + error.message, 'error');
-        return;
-      }
-      
-      state.conversationMessages = state.conversationMessages.filter(m => m.id !== messageId);
-      await openConversation(state.currentConversationId, true);
-      showNotification('Сообщение удалено', 'success');
-    });
-
-    initSupportDialogsButton();
-    initSupportDialogsBackButton();
+    // ========== РЕДАКТИРОВАНИЕ СООБЩЕНИЯ ==========
+document.addEventListener('click', async (e) => {
+  const editBtn = e.target.closest('[data-edit-message]');
+  if (!editBtn) return;
+  e.stopPropagation();
+  
+  const messageId = editBtn.dataset.editMessage;
+  const msg = state.conversationMessages.find(m => m.id === messageId);
+  if (!msg) return;
+  
+  const newText = prompt('Редактировать сообщение:', msg.content || '');
+  if (newText === null || newText.trim() === String(msg.content || '')) return;
+  if (!newText.trim()) {
+    showNotification('Сообщение не может быть пустым', 'warning');
+    return;
   }
+  
+  const { error } = await supabaseClient
+    .from('messages')
+    .update({ content: newText.trim(), is_edited: true })
+    .eq('id', messageId);
+  
+  if (error) {
+    showNotification('Ошибка редактирования: ' + error.message, 'error');
+    return;
+  }
+  
+  msg.content = newText.trim();
+  msg.is_edited = true;
+  await openConversation(state.currentConversationId, true);
+  showNotification('Сообщение изменено', 'success');
+}); // ← ЗДЕСЬ ЗАКРЫТИЕ ПЕРВОГО ОБРАБОТЧИКА
+
+// ========== УДАЛЕНИЕ СООБЩЕНИЯ ==========
+document.addEventListener('click', async (e) => {
+  const deleteBtn = e.target.closest('[data-delete-message]');
+  if (!deleteBtn) return;
+  e.stopPropagation();
+  
+  const messageId = deleteBtn.dataset.deleteMessage;
+  
+  if (!confirm('Удалить это сообщение?')) return;
+  
+  const { error } = await supabaseClient
+    .from('messages')
+    .delete()
+    .eq('id', messageId);
+  
+  if (error) {
+    showNotification('Ошибка удаления: ' + error.message, 'error');
+    return;
+  }
+  
+  state.conversationMessages = state.conversationMessages.filter(m => m.id !== messageId);
+  await openConversation(state.currentConversationId, true);
+  showNotification('Сообщение удалено', 'success');
+}); // ← ЗДЕСЬ ЗАКРЫТИЕ ВТОРОГО ОБРАБОТЧИКА
+
+initSupportDialogsButton();
+initSupportDialogsBackButton();
 
   // ========== CSS СТИЛИ ==========
   const style = document.createElement('style');
