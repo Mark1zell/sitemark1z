@@ -2104,6 +2104,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     state.conversationMessages = state.conversationMessages.filter(m => m.id !== messageId);
     await openConversation(state.currentConversationId, true);
     showNotification('Сообщение удалено', 'success');
-   });
+   })();
 
+})();
 })();
