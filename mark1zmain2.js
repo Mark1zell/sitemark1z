@@ -1942,19 +1942,37 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (pinnedOwnerChatBtn) pinnedOwnerChatBtn.addEventListener('click', async () => { if (!state.currentSession) { openScreen('account'); return; } await renderMessengerDialogs(); if (state.supportConversationId) await openConversation(state.supportConversationId); });
     if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
     
-            // ========== РЕДАКТИРОВАНИЕ СООБЩЕНИЯ ==========
+                // ========== ОТПРАВКА ПО ENTER ==========
+    if (messengerInput) {
+      messengerInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          var form = document.getElementById('mkzMessengerForm');
+          if (form) {
+            form.dispatchEvent(new Event('submit'));
+          }
+        }
+      });
+    }
+
+    // ========== РЕДАКТИРОВАНИЕ СООБЩЕНИЯ ==========
     document.addEventListener('click', async function(e) {
       var editBtn = e.target.closest('[data-edit-message]');
-      if (!editBtn) return;
+      if (!editBtn) { return; }
       e.stopPropagation();
       
       var messageId = editBtn.getAttribute('data-edit-message');
-      var msgList = state.conversationMessages.filter(function(m) { return m.id === messageId; });
-      if (!msgList.length) return;
-      var msg = msgList[0];
+      var msg = null;
+      for (var i = 0; i < state.conversationMessages.length; i++) {
+        if (state.conversationMessages[i].id === messageId) {
+          msg = state.conversationMessages[i];
+          break;
+        }
+      }
+      if (!msg) { return; }
       
       var newText = prompt('Редактировать сообщение:', msg.content || '');
-      if (newText === null || newText.trim() === String(msg.content || '')) return;
+      if (newText === null || newText.trim() === String(msg.content || '')) { return; }
       if (!newText.trim()) {
         showNotification('Сообщение не может быть пустым', 'warning');
         return;
@@ -1979,12 +1997,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     // ========== УДАЛЕНИЕ СООБЩЕНИЯ ==========
     document.addEventListener('click', async function(e) {
       var deleteBtn = e.target.closest('[data-delete-message]');
-      if (!deleteBtn) return;
+      if (!deleteBtn) { return; }
       e.stopPropagation();
       
       var messageId = deleteBtn.getAttribute('data-delete-message');
       
-      if (!confirm('Удалить это сообщение?')) return;
+      if (!confirm('Удалить это сообщение?')) { return; }
       
       var result = await supabaseClient
         .from('messages')
@@ -1996,7 +2014,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         return;
       }
       
-      state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== messageId; });
+      var newMessages = [];
+      for (var i = 0; i < state.conversationMessages.length; i++) {
+        if (state.conversationMessages[i].id !== messageId) {
+          newMessages.push(state.conversationMessages[i]);
+        }
+      }
+      state.conversationMessages = newMessages;
       await openConversation(state.currentConversationId, true);
       showNotification('Сообщение удалено', 'success');
     });
