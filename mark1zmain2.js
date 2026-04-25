@@ -2055,6 +2055,16 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     .mkz-loading-spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: mkz-spin 0.8s linear infinite; }
     @keyframes mkz-spin { to { transform: rotate(360deg); } }
     .mkz-loading-message { color: #fff; margin-top: 20px; font-size: 14px; }
+    .mkz-message__actions { display: none; gap: 4px; margin-left: 8px; }
+    .mkz-message__bubble:hover .mkz-message__actions { display: inline-flex; }
+    .mkz-message--mine .mkz-message__actions { display: inline-flex; }
+    .mkz-msg-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 6px; opacity: 0.7; transition: all 0.15s; }
+    .mkz-msg-btn:hover { opacity: 1; background: rgba(255,255,255,0.15); }
+    .mkz-msg-btn--delete:hover { color: #ff4d4d; }
+    .mkz-msg-btn--edit:hover { color: #ffb800; }
+    .mkz-message__author-name { font-size: 0.75em; font-weight: 600; margin-bottom: 2px; opacity: 0.8; padding-left: 4px; }
+    .mkz-message__meta { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 4px; }
+    .mkz-message__time { font-size: 0.7em; opacity: 0.5; }
   `;
   document.head.appendChild(style);
 
