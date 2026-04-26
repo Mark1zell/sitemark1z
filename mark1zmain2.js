@@ -1683,6 +1683,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         };
         input.click();
       };
+    }
     
     // Рендер сообщений
     var msgContainer = document.getElementById('mkzMessengerMessages');
