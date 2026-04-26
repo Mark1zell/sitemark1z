@@ -1537,9 +1537,14 @@ async function renderMessengerDialogs() {
 async function openConversation(conversationId, isPollingUpdate = false) {
   if (!conversationId) return;
   state.currentConversationId = conversationId;
+  
   state.conversationMessages = [];
   if (messengerMessages) messengerMessages.innerHTML = '';
-  
+    // Если это polling и сообщений столько же — пропускаем рендер
+  if (isPollingUpdate) {
+    var oldCount = (document.getElementById('mkzMessengerMessages')?.children?.length) || 0;
+    if (oldCount === state.conversationMessages.length) return;
+  }
   try {
     // Загружаем сообщения
     const { data: messages, error: msgError } = await supabaseClient
