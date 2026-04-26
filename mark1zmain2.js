@@ -544,7 +544,7 @@
     } catch (e) { console.error('touchCurrentProfileActivity error:', e); }
   }
 
-  async function fetchSessionAndProfile(baseData) {
+    async function fetchSessionAndProfile(baseData) {
     try {
       const { data: sessionData, error } = await supabaseClient.auth.getSession();
       if (error) { state.currentSession = null; state.currentProfile = null; if (typeof renderProfile === 'function') renderProfile(); return; }
@@ -553,7 +553,7 @@
       state.currentProfile = await ensureProfileForCurrentUser(baseData);
       if (typeof renderProfile === 'function') renderProfile();
       await touchCurrentProfileActivity();
-     console.error('fetchSessionAndProfile error:', err); if (typeof renderProfile === 'function') renderProfile(); }
+    } catch (err) { console.error('fetchSessionAndProfile error:', err); if (typeof renderProfile === 'function') renderProfile(); }
   }
 
   async function cacheProfiles() {
