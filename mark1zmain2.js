@@ -1647,13 +1647,19 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (otherUserId && otherUserId !== 'support_mark1z_design') {
       profileBtn.onclick = function() { openPublicProfile(otherUserId); };
       deleteChatBtn.onclick = async function() {
-        if (!confirm('Удалить этот чат?')) return;
-        await supabaseClient.from('chat_members').delete().eq('chat_id', conversationId).eq('user_id', state.currentSession.user.id);
-        state.currentConversationId = null;
-        if (messengerMessages) messengerMessages.innerHTML = '';
-        await renderMessengerDialogs();
-        showNotification('Чат удалён', 'success');
-      };
+  if (!confirm('Удалить этот чат?')) return;
+  await supabaseClient.from('chat_members').delete().eq('chat_id', conversationId).eq('user_id', state.currentSession.user.id);
+  state.currentConversationId = null;
+  if (messengerMessages) messengerMessages.innerHTML = '';
+  showNotification('Чат удалён', 'success');
+  // Принудительно перезагружаем список
+  setTimeout(async function() {
+    await renderMessengerDialogs();
+    // Обновляем счётчик
+    var badge = document.getElementById('mkzUnreadBadge');
+    if (badge) { badge.textContent = ''; badge.style.display = 'none'; }
+  }, 500);
+};
     } else {
       profileBtn.style.display = 'none';
       deleteChatBtn.style.display = 'none';
