@@ -1537,14 +1537,21 @@ async function renderMessengerDialogs() {
 async function openConversation(conversationId, isPollingUpdate = false) {
   if (!conversationId) return;
   state.currentConversationId = conversationId;
-  
+    // Сброс счётчика для текущего чата
+  var badge = document.getElementById('mkzUnreadBadge');
+  if (badge) {
+    var currentCount = parseInt(badge.textContent) || 0;
+    if (currentCount > 0) {
+      currentCount = currentCount - 1;
+      badge.textContent = currentCount > 0 ? currentCount : '';
+      badge.style.display = currentCount > 0 ? 'inline-block' : 'none';
+    }
+  }
   state.conversationMessages = [];
   if (messengerMessages) messengerMessages.innerHTML = '';
     // Если это polling и сообщений столько же — пропускаем рендер
-  if (isPollingUpdate) {
-    var oldCount = (document.getElementById('mkzMessengerMessages')?.children?.length) || 0;
-    if (oldCount === state.conversationMessages.length) return;
-  }
+    if (isPollingUpdate && state._lastMessageCount === state.conversationMessages.length) return;
+  state._lastMessageCount = state.conversationMessages.length;
   try {
     // Загружаем сообщения
     const { data: messages, error: msgError } = await supabaseClient
