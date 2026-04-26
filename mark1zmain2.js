@@ -1301,7 +1301,7 @@ async function findExistingConversation(userId) {
       }
     }
       const supportConversation = state.conversations.find(c => c.is_support === true);
-      state.supportConversationId = supportConversation?.id || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
+      state.supportConversationId = 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
     } catch (err) { console.error('fetchMessengerData error:', err); }
   }
 
