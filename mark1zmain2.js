@@ -477,7 +477,7 @@
     mediaRecorder: null, mediaChunks: [], voiceStream: null
   };
 
-    // ========== DEV-КОНСОЛЬ ДЛЯ ОТЛАДКИ ==========
+  // ========== DEV-КОНСОЛЬ ДЛЯ ОТЛАДКИ ==========
   window.mkz = {
     state: state,
     chat: function() { return state.currentConversationId; },
@@ -489,14 +489,6 @@
     profile: function() { return state.currentProfile; },
     session: function() { return state.currentSession; },
   };
-
-  mkz.chat()       // ID текущего чата
-  mkz.support()    // открыть чат поддержки
-  mkz.dialogs()    // обновить список диалогов
-  mkz.messages()   // показать сообщения
-  mkz.cache()      // обновить кеш профилей
-  mkz.profile()    // текущий профиль
-  mkz.session()    // сессия
 
   // ========== ФУНКЦИИ РАБОТЫ С ПРОФИЛЕМ ==========
   async function readProfileByUserId(userId) {
