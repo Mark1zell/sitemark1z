@@ -1592,7 +1592,16 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
   } else if (otherProfile) {
     if (messengerTopName) messengerTopName.textContent = otherProfile.username || 'Пользователь';
-    if (messengerTopSub) messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
+    if (messengerTopSub) {
+  var statusText = getVisibleLastSeen(otherProfile);
+  var dotColor = '#64748b';
+  if (otherProfile.is_online) {
+    dotColor = '#22c55e';
+  } else if (statusText.indexOf('только что') >= 0 || statusText.indexOf('мин.') >= 0) {
+    dotColor = '#f97316';
+  }
+  messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:6px;"></span>' + statusText;
+}
     if (messengerTopAvatar) {
       if (otherProfile.avatar_url) {
         messengerTopAvatar.style.backgroundImage = "url('" + otherProfile.avatar_url + "')";
