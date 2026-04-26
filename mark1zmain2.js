@@ -1532,11 +1532,20 @@ async function renderMessengerDialogs() {
   }
 }
 
-    // ========== ОТКРЫТЬ ДИАЛОГ (МИНИМАЛЬНАЯ) ==========
+    // ========== ОТКРЫТЬ ДИАЛОГ ==========
 async function openConversation(conversationId, isPollingUpdate = false) {
   if (!conversationId) return;
   state.currentConversationId = conversationId;
-    // Сброс счётчика для текущего чата
+
+  // Обновляем выделение в списке диалогов
+  var allDialogs = document.querySelectorAll('.mkz-dialog');
+  for (var d = 0; d < allDialogs.length; d++) {
+    allDialogs[d].classList.remove('mkz-dialog--active');
+  }
+  var activeDialog = document.querySelector('[data-open-chat="' + conversationId + '"]');
+  if (activeDialog) activeDialog.classList.add('mkz-dialog--active');
+
+  // Сброс счётчика
   var badge = document.getElementById('mkzUnreadBadge');
   if (badge) {
     var currentCount = parseInt(badge.textContent) || 0;
@@ -1546,11 +1555,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       badge.style.display = currentCount > 0 ? 'inline-block' : 'none';
     }
   }
-  state.conversationMessages = [];
-  if (messengerMessages) messengerMessages.innerHTML = '';
-    // Если это polling и сообщений столько же — пропускаем рендер
-    if (isPollingUpdate && state._lastMessageCount === state.conversationMessages.length) return;
-  state._lastMessageCount = state.conversationMessages.length;
+
+  // Пропускаем рендер если нет новых сообщений при polling
+  if (isPollingUpdate && state._lastMessageCount === state.conversationMessages.length) return;
+  
   try {
     // Загружаем сообщения
     const { data: messages, error: msgError } = await supabaseClient
@@ -1559,163 +1567,11 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       .eq('chat_id', conversationId)
       .order('created_at', { ascending: true });
     
-    if (msgError) {
-      console.error('Ошибка загрузки сообщений:', msgError);
-      return;
-    }
+    if (msgError) { console.error('Ошибка загрузки сообщений:', msgError); return; }
     
     state.conversationMessages = messages || [];
+    state._lastMessageCount = state.conversationMessages.length;
     
-    // Загружаем чат
-    const { data: chat } = await supabaseClient
-      .from('chats')
-      .select('*')
-      .eq('id', conversationId)
-      .single();
-    
-    // Загружаем участников
-    const { data: members } = await supabaseClient
-      .from('chat_members')
-      .select('user_id')
-      .eq('chat_id', conversationId);
-    
-    const myId = state.currentSession?.user?.id;
-    const otherUserId = members?.find(m => m.user_id !== myId)?.user_id;
-    
-    // Профиль собеседника
-    let otherProfile = null;
-    if (otherUserId && otherUserId !== 'support_mark1z_design') {
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('id, username, avatar_url, is_online, last_seen_at, show_last_seen')
-        .eq('id', otherUserId)
-        .single();
-      otherProfile = profile;
-    }
-    
-            // Обновляем хедер
-        if (messengerTopName) {
-      if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
-        messengerTopName.textContent = 'Mark1z Design';
-      } else if (otherProfile?.username) {
-        messengerTopName.textContent = otherProfile.username;
-      } else {
-        messengerTopName.textContent = 'Пользователь';
-      }
-    }
-    
-    if (messengerTopAvatar) {
-      if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
-        var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
-        if (brandAvatar) {
-          messengerTopAvatar.style.backgroundImage = "url('" + brandAvatar + "')";
-          messengerTopAvatar.style.backgroundSize = 'cover';
-          messengerTopAvatar.style.backgroundPosition = 'center';
-          messengerTopAvatar.textContent = '';
-        } else {
-          messengerTopAvatar.style.background = 'linear-gradient(135deg, #ff2fae, #7a3cff)';
-          messengerTopAvatar.textContent = 'M';
-        }
-      } else {
-        var avUrl = otherProfile?.avatar_url || '';
-        var avName = otherProfile?.username || 'П';
-        if (avUrl) {
-          messengerTopAvatar.style.backgroundImage = "url('" + avUrl + "')";
-          messengerTopAvatar.style.backgroundSize = 'cover';
-          messengerTopAvatar.style.backgroundPosition = 'center';
-          messengerTopAvatar.textContent = '';
-        } else {
-          messengerTopAvatar.style.background = 'linear-gradient(135deg, #ff2fae, #7a3cff)';
-          messengerTopAvatar.textContent = getInitial(avName, 'П');
-        }
-      }
-    }
-    
-    if (messengerTopSub) {
-      if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
-        messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;"></span>Чат для заказов и техподдержка';
-      } else {
-        messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
-      }
-    }
-
-            // Кнопки профиля и удаления чата
-    setTimeout(function() {
-      // Кнопка профиля
-      var profileBtn = document.getElementById('mkzMessengerProfileBtn');
-      if (!profileBtn) {
-        profileBtn = document.createElement('button');
-        profileBtn.id = 'mkzMessengerProfileBtn';
-        profileBtn.textContent = '👤';
-        profileBtn.style.cssText = 'width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
-        var headEl = document.querySelector('#messenger .mkz-messenger-head');
-        if (headEl) headEl.appendChild(profileBtn);
-      }
-      
-      // Кнопка удаления чата
-      var deleteChatBtn = document.getElementById('mkzDeleteChatBtn');
-      if (!deleteChatBtn) {
-        deleteChatBtn = document.createElement('button');
-        deleteChatBtn.id = 'mkzDeleteChatBtn';
-        deleteChatBtn.textContent = '🗑️';
-        deleteChatBtn.title = 'Удалить чат';
-        deleteChatBtn.style.cssText = 'width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;margin-left:4px;flex-shrink:0;';
-        var headEl2 = document.querySelector('#messenger .mkz-messenger-head');
-        if (headEl2) headEl2.appendChild(deleteChatBtn);
-      }
-      
-      if (otherUserId && otherUserId !== 'support_mark1z_design') {
-        profileBtn.onclick = function() {
-          openPublicProfile(otherUserId);
-        };
-        profileBtn.style.display = 'flex';
-        deleteChatBtn.style.display = 'flex';
-        deleteChatBtn.onclick = async function() {
-          if (!confirm('Удалить этот чат?')) return;
-          var chatId = state.currentConversationId;
-          // Удаляем себя из участников
-          await supabaseClient.from('chat_members').delete().eq('chat_id', chatId).eq('user_id', state.currentSession.user.id);
-          state.currentConversationId = null;
-          if (messengerMessages) messengerMessages.innerHTML = '';
-          await renderMessengerDialogs();
-          showNotification('Чат удалён', 'success');
-        };
-      } else {
-        profileBtn.style.display = 'none';
-        deleteChatBtn.style.display = 'none';
-      }
-    }, 300);
-
-        // Загрузка аватарки бота (двойной клик)
-    if (messengerTopAvatar && isOwner() && String(conversationId) === String(state.supportConversationId)) {
-      messengerTopAvatar.title = 'Двойной клик — загрузить аватарку';
-      messengerTopAvatar.style.cursor = 'pointer';
-          messengerTopAvatar.ondblclick = function() {
-        var input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = async function() {
-          var file = input.files[0];
-          if (!file) return;
-          var upload = await uploadToBucket('avatars', file, 'brand_avatar');
-          // Сохраняем в БД
-          await supabaseClient.from('profiles').upsert({
-            id: 'support_mark1z_design',
-            username: 'Mark1z Design',
-            avatar_url: upload.publicUrl
-          }, { onConflict: 'id' });
-          localStorage.setItem('mkz_brand_avatar', upload.publicUrl);
-          messengerTopAvatar.style.backgroundImage = "url('" + upload.publicUrl + "')";
-          messengerTopAvatar.style.backgroundSize = 'cover';
-          messengerTopAvatar.style.backgroundPosition = 'center';
-          messengerTopAvatar.textContent = '';
-          await renderMessengerDialogs();
-          showNotification('Аватарка бота обновлена', 'success');
-        };
-        input.click();
-      };
-    }
-
     // Рендер сообщений
     var msgContainer = document.getElementById('mkzMessengerMessages');
     if (msgContainer) {
