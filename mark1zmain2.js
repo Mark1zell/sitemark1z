@@ -1936,9 +1936,9 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     messengerMessages.scrollTop = messengerMessages.scrollHeight;
   }
 
-      // ========== ОТПРАВКА СООБЩЕНИЯ В ЧАТ ==========
-      async function sendMessengerMessage() {
-    if (!state.currentSession?.user) {
+  // ========== ОТПРАВКА СООБЩЕНИЯ В ЧАТ ==========
+  async function sendMessengerMessage() {
+    if (!state.currentSession || !state.currentSession.user) {
       showNotification('Войдите в аккаунт', 'warning');
       return;
     }
@@ -1947,13 +1947,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       return;
     }
 
-    var content = messengerInput?.value.trim() || '';
-            // Режим отправки от имени бота
-    var senderId = state.currentSession.user.id;
-    if (String(state.currentConversationId) === String(state.supportConversationId) && state.supportSendMode === 'brand') {
-      senderId = state.currentSession.user.id;
-    }
-    var hasAttachment = !!(state.pendingMessengerAttachment?.attachment_url);
+    var content = messengerInput ? messengerInput.value.trim() : '';
+    var hasAttachment = !!(state.pendingMessengerAttachment && state.pendingMessengerAttachment.attachment_url);
 
     if (!content && !hasAttachment) {
       showNotification('Введите сообщение или прикрепите файл', 'warning');
@@ -1972,8 +1967,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       chat_id: state.currentConversationId,
       sender_id: state.currentSession.user.id,
       content: content || '',
-      type: tempAttachment ? (tempAttachment.attachment_type?.startsWith('image/') ? 'image' : 'file') : 'text',
-      file_url: tempAttachment?.attachment_url || null,
+      type: tempAttachment ? (tempAttachment.attachment_type && tempAttachment.attachment_type.startsWith('image/') ? 'image' : 'file') : 'text',
+      file_url: tempAttachment ? tempAttachment.attachment_url || null : null,
       created_at: new Date().toISOString(),
       is_edited: false,
       _pending: true
@@ -1985,14 +1980,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     try {
       var payload = {
         chat_id: state.currentConversationId,
-        sender_id: senderId,
+        sender_id: state.currentSession.user.id,
         content: content || '',
         type: 'text'
       };
 
-      if (tempAttachment?.attachment_url) {
+      if (tempAttachment && tempAttachment.attachment_url) {
         payload.file_url = tempAttachment.attachment_url;
-        payload.type = tempAttachment.attachment_type?.startsWith('image/') ? 'image' : 'file';
+        payload.type = tempAttachment.attachment_type && tempAttachment.attachment_type.startsWith('image/') ? 'image' : 'file';
       }
 
       var result = await supabaseClient
