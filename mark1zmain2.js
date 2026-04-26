@@ -1684,13 +1684,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         input.click();
       };
     
-            // Рендер сообщений
-    if (messengerMessages) {
+    // Рендер сообщений
+    var msgContainer = document.getElementById('mkzMessengerMessages');
+    if (msgContainer) {
       if (!state.conversationMessages.length) {
-        messengerMessages.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:40px;">💬 Сообщений пока нет</div>';
+        msgContainer.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:40px;">💬 Сообщений пока нет</div>';
       } else {
         var currentMyId = state.currentProfile?.id || state.currentSession?.user?.id;
-        messengerMessages.innerHTML = state.conversationMessages.map(function(msg) {
+        msgContainer.innerHTML = state.conversationMessages.map(function(msg) {
           var isMine = msg.sender_id === currentMyId;
           var content = nl2brSafe(msg.content || '');
           var time = formatDateTime(msg.created_at);
@@ -1699,14 +1700,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           var authorName = '';
           if (!isMine) {
             var author = null;
-for (var ai = 0; ai < state.allProfilesCache.length; ai++) {
-  if (state.allProfilesCache[ai].id === msg.sender_id) {
-    author = state.allProfilesCache[ai];
-    break;
-  }
-}
-if (!author) author = { username: 'Пользователь' };
-            authorName = '<div class="mkz-message__title">' + escapeHtml(author?.username || 'Пользователь') + '</div>';
+            for (var ai = 0; ai < state.allProfilesCache.length; ai++) {
+              if (state.allProfilesCache[ai].id === msg.sender_id) {
+                author = state.allProfilesCache[ai];
+                break;
+              }
+            }
+            if (!author) author = { username: 'Пользователь' };
+            authorName = '<div class="mkz-message__title">' + escapeHtml(author.username || 'Пользователь') + '</div>';
           }
 
           var rowClass = isMine ? 'mkz-message-row--me' : 'mkz-message-row--them';
@@ -1724,19 +1725,14 @@ if (!author) author = { username: 'Пользователь' };
               attachmentHtml +
               '<div class="mkz-message__footer">' +
                 '<span class="mkz-message__time">' + time + edited + '</span>' +
-                (isMine ? '<span class="mkz-message__actions"><button class="mkz-message__icon-btn" data-edit-message="' + msg.id + '" title="Редактировать"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button><button class="mkz-message__icon-btn" data-delete-message="' + msg.id + '" title="Удалить"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></span>' : '') +
+                (isMine ? '<span class="mkz-message__actions"><button class="mkz-message__icon-btn" data-edit-message="' + msg.id + '" title="Редактировать">✏️</button><button class="mkz-message__icon-btn" data-delete-message="' + msg.id + '" title="Удалить">🗑️</button></span>' : '') +
               '</div>' +
             '</div>' +
           '</div>';
-       }).join('');
-     }
-           messengerMessages.scrollTop = messengerMessages.scrollHeight;
+        }).join('');
+      }
+      msgContainer.scrollTop = msgContainer.scrollHeight;
     }
-  }
-  } catch (err) {
-    console.error('openConversation error:', err);
-  }
-}
   
   function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
   function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
