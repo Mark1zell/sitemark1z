@@ -216,7 +216,7 @@
       el.style.backgroundSize = 'cover';
       el.style.backgroundPosition = 'center';
       el.style.backgroundRepeat = 'no-repeat';
-    } else {
+    
       el.style.backgroundImage = '';
       el.textContent = getInitial(name, 'Г');
     }
@@ -277,7 +277,7 @@
       if (diffMins < 1440) {
         const hours = Math.floor(diffMins / 60);
         return `Был(а) ${hours} ${pluralRu(hours, 'час', 'часа', 'часов')} назад`;
-      } else {
+      
         const days = Math.floor(diffMins / 1440);
         if (days < 7) return `Был(а) ${days} ${pluralRu(days, 'день', 'дня', 'дней')} назад`;
         return formatDateOnly(profile.last_seen_at);
@@ -1657,7 +1657,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     await renderMessengerDialogs();
     var badge = document.getElementById('mkzUnreadBadge');
     if (badge) { badge.textContent = ''; badge.style.display = 'none'; }
-  }, 500);
+      }, 500);
+      };
     } else {
       profileBtn.style.display = 'none';
       deleteChatBtn.style.display = 'none';
