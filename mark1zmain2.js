@@ -1752,7 +1752,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           '</div>';
         }).join('');
       }
-msgContainer.scrollTop = msgContainer.scrollHeight;
+      msgContainer.scrollTop = msgContainer.scrollHeight;
     }
   }
   } catch (err) {
