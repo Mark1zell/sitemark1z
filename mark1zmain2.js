@@ -1731,8 +1731,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           '</div>';
         }).join('');
       }
-      msgContainer.scrollTop = msgContainer.scrollHeight;
+msgContainer.scrollTop = msgContainer.scrollHeight;
     }
+  }
+  } catch (err) {
+    console.error('openConversation error:', err);
+  }
+}
   
   function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
   function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
