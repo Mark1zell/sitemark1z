@@ -1566,8 +1566,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
  }
 }
   
-function clearMessengerAttachment() {
-  
   function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
   function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
   function getUnreadCount(conversationId) { if (!state.currentSession?.user) return 0; const member = state.conversationMembers.find(m => m.conversation_id === conversationId && m.user_id === state.currentSession.user.id); const lastReadAt = member?.last_read_at ? new Date(member.last_read_at).getTime() : 0; return state.conversationMessages.filter(msg => { if (msg.user_id === state.currentSession.user.id) return false; return msg.conversation_id === conversationId && new Date(msg.created_at).getTime() > lastReadAt; }).length; }
