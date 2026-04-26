@@ -1722,16 +1722,17 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           html += '<div class="mkz-message__text">' + content + '</div>';
           html += '<div class="mkz-message__footer"><span class="mkz-message__time">' + time + '</span></div>';
           html += '</div></div>';
+        }
+        msgContainer.innerHTML = html;
+        msgContainer.scrollTop = msgContainer.scrollHeight;
       }
-      msgContainer.scrollTop = msgContainer.scrollHeight;
     }
   } catch (err) {
     console.error('openConversation error:', err);
   }
 }
-
-  function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
-  function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
+  
+  function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
   function getUnreadCount(conversationId) { if (!state.currentSession?.user) return 0; const member = state.conversationMembers.find(m => m.conversation_id === conversationId && m.user_id === state.currentSession.user.id); const lastReadAt = member?.last_read_at ? new Date(member.last_read_at).getTime() : 0; return state.conversationMessages.filter(msg => { if (msg.user_id === state.currentSession.user.id) return false; return msg.conversation_id === conversationId && new Date(msg.created_at).getTime() > lastReadAt; }).length; }
   async function markConversationAsRead(conversationId) { if (!state.currentSession?.user || !conversationId) return; try { await supabaseClient.from('conversation_members').update({ last_read_at: new Date().toISOString() }).eq('conversation_id', conversationId).eq('user_id', state.currentSession.user.id); } catch (err) { console.error('markConversationAsRead error:', err); } }
   async function findOrCreateSupportConversation() { if (!state.currentSession?.user) return null; await fetchMessengerData(); if (state.supportConversationId) return state.supportConversationId; const { data: newConversation, error } = await supabaseClient.from('conversations').insert({ title: 'Mark1z Design', is_support: true, created_by: OWNER_UID, updated_at: new Date().toISOString() }).select('*').maybeSingle(); if (error || !newConversation) return null; await supabaseClient.from('conversation_members').insert([{ conversation_id: newConversation.id, user_id: OWNER_UID, last_read_at: new Date().toISOString() }, { conversation_id: newConversation.id, user_id: state.currentSession.user.id, last_read_at: null }]); state.supportConversationId = newConversation.id; await fetchMessengerData(); return newConversation.id; }
