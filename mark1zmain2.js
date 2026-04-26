@@ -1289,9 +1289,10 @@ async function findExistingConversation(userId) {
       var found = state.allProfilesCache.some(function(p) { return p.id === uniqueSenderIds[j]; });
       if (!found) missingIds.push(uniqueSenderIds[j]);
     }
-    if (missingIds.length > 0) {
+        if (missingIds.length > 0) {
       var result = await supabaseClient.from('profiles').select('*').in('id', missingIds);
-      if (newProfiles) {
+      if (result && result.data) {
+        var newProfiles = result.data;
         for (var k = 0; k < newProfiles.length; k++) {
           var exists = state.allProfilesCache.some(function(p) { return p.id === newProfiles[k].id; });
           if (!exists) state.allProfilesCache.push(newProfiles[k]);
@@ -2096,8 +2097,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       await openConversation('daba25cb-e4e2-44b3-be59-36f0f5e38ce5');
     });
     if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
-
-    console.log('Ответ API:', JSON.stringify({ data: newChat, error: chatError }));
     
                 // ========== ОТПРАВКА ПО ENTER ==========
     if (messengerInput) {
