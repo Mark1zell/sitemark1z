@@ -1750,7 +1750,55 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   function initSupportDialogsButton() { const btn = document.getElementById('mkzOpenSupportChatsBtn'); if (btn) btn.addEventListener('click', async () => { await loadSupportDialogs(); openScreen('support-dialogs'); }); }
   function initSupportDialogsBackButton() { const backBtn = document.getElementById('mkzBackToAdminBtn'); if (backBtn) backBtn.addEventListener('click', () => openScreen('account')); }
 
-    // ========== ОТПРАВКА СООБЩЕНИЯ В ЧАТ ==========
+    // ========== БЫСТРЫЙ РЕНДЕР СООБЩЕНИЙ (без перезагрузки) ==========
+  function renderMessagesList() {
+    if (!messengerMessages) return;
+    var myId = state.currentProfile?.id || state.currentSession?.user?.id;
+
+    if (!state.conversationMessages.length) {
+      messengerMessages.innerHTML = '<div class="mkz-messenger-empty"><div class="mkz-messenger-empty__icon">💬</div><p>Сообщений пока нет</p></div>';
+      return;
+    }
+
+    messengerMessages.innerHTML = state.conversationMessages.map(function(msg) {
+      var isMine = msg.sender_id === myId;
+      var content = nl2brSafe(msg.content || '');
+      var time = formatDateTime(msg.created_at);
+      var edited = msg.is_edited ? ' <span style="opacity:0.6;font-size:0.75em;">(изм.)</span>' : '';
+      var pending = msg._pending ? ' <span style="opacity:0.4;font-size:0.7em;">(отправка...)</span>' : '';
+      
+      var authorName = '';
+      if (!isMine) {
+        var author = getMessageAuthorIdentity(msg);
+        authorName = '<div class="mkz-message__author-name">' + escapeHtml(author?.username || 'Пользователь') + '</div>';
+      }
+
+      var attachmentHtml = '';
+      if (msg.file_url) {
+        if (msg.type === 'image') {
+          attachmentHtml = '<div class="mkz-message__image"><img src="' + safeUrl(msg.file_url) + '" alt="Изображение" style="max-width:240px;border-radius:12px;"></div>';
+        } else {
+          attachmentHtml = '<div class="mkz-message__file"><a href="' + safeUrl(msg.file_url) + '" target="_blank">📎 Файл</a></div>';
+        }
+      }
+
+      return '<div class="mkz-message ' + (isMine ? 'mkz-message--mine' : '') + '" data-message-id="' + msg.id + '">' +
+        '<div class="mkz-message__bubble">' +
+          authorName +
+          '<div class="mkz-message__content">' + content + '</div>' +
+          attachmentHtml +
+          '<div class="mkz-message__meta">' +
+            '<span class="mkz-message__time">' + time + edited + pending + '</span>' +
+            (isMine && !msg._pending ? '<span class="mkz-message__actions"><button type="button" class="mkz-msg-btn mkz-msg-btn--edit" data-edit-message="' + msg.id + '" title="Редактировать">✏️</button><button type="button" class="mkz-msg-btn mkz-msg-btn--delete" data-delete-message="' + msg.id + '" title="Удалить">🗑️</button></span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    messengerMessages.scrollTop = messengerMessages.scrollHeight;
+  }
+
+      // ========== ОТПРАВКА СООБЩЕНИЯ В ЧАТ ==========
   async function sendMessengerMessage() {
     if (!state.currentSession?.user) {
       showNotification('Войдите в аккаунт', 'warning');
@@ -1761,8 +1809,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       return;
     }
 
-    const content = messengerInput?.value.trim() || '';
-    const hasAttachment = !!(state.pendingMessengerAttachment?.attachment_url);
+    var content = messengerInput?.value.trim() || '';
+    var hasAttachment = !!(state.pendingMessengerAttachment?.attachment_url);
 
     if (!content && !hasAttachment) {
       showNotification('Введите сообщение или прикрепите файл', 'warning');
@@ -1771,43 +1819,69 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
     setButtonState(messengerSendBtn, true, '...', 'Отправить');
 
+    // Очищаем поле СРАЗУ для быстрого отклика
+    if (messengerInput) messengerInput.value = '';
+    var tempAttachment = state.pendingMessengerAttachment;
+    clearMessengerAttachment();
+
+    // Создаём временное сообщение
+    var tempId = 'temp_' + Date.now();
+    var tempMsg = {
+      id: tempId,
+      chat_id: state.currentConversationId,
+      sender_id: state.currentSession.user.id,
+      content: content || '',
+      type: tempAttachment ? (tempAttachment.attachment_type?.startsWith('image/') ? 'image' : 'file') : 'text',
+      file_url: tempAttachment?.attachment_url || null,
+      created_at: new Date().toISOString(),
+      is_edited: false,
+      _pending: true
+    };
+
+    // Добавляем в массив и перерисовываем
+    state.conversationMessages.push(tempMsg);
+    renderMessagesList();
+
     try {
-      const payload = {
+      var payload = {
         chat_id: state.currentConversationId,
         sender_id: state.currentSession.user.id,
         content: content || ''
       };
 
-      // Если есть вложение
-      if (hasAttachment) {
-        payload.file_url = state.pendingMessengerAttachment.attachment_url;
-        payload.type = state.pendingMessengerAttachment.attachment_type?.startsWith('image/') ? 'image' : 'file';
+      if (tempAttachment?.attachment_url) {
+        payload.file_url = tempAttachment.attachment_url;
+        payload.type = tempAttachment.attachment_type?.startsWith('image/') ? 'image' : 'file';
       } else {
         payload.type = 'text';
       }
 
-      console.log('📤 Отправка:', payload);
-
-      const { error } = await supabaseClient
+      var result = await supabaseClient
         .from('messages')
-        .insert(payload);
+        .insert(payload)
+        .select('*')
+        .single();
 
-      if (error) {
-        console.error('❌ Ошибка:', error);
-        showNotification('Ошибка: ' + error.message, 'error');
+      if (result.error) {
+        // Удаляем временное сообщение при ошибке
+        state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
+        renderMessagesList();
+        showNotification('Ошибка: ' + result.error.message, 'error');
         return;
       }
 
-      // Очищаем поле
-      if (messengerInput) messengerInput.value = '';
-      clearMessengerAttachment();
-
-      // Обновляем чат
-      await openConversation(state.currentConversationId, true);
+      // Заменяем временное на настоящее
+      var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
+      if (idx >= 0 && result.data) {
+        state.conversationMessages[idx] = result.data;
+      }
+      renderMessagesList();
       await renderMessengerDialogs();
 
     } catch (err) {
-      console.error('sendMessengerMessage error:', err);
+      // Удаляем временное сообщение
+      state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
+      renderMessagesList();
       showNotification('Ошибка при отправке', 'error');
     } finally {
       setButtonState(messengerSendBtn, false, '...', 'Отправить');
@@ -2053,7 +2127,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   // ========== CSS STYLING ==========
   var style = document.createElement('style');
   style.textContent = '.mkz-support-mode-selector{background:linear-gradient(135deg,rgba(255,47,174,0.1),rgba(122,60,255,0.1));border-radius:20px;padding:14px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.1)}.mkz-support-mode-title{font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.mkz-support-mode-buttons{display:flex;gap:12px}.mkz-mode-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border:none;border-radius:14px;background:rgba(255,255,255,0.08);color:#fff;font-size:14px;cursor:pointer;transition:all 0.2s}.mkz-mode-btn--brand.is-active{background:linear-gradient(135deg,#ff2fae,#7a3cff);box-shadow:0 0 15px rgba(255,47,174,0.3)}.mkz-mode-btn--admin.is-active{background:linear-gradient(135deg,#3b82f6,#8b5cf6);box-shadow:0 0 15px rgba(59,130,246,0.3)}.mkz-support-mode-hint{font-size:11px;color:rgba(255,255,255,0.5);margin-top:10px;padding:8px;background:rgba(0,0,0,0.2);border-radius:10px;text-align:center}.mkz-support-dialogs-list{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}.mkz-support-dialog-card{background:linear-gradient(180deg,rgba(20,12,38,.96),rgba(8,6,20,.98));border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:18px;cursor:pointer;transition:all 0.2s}.mkz-support-dialog-card:hover{transform:translateY(-2px);border-color:rgba(255,47,174,.3)}.mkz-support-dialog-card.unread{border-left:4px solid #ff2fae;background:linear-gradient(180deg,rgba(255,47,174,.1),rgba(8,6,20,.98))}.mkz-support-dialog-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ff2fae,#7a3cff);display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center}.mkz-support-dialog-name{font-size:16px;font-weight:700;color:#fff}.mkz-support-dialog-time{font-size:11px;color:rgba(255,255,255,0.4)}.mkz-support-dialog-preview{font-size:13px;color:rgba(255,255,255,0.6);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mkz-unread-badge{background:#ff2fae;color:#fff;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:20px;margin-left:10px}.mkz-loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);display:none;justify-content:center;align-items:center;flex-direction:column;z-index:10000}.mkz-loading-spinner{width:50px;height:50px;border:4px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:mkz-spin 0.8s linear infinite}@keyframes mkz-spin{to{transform:rotate(360deg)}}.mkz-loading-message{color:#fff;margin-top:20px;font-size:14px}.mkz-message__actions{display:none;gap:4px;margin-left:8px}.mkz-message__bubble:hover .mkz-message__actions{display:inline-flex}.mkz-message--mine .mkz-message__actions{display:inline-flex}.mkz-msg-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:6px;opacity:0.7;transition:all 0.15s}.mkz-msg-btn:hover{opacity:1;background:rgba(255,255,255,0.15)}.mkz-msg-btn--delete:hover{color:#ff4d4d}.mkz-msg-btn--edit:hover{color:#ffb800}.mkz-message__author-name{font-size:0.75em;font-weight:600;margin-bottom:2px;opacity:0.8;padding-left:4px}.mkz-message__meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px}.mkz-message__time{font-size:0.7em;opacity:0.5}';
-  document.head.appendChild(style);
+  document.head.appendChild(style).mkz-message--mine{justify-content:flex-end}.mkz-message--mine .mkz-message__bubble{background:linear-gradient(135deg,#7a3cff,#ff2fae);color:#fff;border-bottom-right-radius:4px}.mkz-message:not(.mkz-message--mine) .mkz-message__bubble{background:rgba(255,255,255,0.1);color:#fff;border-bottom-left-radius:4px}.mkz-message{display:flex;margin-bottom:8px}.mkz-message:not(.mkz-message--mine){justify-content:flex-start}.mkz-message__bubble{max-width:75%;padding:10px 14px;border-radius:18px;word-break:break-word} .mkz-message{display:flex;margin-bottom:8px}.mkz-message--mine{justify-content:flex-end}.mkz-message:not(.mkz-message--mine){justify-content:flex-start}.mkz-message__bubble{max-width:75%;padding:10px 14px;border-radius:18px;word-break:break-word}.mkz-message--mine .mkz-message__bubble{background:linear-gradient(135deg,#7a3cff,#ff2fae);color:#fff;border-bottom-right-radius:4px}.mkz-message:not(.mkz-message--mine) .mkz-message__bubble{background:rgba(255,255,255,0.12);color:#fff;border-bottom-left-radius:4px};
 
   // ========== INIT ==========
   (async function init() {
