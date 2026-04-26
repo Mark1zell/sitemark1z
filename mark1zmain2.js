@@ -1381,8 +1381,9 @@ async function renderMessengerDialogs() {
     // Загружаем профиль бота из БД
     var brandProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
     if (!brandProfile || !brandProfile.avatar_url) {
-      var { data: dbBrand } = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').single();
-      var brandAvatar = dbBrand?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
+      var dbBrand = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').maybeSingle();
+      var dbBrandData = dbBrand.data;
+      var brandAvatar = dbBrandData?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
       if (brandProfile) {
         brandProfile.avatar_url = brandAvatar;
       } else {
@@ -1605,6 +1606,27 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
       }
     }
+
+        // Кнопка профиля в хедере
+    setTimeout(function() {
+      var profileBtn = document.getElementById('mkzMessengerProfileBtn');
+      if (!profileBtn) {
+        profileBtn = document.createElement('button');
+        profileBtn.id = 'mkzMessengerProfileBtn';
+        profileBtn.textContent = '👤';
+        profileBtn.style.cssText = 'width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;margin-left:8px;flex-shrink:0;';
+        var headEl = document.querySelector('#messenger .mkz-messenger-head');
+        if (headEl) headEl.appendChild(profileBtn);
+      }
+      if (otherUserId && otherUserId !== 'support_mark1z_design') {
+        profileBtn.onclick = function() {
+          openPublicProfile(otherUserId);
+        };
+        profileBtn.style.display = 'flex';
+      } else {
+        profileBtn.style.display = 'none';
+      }
+    }, 300);
 
         // Загрузка аватарки бота (двойной клик)
     if (messengerTopAvatar && isOwner() && String(conversationId) === String(state.supportConversationId)) {
