@@ -1570,8 +1570,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             authorName = '<div class="mkz-message__title">' + escapeHtml(author?.username || 'Пользователь') + '</div>';
           }
 
-          var rowClass = isMine ? 'mkz-message-row--them' : 'mkz-message-row--me';
-          var msgClass = isMine ? 'mkz-message--them' : 'mkz-message--me';
+          var rowClass = isMine ? 'mkz-message-row--me' : 'mkz-message-row--them';
+          var msgClass = isMine ? 'mkz-message--me' : 'mkz-message--them';
 
           var attachmentHtml = '';
           if (msg.file_url) {
