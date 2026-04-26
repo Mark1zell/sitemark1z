@@ -1512,17 +1512,6 @@ async function renderMessengerDialogs() {
         unreadCount++;
       }
     }
-    var badge = document.getElementById('mkzUnreadBadge');
-    if (!badge) {
-      badge = document.createElement('span');
-      badge.id = 'mkzUnreadBadge';
-      badge.style.cssText = 'background:#ff2fae;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;display:none;';
-      var navBtn = document.querySelector('[data-screen-open="messenger"]');
-      if (navBtn) navBtn.appendChild(badge);
-    }
-    badge.textContent = unreadCount > 0 ? unreadCount : '';
-    badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
-    
     hideLoading();
     
   } catch (err) {
