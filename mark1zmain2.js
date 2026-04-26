@@ -1707,53 +1707,21 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     // Рендер сообщений
     var msgContainer = document.getElementById('mkzMessengerMessages');
     if (msgContainer) {
-      if (!state.conversationMessages.length) {
+      var myId = state.currentSession?.user?.id;
+      if (state.conversationMessages.length === 0) {
         msgContainer.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:40px;">💬 Сообщений пока нет</div>';
       } else {
-        var currentMyId = state.currentProfile?.id || state.currentSession?.user?.id;
         msgContainer.innerHTML = state.conversationMessages.map(function(msg) {
-          var isMine = msg.sender_id === currentMyId;
-          var content = nl2brSafe(msg.content || '');
-          var time = formatDateTime(msg.created_at);
-          var edited = msg.is_edited ? ' (изм.)' : '';
-          
-          var authorName = '';
-          if (!isMine) {
-            var author = null;
-            for (var ai = 0; ai < state.allProfilesCache.length; ai++) {
-              if (state.allProfilesCache[ai].id === msg.sender_id) {
-                author = state.allProfilesCache[ai];
-                break;
-              }
-            }
-            if (!author) author = { username: 'Пользователь' };
-            authorName = '<div class="mkz-message__title">' + escapeHtml(author.username || 'Пользователь') + '</div>';
-          }
-
-          var rowClass = isMine ? 'mkz-message-row--me' : 'mkz-message-row--them';
-          var msgClass = isMine ? 'mkz-message--me' : 'mkz-message--them';
-
-          var attachmentHtml = '';
-          if (msg.file_url) {
-            attachmentHtml = '<div class="mkz-message__image"><img src="' + safeUrl(msg.file_url) + '" alt=""></div>';
-          }
-
-          return '<div class="mkz-message-row ' + rowClass + '">' +
-            '<div class="mkz-message ' + msgClass + '" data-message-id="' + msg.id + '">' +
-              authorName +
-              (content ? '<div class="mkz-message__text">' + content + '</div>' : '') +
-              attachmentHtml +
-              '<div class="mkz-message__footer">' +
-                '<span class="mkz-message__time">' + time + edited + '</span>' +
-                (isMine ? '<span class="mkz-message__actions"><button class="mkz-message__icon-btn" data-edit-message="' + msg.id + '" title="Редактировать">✏️</button><button class="mkz-message__icon-btn" data-delete-message="' + msg.id + '" title="Удалить">🗑️</button></span>' : '') +
-              '</div>' +
-            '</div>' +
-          '</div>';
+          var isMine = msg.sender_id === myId;
+          return '<div class="mkz-message-row ' + (isMine ? 'mkz-message-row--me' : 'mkz-message-row--them') + '">' +
+            '<div class="mkz-message ' + (isMine ? 'mkz-message--me' : 'mkz-message--them') + '">' +
+            '<div class="mkz-message__text">' + (msg.content || '') + '</div>' +
+            '<div class="mkz-message__footer"><span class="mkz-message__time">' + new Date(msg.created_at).toLocaleString('ru-RU') + '</span></div>' +
+            '</div></div>';
         }).join('');
       }
       msgContainer.scrollTop = msgContainer.scrollHeight;
     }
-  }
   } catch (err) {
     console.error('openConversation error:', err);
   }
