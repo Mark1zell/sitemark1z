@@ -553,7 +553,7 @@
       state.currentProfile = await ensureProfileForCurrentUser(baseData);
       if (typeof renderProfile === 'function') renderProfile();
       await touchCurrentProfileActivity();
-    } catch (err) { console.error('fetchSessionAndProfile error:', err); if (typeof renderProfile === 'function') renderProfile(); }
+     console.error('fetchSessionAndProfile error:', err); if (typeof renderProfile === 'function') renderProfile(); }
   }
 
   async function cacheProfiles() {
@@ -569,7 +569,7 @@
       const { data, error } = await supabaseClient.from('profiles').select('bio').eq('id', state.currentSession.user.id).single();
       if (error) throw error;
       if (updateBio && data?.bio) updateBio.value = data.bio;
-    } catch (err) { console.error('Error loading bio:', err); }
+     console.error('Error loading bio:', err); }
   }
 
   async function saveUserBio() {
@@ -2163,14 +2163,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           await renderMessengerDialogs();
           await openConversation(newChat.id);
           
-                } catch (err) {
+        } catch (err) {
           console.error('❌ Полная ошибка:', err);
           showNotification('Ошибка: ' + err.message, 'error');
         } finally {
           hideLoading();
         }
-      });   // ← ЗАКРЫТИЕ addEventListener
-    }       // ← ЗАКРЫТИЕ if (openProfileMessengerBtn)
+      });
+    }
 
     if (messengerAttachImageBtn && messengerImageInput) messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
