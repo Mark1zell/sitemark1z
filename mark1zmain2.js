@@ -1505,7 +1505,7 @@ async function renderMessengerDialogs() {
     });
 
         // Обновляем счётчик непрочитанных
-    var unreadTotal = 0;
+    var unreadCount = 0;
       for (var d = 0; d < chats.length; d++) {
       var lastMsg = lastMsgMap[chats[d].id];
       if (lastMsg && lastMsg.sender_id !== myId && String(chats[d].id) !== String(state.currentConversationId)) {
