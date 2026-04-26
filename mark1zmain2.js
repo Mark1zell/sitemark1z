@@ -1429,7 +1429,8 @@ async function renderMessengerDialogs() {
         }
       } else if (otherMemberId === 'support_mark1z_design' || String(chat.id) === String(state.supportConversationId)) {
         displayName = 'Mark1z Design';
-        statusText = 'Официальный чат';
+        avatarUrl = localStorage.getItem('mkz_brand_avatar') || '';
+        statusText = 'Чат для заказов и техподдержка';
       }
       
       // Последнее сообщение
@@ -1551,7 +1552,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     
     if (messengerTopAvatar) {
       if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
-        var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
+                var brandProfile = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').single();
+        var brandAvatar = brandProfile?.data?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
         if (brandAvatar) {
           messengerTopAvatar.style.backgroundImage = "url('" + brandAvatar + "')";
           messengerTopAvatar.style.backgroundSize = 'cover';
@@ -1588,7 +1590,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (messengerTopAvatar && isOwner() && String(conversationId) === String(state.supportConversationId)) {
       messengerTopAvatar.title = 'Двойной клик — загрузить аватарку';
       messengerTopAvatar.style.cursor = 'pointer';
-      messengerTopAvatar.ondblclick = function() {
+          messengerTopAvatar.ondblclick = function() {
         var input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -1596,16 +1598,22 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           var file = input.files[0];
           if (!file) return;
           var upload = await uploadToBucket('avatars', file, 'brand_avatar');
+          // Сохраняем в БД
+          await supabaseClient.from('profiles').upsert({
+            id: 'support_mark1z_design',
+            username: 'Mark1z Design',
+            avatar_url: upload.publicUrl
+          }, { onConflict: 'id' });
           localStorage.setItem('mkz_brand_avatar', upload.publicUrl);
           messengerTopAvatar.style.backgroundImage = "url('" + upload.publicUrl + "')";
           messengerTopAvatar.style.backgroundSize = 'cover';
           messengerTopAvatar.style.backgroundPosition = 'center';
           messengerTopAvatar.textContent = '';
+          await renderMessengerDialogs();
           showNotification('Аватарка бота обновлена', 'success');
         };
         input.click();
       };
-    }
     
             // Рендер сообщений
     if (messengerMessages) {
@@ -1972,7 +1980,13 @@ if (!author) author = { username: 'Пользователь' };
     if (toggleLinkBtn && linkPanel) toggleLinkBtn.addEventListener('click', () => { linkPanel.style.display = linkPanel.style.display === 'none' ? 'block' : 'none'; toggleLinkBtn.classList.toggle('is-active', linkPanel.style.display !== 'none'); });
     if (togglePinBtn) togglePinBtn.addEventListener('click', () => { state.isPinnedDraft = !state.isPinnedDraft; togglePinBtn.classList.toggle('is-active', state.isPinnedDraft); });
     if (faqFab) faqFab.addEventListener('click', () => openScreen('faq'));
-    if (chatFab) chatFab.addEventListener('click', async () => { if (!state.currentSession) { openScreen('account'); return; } openScreen('messenger'); await renderMessengerDialogs(); if (state.supportConversationId) await openConversation(state.supportConversationId); });
+    if (chatFab) chatFab.addEventListener('click', async () => { 
+      if (!state.currentSession) { openScreen('account'); return; } 
+      openScreen('messenger'); 
+      await renderMessengerDialogs(); 
+      var supportId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
+      await openConversation(supportId);
+    });
     stars.forEach(star => { star.addEventListener('click', () => { state.currentRating = Number(star.dataset.rating); renderStars(state.currentRating); }); });
     aboutTabs.forEach(tab => { tab.addEventListener('click', () => { aboutTabs.forEach(item => item.classList.remove('is-active')); aboutPanels.forEach(item => item.classList.remove('is-active')); tab.classList.add('is-active'); document.querySelector(`[data-about-panel="${tab.dataset.aboutTab}"]`)?.classList.add('is-active'); }); });
     if (showLoginBtn && showRegisterBtn && loginForm && registerForm) {
@@ -2202,6 +2216,20 @@ if (!author) author = { username: 'Пользователь' };
     await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
     await loadUserBio();
     bindStaticEvents();
+  (async function init() {
+    await fetchSessionAndProfile();
+    await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
+    await loadUserBio();
+    bindStaticEvents();
+    
+    // Автооткрытие чата поддержки
+    if (state.currentSession) {
+      var supportId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
+      state.supportConversationId = supportId;
+      setTimeout(async function() {
+        await openConversation(supportId);
+      }, 500);
+    }
     supabaseClient.auth.onAuthStateChange(function(_event, session) {
       state.currentSession = session || null;
       if (state.currentSession) {
