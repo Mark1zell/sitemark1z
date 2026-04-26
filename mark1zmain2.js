@@ -1647,7 +1647,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         state.currentConversationId = null;
         if (messengerMessages) messengerMessages.innerHTML = '';
         showNotification('Чат удалён полностью', 'success');
-        setTimeout(async function() {
+          setTimeout(async function() {
+          await fetchMessengerData();
           await renderMessengerDialogs();
         }, 500);
       };
