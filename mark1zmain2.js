@@ -1707,12 +1707,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     // Рендер сообщений
     var msgContainer = document.getElementById('mkzMessengerMessages');
     if (msgContainer) {
-      var myId = state.currentSession?.user?.id;
+      var renderMyId = state.currentSession?.user?.id;
       if (state.conversationMessages.length === 0) {
         msgContainer.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:40px;">💬 Сообщений пока нет</div>';
       } else {
         msgContainer.innerHTML = state.conversationMessages.map(function(msg) {
-          var isMine = msg.sender_id === myId;
+          var isMine = msg.sender_id === renderMyId;
           return '<div class="mkz-message-row ' + (isMine ? 'mkz-message-row--me' : 'mkz-message-row--them') + '">' +
             '<div class="mkz-message ' + (isMine ? 'mkz-message--me' : 'mkz-message--them') + '">' +
             '<div class="mkz-message__text">' + (msg.content || '') + '</div>' +
