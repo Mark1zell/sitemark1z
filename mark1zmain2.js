@@ -1464,6 +1464,15 @@ async function renderMessengerDialogs() {
           </div>
         </button>`;
     }).join('');
+
+        // Обработчик для чата поддержки
+    var supportBtn = messengerDialogs.querySelector('[data-open-chat="' + state.supportConversationId + '"]');
+    if (supportBtn) {
+      supportBtn.addEventListener('click', async function() {
+        state.supportConversationId = 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
+        await openConversation('daba25cb-e4e2-44b3-be59-36f0f5e38ce5');
+      });
+    }
     
     // Вешаем обработчики клика
     $$('[data-open-chat]', messengerDialogs).forEach(btn => {
@@ -2069,7 +2078,13 @@ if (!author) author = { username: 'Пользователь' };
     if (messengerAttachImageBtn && messengerImageInput) messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
     if (messengerForm) messengerForm.addEventListener('submit', async e => { e.preventDefault(); await sendMessengerMessage(); });
-    if (pinnedOwnerChatBtn) pinnedOwnerChatBtn.addEventListener('click', async () => { if (!state.currentSession) { openScreen('account'); return; } await renderMessengerDialogs(); if (state.supportConversationId) await openConversation(state.supportConversationId); });
+    if (pinnedOwnerChatBtn) pinnedOwnerChatBtn.addEventListener('click', async () => { 
+  if (!state.currentSession) { openScreen('account'); return; } 
+  state.supportConversationId = 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
+  openScreen('messenger');
+  await renderMessengerDialogs();
+  await openConversation('daba25cb-e4e2-44b3-be59-36f0f5e38ce5');
+});
     if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
     
                 // ========== ОТПРАВКА ПО ENTER ==========
