@@ -1598,7 +1598,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           
           var authorName = '';
           if (!isMine) {
-            var author = getMessageAuthorIdentity(msg);
+            var author = null;
+for (var ai = 0; ai < state.allProfilesCache.length; ai++) {
+  if (state.allProfilesCache[ai].id === msg.sender_id) {
+    author = state.allProfilesCache[ai];
+    break;
+  }
+}
+if (!author) author = { username: 'Пользователь' };
             authorName = '<div class="mkz-message__title">' + escapeHtml(author?.username || 'Пользователь') + '</div>';
           }
 
