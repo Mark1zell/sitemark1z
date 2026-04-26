@@ -1286,28 +1286,25 @@ async function findExistingConversation(userId) {
       state.conversations = conversations || [];
       state.conversationMembers = allMembers || [];
       state.conversationMessages = messages || [];
-          // Кешируем профили отправителей
-    var senderIds = [];
+              // Загружаем профили отправителей
+    var uniqueSenderIds = [];
     for (var i = 0; i < state.conversationMessages.length; i++) {
-      var sid = state.conversationMessages[i].sender_id;
-      if (sid && senderIds.indexOf(sid) === -1) senderIds.push(sid);
-    }
-    if (senderIds.length > 0) {
-      var cached = state.allProfilesCache;
-      var idsToFetch = [];
-      for (var j = 0; j < senderIds.length; j++) {
-        var found = false;
-        for (var k = 0; k < cached.length; k++) {
-          if (cached[k].id === senderIds[j]) { found = true; break; }
-        }
-        if (!found) idsToFetch.push(senderIds[j]);
+      var sId = state.conversationMessages[i].sender_id;
+      if (uniqueSenderIds.indexOf(sId) === -1) {
+        uniqueSenderIds.push(sId);
       }
-      if (idsToFetch.length > 0) {
-        var result = await supabaseClient.from('profiles').select('*').in('id', idsToFetch);
-        if (result.data) {
-          for (var l = 0; l < result.data.length; l++) {
-            state.allProfilesCache.push(result.data[l]);
-          }
+    }
+    var missingIds = [];
+    for (var j = 0; j < uniqueSenderIds.length; j++) {
+      var found = state.allProfilesCache.some(function(p) { return p.id === uniqueSenderIds[j]; });
+      if (!found) missingIds.push(uniqueSenderIds[j]);
+    }
+    if (missingIds.length > 0) {
+      var { data: newProfiles } = await supabaseClient.from('profiles').select('*').in('id', missingIds);
+      if (newProfiles) {
+        for (var k = 0; k < newProfiles.length; k++) {
+          var exists = state.allProfilesCache.some(function(p) { return p.id === newProfiles[k].id; });
+          if (!exists) state.allProfilesCache.push(newProfiles[k]);
         }
       }
     }
