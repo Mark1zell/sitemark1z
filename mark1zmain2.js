@@ -1592,6 +1592,22 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:6px;"></span>' + statusText;
   }
 }
+
+        // Кнопка профиля в хедере
+    var profileBtn = document.getElementById('mkzMessengerProfileBtn');
+    if (!profileBtn) {
+      profileBtn = document.createElement('button');
+      profileBtn.id = 'mkzMessengerProfileBtn';
+      profileBtn.textContent = '👤';
+      profileBtn.style.cssText = 'width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;margin-left:8px;';
+      var headActions = document.querySelector('#messenger .mkz-messenger-head__actions');
+      if (headActions) headActions.appendChild(profileBtn);
+    }
+    profileBtn.onclick = function() {
+      if (otherUserId && otherUserId !== 'support_mark1z_design') {
+        openPublicProfile(otherUserId);
+      }
+    };
     
             // Рендер сообщений
     if (messengerMessages) {
@@ -1933,6 +1949,30 @@ if (!author) author = { username: 'Пользователь' };
 
   // ========== BIND STATIC EVENTS ==========
   function bindStaticEvents() {
+        // Кнопка переключения режима (админ)
+    var switchModeBtn = document.createElement('button');
+    switchModeBtn.id = 'mkzSwitchModeBtn';
+    switchModeBtn.textContent = 'Войти как Mark1z Design';
+    switchModeBtn.style.cssText = 'display:none;width:100%;padding:10px 14px;margin-top:8px;border-radius:12px;background:rgba(255,47,174,0.15);border:1px solid rgba(255,47,174,0.3);color:#fff;cursor:pointer;font-weight:600;font-size:13px;text-align:center;';
+    
+    var sidebar = document.querySelector('#messenger .mkz-messenger-sidebar__top');
+    if (sidebar) sidebar.appendChild(switchModeBtn);
+    
+    if (isOwner()) switchModeBtn.style.display = 'block';
+    
+    switchModeBtn.addEventListener('click', function() {
+      if (state.supportSendMode === 'brand') {
+        state.supportSendMode = 'admin';
+        switchModeBtn.textContent = 'Войти на основной аккаунт';
+        switchModeBtn.style.background = 'rgba(59,130,246,0.15)';
+        switchModeBtn.style.borderColor = 'rgba(59,130,246,0.3)';
+      } else {
+        state.supportSendMode = 'brand';
+        switchModeBtn.textContent = 'Войти как Mark1z Design';
+        switchModeBtn.style.background = 'rgba(255,47,174,0.15)';
+        switchModeBtn.style.borderColor = 'rgba(255,47,174,0.3)';
+      }
+    });
     if (burger && nav) burger.addEventListener('click', () => { nav.classList.toggle('is-open'); });
     navButtons.forEach(btn => { btn.addEventListener('click', () => { openScreen(btn.dataset.screenOpen); }); });
     if (userPillButton) userPillButton.addEventListener('click', () => openScreen('account'));
