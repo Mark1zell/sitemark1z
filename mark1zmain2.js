@@ -1292,7 +1292,7 @@ async function findExistingConversation(userId) {
       if (!found) missingIds.push(uniqueSenderIds[j]);
     }
     if (missingIds.length > 0) {
-      var { data: newProfiles } = await supabaseClient.from('profiles').select('*').in('id', missingIds);
+      var result = await supabaseClient.from('profiles').select('*').in('id', missingIds);
       if (newProfiles) {
         for (var k = 0; k < newProfiles.length; k++) {
           var exists = state.allProfilesCache.some(function(p) { return p.id === newProfiles[k].id; });
