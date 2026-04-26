@@ -1558,12 +1558,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             '</div>' +
           '</div>';
         }).join('');
-      }
+            }
       messengerMessages.scrollTop = messengerMessages.scrollHeight;
     }
-  }
   } catch (err) {
-
+    console.error(...);
+  }
+}
 function clearMessengerAttachment() {
   
   function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
