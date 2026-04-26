@@ -1539,8 +1539,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
     
             // Обновляем хедер
-    if (messengerTopName) {
-      if (otherUserId === 'support_mark1z_design') {
+        if (messengerTopName) {
+      if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
         messengerTopName.textContent = 'Mark1z Design';
       } else if (otherProfile?.username) {
         messengerTopName.textContent = otherProfile.username;
@@ -1549,49 +1549,63 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
     }
     
-        if (messengerTopAvatar) {
-      var avUrl = otherProfile?.avatar_url || '';
-      var avName = otherProfile?.username || 'П';
-      // Убираем ВСЕ старые стили
-      messengerTopAvatar.removeAttribute('style');
-      messengerTopAvatar.textContent = '';
-      if (avUrl) {
-        messengerTopAvatar.style.backgroundImage = "url('" + avUrl + "')";
-        messengerTopAvatar.style.backgroundSize = 'cover';
-        messengerTopAvatar.style.backgroundPosition = 'center';
-        messengerTopAvatar.style.backgroundRepeat = 'no-repeat';
-        messengerTopAvatar.style.display = 'flex';
-        messengerTopAvatar.style.alignItems = 'center';
-        messengerTopAvatar.style.justifyContent = 'center';
-        messengerTopAvatar.style.fontWeight = '700';
-        messengerTopAvatar.style.fontSize = '18px';
-        messengerTopAvatar.style.color = '#fff';
+    if (messengerTopAvatar) {
+      if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
+        var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
+        if (brandAvatar) {
+          messengerTopAvatar.style.backgroundImage = "url('" + brandAvatar + "')";
+          messengerTopAvatar.style.backgroundSize = 'cover';
+          messengerTopAvatar.style.backgroundPosition = 'center';
+          messengerTopAvatar.textContent = '';
+        } else {
+          messengerTopAvatar.style.background = 'linear-gradient(135deg, #ff2fae, #7a3cff)';
+          messengerTopAvatar.textContent = 'M';
+        }
       } else {
-        messengerTopAvatar.style.background = 'linear-gradient(135deg, #ff2fae, #7a3cff)';
-        messengerTopAvatar.textContent = getInitial(avName, 'П');
-        messengerTopAvatar.style.display = 'flex';
-        messengerTopAvatar.style.alignItems = 'center';
-        messengerTopAvatar.style.justifyContent = 'center';
-        messengerTopAvatar.style.fontWeight = '700';
-        messengerTopAvatar.style.fontSize = '18px';
-        messengerTopAvatar.style.color = '#fff';
+        var avUrl = otherProfile?.avatar_url || '';
+        var avName = otherProfile?.username || 'П';
+        if (avUrl) {
+          messengerTopAvatar.style.backgroundImage = "url('" + avUrl + "')";
+          messengerTopAvatar.style.backgroundSize = 'cover';
+          messengerTopAvatar.style.backgroundPosition = 'center';
+          messengerTopAvatar.textContent = '';
+        } else {
+          messengerTopAvatar.style.background = 'linear-gradient(135deg, #ff2fae, #7a3cff)';
+          messengerTopAvatar.textContent = getInitial(avName, 'П');
+        }
       }
     }
     
     if (messengerTopSub) {
-  if (otherUserId === 'support_mark1z_design') {
-    messengerTopSub.innerHTML = 'Официальный чат';
-  } else {
-    var statusText = getVisibleLastSeen(otherProfile);
-    var dotColor = '#64748b';
-    if (otherProfile?.is_online) {
-      dotColor = '#22c55e';
-    } else if (statusText.indexOf('только что') >= 0 || statusText.indexOf('мин.') >= 0) {
-      dotColor = '#f97316';
+      if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
+        messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;"></span>Чат для заказов и техподдержка';
+      } else {
+        messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
+      }
     }
-    messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:6px;"></span>' + statusText;
-  }
-}
+
+        // Загрузка аватарки бота (двойной клик)
+    if (messengerTopAvatar && isOwner() && String(conversationId) === String(state.supportConversationId)) {
+      messengerTopAvatar.title = 'Двойной клик — загрузить аватарку';
+      messengerTopAvatar.style.cursor = 'pointer';
+      messengerTopAvatar.ondblclick = function() {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async function() {
+          var file = input.files[0];
+          if (!file) return;
+          var upload = await uploadToBucket('avatars', file, 'brand_avatar');
+          localStorage.setItem('mkz_brand_avatar', upload.publicUrl);
+          messengerTopAvatar.style.backgroundImage = "url('" + upload.publicUrl + "')";
+          messengerTopAvatar.style.backgroundSize = 'cover';
+          messengerTopAvatar.style.backgroundPosition = 'center';
+          messengerTopAvatar.textContent = '';
+          showNotification('Аватарка бота обновлена', 'success');
+        };
+        input.click();
+      };
+    }
     
             // Рендер сообщений
     if (messengerMessages) {
@@ -1860,6 +1874,11 @@ if (!author) author = { username: 'Пользователь' };
     }
 
     var content = messengerInput?.value.trim() || '';
+            // Режим отправки от имени бота
+    var senderId = state.currentSession.user.id;
+    if (String(state.currentConversationId) === String(state.supportConversationId) && state.supportSendMode === 'brand') {
+      senderId = state.currentSession.user.id;
+    }
     var hasAttachment = !!(state.pendingMessengerAttachment?.attachment_url);
 
     if (!content && !hasAttachment) {
@@ -1892,7 +1911,7 @@ if (!author) author = { username: 'Пользователь' };
     try {
       var payload = {
         chat_id: state.currentConversationId,
-        sender_id: state.currentSession.user.id,
+        sender_id: senderId,
         content: content || '',
         type: 'text'
       };
