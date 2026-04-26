@@ -1595,7 +1595,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     
     if (messengerTopAvatar) {
       if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
-                var brandProfile = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').single();
         var brandAvatar = brandProfile?.data?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
         if (brandAvatar) {
           messengerTopAvatar.style.backgroundImage = "url('" + brandAvatar + "')";
