@@ -1652,14 +1652,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   state.currentConversationId = null;
   if (messengerMessages) messengerMessages.innerHTML = '';
   showNotification('Чат удалён', 'success');
-  // Принудительно перезагружаем список
-  setTimeout(async function() {
+    setTimeout(async function() {
+    await fetchMessengerData();
     await renderMessengerDialogs();
-    // Обновляем счётчик
     var badge = document.getElementById('mkzUnreadBadge');
     if (badge) { badge.textContent = ''; badge.style.display = 'none'; }
   }, 500);
-};
     } else {
       profileBtn.style.display = 'none';
       deleteChatBtn.style.display = 'none';
