@@ -2216,13 +2216,7 @@ if (!author) author = { username: 'Пользователь' };
     await fetchSessionAndProfile();
     await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
     await loadUserBio();
-    bindStaticEvents();
-  (async function init() {
-    await fetchSessionAndProfile();
-    await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
-    await loadUserBio();
-    bindStaticEvents();
-    
+    bindStaticEvents();   
     // Автооткрытие чата поддержки
     if (state.currentSession) {
       var supportId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
