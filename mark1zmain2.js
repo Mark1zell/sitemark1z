@@ -1707,26 +1707,31 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     // Рендер сообщений
     var msgContainer = document.getElementById('mkzMessengerMessages');
     if (msgContainer) {
-      var renderMyId = state.currentSession?.user?.id;
-      if (state.conversationMessages.length === 0) {
+      var renderMyId = state.currentSession ? state.currentSession.user.id : null;
+      if (!state.conversationMessages || state.conversationMessages.length === 0) {
         msgContainer.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:40px;">💬 Сообщений пока нет</div>';
       } else {
-        msgContainer.innerHTML = state.conversationMessages.map(function(msg) {
+        var html = '';
+        for (var i = 0; i < state.conversationMessages.length; i++) {
+          var msg = state.conversationMessages[i];
           var isMine = msg.sender_id === renderMyId;
-          return '<div class="mkz-message-row ' + (isMine ? 'mkz-message-row--me' : 'mkz-message-row--them') + '">' +
-            '<div class="mkz-message ' + (isMine ? 'mkz-message--me' : 'mkz-message--them') + '">' +
-            '<div class="mkz-message__text">' + (msg.content || '') + '</div>' +
-            '<div class="mkz-message__footer"><span class="mkz-message__time">' + new Date(msg.created_at).toLocaleString('ru-RU') + '</span></div>' +
-            '</div></div>';
-        }).join('');
+          var content = msg.content || '';
+          var time = new Date(msg.created_at).toLocaleString('ru-RU');
+          html += '<div class="mkz-message-row ' + (isMine ? 'mkz-message-row--me' : 'mkz-message-row--them') + '">';
+          html += '<div class="mkz-message ' + (isMine ? 'mkz-message--me' : 'mkz-message--them') + '">';
+          html += '<div class="mkz-message__text">' + content + '</div>';
+          html += '<div class="mkz-message__footer"><span class="mkz-message__time">' + time + '</span></div>';
+          html += '</div></div>';
+        }
+        msgContainer.innerHTML = html;
       }
       msgContainer.scrollTop = msgContainer.scrollHeight;
     }
-    } catch (err) {
+  } catch (err) {
     console.error('openConversation error:', err);
   }
 }
-  
+
   function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
   function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
   function getUnreadCount(conversationId) { if (!state.currentSession?.user) return 0; const member = state.conversationMembers.find(m => m.conversation_id === conversationId && m.user_id === state.currentSession.user.id); const lastReadAt = member?.last_read_at ? new Date(member.last_read_at).getTime() : 0; return state.conversationMessages.filter(msg => { if (msg.user_id === state.currentSession.user.id) return false; return msg.conversation_id === conversationId && new Date(msg.created_at).getTime() > lastReadAt; }).length; }
