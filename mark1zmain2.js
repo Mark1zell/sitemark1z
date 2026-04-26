@@ -1483,6 +1483,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     const myId = state.currentSession?.user?.id;
     console.log('DEBUG myId:', myId);
     const otherUserId = members?.find(m => m.user_id !== myId)?.user_id;
+    console.log('DEBUG: otherUserId=', otherUserId);
+    console.log('DEBUG: messengerTopAvatar exists=', !!messengerTopAvatar);
     
     // Профиль собеседника
     let otherProfile = null;
