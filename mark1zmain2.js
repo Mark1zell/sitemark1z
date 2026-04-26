@@ -1536,7 +1536,7 @@ async function renderMessengerDialogs() {
 async function openConversation(conversationId, isPollingUpdate = false) {
   if (!conversationId) return;
   state.currentConversationId = conversationId;
-
+  
   // Обновляем выделение в списке диалогов
   var allDialogs = document.querySelectorAll('.mkz-dialog');
   for (var d = 0; d < allDialogs.length; d++) {
@@ -1558,6 +1558,53 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
   // Пропускаем рендер если нет новых сообщений при polling
   if (isPollingUpdate && state._lastMessageCount === state.conversationMessages.length) return;
+
+    // Загружаем данные собеседника
+  var otherUserId = null;
+  var otherProfile = null;
+  
+  try {
+    var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', conversationId);
+    if (members) {
+      otherUserId = members.find(function(m) { return m.user_id !== state.currentSession?.user?.id; })?.user_id;
+    }
+    if (otherUserId && otherUserId !== 'support_mark1z_design') {
+      var { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', otherUserId).single();
+      otherProfile = profile;
+    }
+  } catch(e) {}
+
+  // Обновляем хедер
+  if (otherUserId === 'support_mark1z_design' || String(conversationId) === String(state.supportConversationId)) {
+    if (messengerTopName) messengerTopName.textContent = 'Mark1z Design';
+    if (messengerTopSub) messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;"></span>Чат для заказов и техподдержка';
+    if (messengerTopAvatar) {
+      var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
+      if (brandAvatar) {
+        messengerTopAvatar.style.backgroundImage = "url('" + brandAvatar + "')";
+        messengerTopAvatar.style.backgroundSize = 'cover';
+        messengerTopAvatar.style.backgroundPosition = 'center';
+        messengerTopAvatar.textContent = '';
+      } else {
+        messengerTopAvatar.style.background = 'linear-gradient(135deg, #ff2fae, #7a3cff)';
+        messengerTopAvatar.textContent = 'M';
+      }
+    }
+  } else if (otherProfile) {
+    if (messengerTopName) messengerTopName.textContent = otherProfile.username || 'Пользователь';
+    if (messengerTopSub) messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
+    if (messengerTopAvatar) {
+      if (otherProfile.avatar_url) {
+        messengerTopAvatar.style.backgroundImage = "url('" + otherProfile.avatar_url + "')";
+        messengerTopAvatar.style.backgroundSize = 'cover';
+        messengerTopAvatar.style.backgroundPosition = 'center';
+        messengerTopAvatar.textContent = '';
+      } else {
+        messengerTopAvatar.style.background = 'linear-gradient(135deg, #ff2fae, #7a3cff)';
+        messengerTopAvatar.textContent = getInitial(otherProfile.username || 'П', 'П');
+      }
+    }
+  }
   
   try {
     // Загружаем сообщения
