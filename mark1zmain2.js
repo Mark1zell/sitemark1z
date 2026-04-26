@@ -1722,8 +1722,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           html += '<div class="mkz-message__text">' + content + '</div>';
           html += '<div class="mkz-message__footer"><span class="mkz-message__time">' + time + '</span></div>';
           html += '</div></div>';
-        }
-        msgContainer.innerHTML = html;
       }
       msgContainer.scrollTop = msgContainer.scrollHeight;
     }
