@@ -1929,12 +1929,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           await renderMessengerDialogs();
           await openConversation(newChat.id);
           
-        } catch (err) {
+                } catch (err) {
           console.error('❌ Полная ошибка:', err);
           showNotification('Ошибка: ' + err.message, 'error');
         } finally {
           hideLoading();
         }
+      });   // ← ЗАКРЫТИЕ addEventListener
+    }       // ← ЗАКРЫТИЕ if (openProfileMessengerBtn)
 
     if (messengerAttachImageBtn && messengerImageInput) messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
