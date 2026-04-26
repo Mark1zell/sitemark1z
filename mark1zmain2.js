@@ -1661,11 +1661,12 @@ if (!author) author = { username: 'Пользователь' };
           '</div>';
        }).join('');
      }
-     messengerMessages.scrollTop = messengerMessages.scrollHeight;
-   }
- } catch (err) {
-   console.error('openConversation error:', err);
- }
+           messengerMessages.scrollTop = messengerMessages.scrollHeight;
+    }
+  }
+  } catch (err) {
+    console.error('openConversation error:', err);
+  }
 }
   
   function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
