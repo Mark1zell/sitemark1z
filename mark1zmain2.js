@@ -714,13 +714,11 @@
   }
 
   // ========== PRESENCE HEARTBEAT ==========
-  function startPresenceHeartbeat() {
+    function startPresenceHeartbeat() {
     if (state.messengerPollingTimer) return;
     state.messengerPollingTimer = setInterval(async () => {
       if (!state.currentSession?.user) return;
       await touchCurrentProfileActivity();
-      await fetchMessengerData();
-      await renderMessengerDialogs();
       if (state.currentConversationId) await openConversation(state.currentConversationId, true);
     }, 7000);
   }
@@ -1483,6 +1481,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       .eq('chat_id', conversationId);
     
     const myId = state.currentSession?.user?.id;
+    console.log('DEBUG myId:', myId);
     const otherUserId = members?.find(m => m.user_id !== myId)?.user_id;
     
     // Профиль собеседника
@@ -1496,19 +1495,31 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       otherProfile = profile;
     }
     
-    // Обновляем хедер
+        // Обновляем хедер
     if (messengerTopName) {
       if (otherUserId === 'support_mark1z_design') {
         messengerTopName.textContent = 'Mark1z Design';
       } else if (otherProfile?.username) {
         messengerTopName.textContent = otherProfile.username;
+      } else if (otherUserId) {
+        var cachedProfile = getProfileByUserId(otherUserId);
+        messengerTopName.textContent = cachedProfile?.username || 'Пользователь';
       } else {
         messengerTopName.textContent = chat?.name || 'Пользователь';
       }
     }
     
     if (messengerTopAvatar) {
-      applyAvatar(messengerTopAvatar, otherProfile?.avatar_url || '', otherProfile?.username || 'П');
+      var avUrl = otherProfile?.avatar_url || '';
+      var avName = otherProfile?.username || 'П';
+      if (!avUrl && otherUserId && otherUserId !== 'support_mark1z_design') {
+        var cachedProf = getProfileByUserId(otherUserId);
+        if (cachedProf) {
+          avUrl = cachedProf.avatar_url || '';
+          avName = cachedProf.username || 'П';
+        }
+      }
+      applyAvatar(messengerTopAvatar, avUrl, avName);
     }
     
     if (messengerTopSub) {
@@ -1516,6 +1527,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         messengerTopSub.textContent = 'Официальный чат';
       } else if (otherProfile?.is_online) {
         messengerTopSub.textContent = 'В сети';
+      } else if (otherProfile?.last_seen_at) {
+        messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
       } else {
         messengerTopSub.textContent = 'Не в сети';
       }
@@ -1532,7 +1545,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           </div>`;
       } else {
         messengerMessages.innerHTML = state.conversationMessages.map(msg => {
+          console.log('DEBUG sender_id:', msg.sender_id, 'myId:', myId, 'isMine:', msg.sender_id === myId);
           const isMine = msg.sender_id === myId;
+                    var authorName = '';
+          if (!isMine) {
+            var author = getMessageAuthorIdentity(msg);
+            authorName = '<div class="mkz-message__author-name">' + escapeHtml(author?.username || 'Пользователь') + '</div>';
+          }
           const content = nl2brSafe(msg.content || '');
           const time = formatDateTime(msg.created_at);
           const edited = msg.is_edited ? ' <span style="opacity:0.6;font-size:0.75em;">(изм.)</span>' : '';
@@ -1546,9 +1565,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             }
           }
           
-          return `
+                    return `
             <div class="mkz-message ${isMine ? 'mkz-message--mine' : ''}" data-message-id="${msg.id}">
               <div class="mkz-message__bubble">
+                ${authorName}
                 <div class="mkz-message__content">${content}</div>
                 ${attachmentHtml}
                 <div class="mkz-message__meta">
