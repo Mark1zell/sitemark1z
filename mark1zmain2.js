@@ -1377,6 +1377,24 @@ async function renderMessengerDialogs() {
         }
       }
     }
+
+    // Загружаем профиль бота из БД
+    var brandProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
+    if (!brandProfile || !brandProfile.avatar_url) {
+      var { data: dbBrand } = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').single();
+      var brandAvatar = dbBrand?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
+      if (brandProfile) {
+        brandProfile.avatar_url = brandAvatar;
+      } else {
+        state.allProfilesCache.push({
+          id: 'support_mark1z_design',
+          username: 'Mark1z Design',
+          avatar_url: brandAvatar,
+          is_online: true
+        });
+      }
+      if (brandAvatar) localStorage.setItem('mkz_brand_avatar', brandAvatar);
+    }
     
     // 6. Для каждого чата получаем последнее сообщение
     const { data: lastMessages } = await supabaseClient
@@ -1427,9 +1445,11 @@ async function renderMessengerDialogs() {
         } else {
           statusText = 'Не в сети';
         }
-      } else if (otherMemberId === 'support_mark1z_design' || String(chat.id) === String(state.supportConversationId)) {
+            } else if (otherMemberId === 'support_mark1z_design' || String(chat.id) === String(state.supportConversationId)) {
         displayName = 'Mark1z Design';
-        avatarUrl = localStorage.getItem('mkz_brand_avatar') || '';
+        // Пробуем взять аватарку из кеша профилей
+        var supportProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
+        avatarUrl = supportProfile?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
         statusText = 'Чат для заказов и техподдержка';
       }
       
