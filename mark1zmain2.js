@@ -1404,6 +1404,16 @@ async function renderMessengerDialogs() {
       .order('created_at', { ascending: false });
     
     // Группируем: для каждого чата — последнее сообщение
+    // Удаляем пустые чаты без сообщений
+    for (var ci = 0; ci < chatIds.length; ci++) {
+      var msgCheck = await supabaseClient.from('messages').select('id').eq('chat_id', chatIds[ci]).limit(1);
+      if (!msgCheck.data || msgCheck.data.length === 0) {
+        // Нет сообщений — удаляем чат
+        await supabaseClient.from('chat_members').delete().eq('chat_id', chatIds[ci]);
+        await supabaseClient.from('chats').delete().eq('id', chatIds[ci]);
+      }
+    }
+    
     const lastMsgMap = {};
     for (const msg of lastMessages || []) {
       if (!lastMsgMap[msg.chat_id]) {
