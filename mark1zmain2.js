@@ -726,14 +726,12 @@
     openScreen('account'); showNotification('Вы вышли из аккаунта', 'info');
   }
 
-  // ========== PRESENCE HEARTBEAT ==========
-    function startPresenceHeartbeat() {
+  function startPresenceHeartbeat() {
     if (state.messengerPollingTimer) return;
     state.messengerPollingTimer = setInterval(async () => {
       if (!state.currentSession?.user) return;
       await touchCurrentProfileActivity();
-      if (state.currentConversationId) await openConversation(state.currentConversationId, true);
-    }, 7000);
+    }, 30000);
   }
 
   function stopPresenceHeartbeat() { if (state.messengerPollingTimer) { clearInterval(state.messengerPollingTimer); state.messengerPollingTimer = null; } }
@@ -1466,7 +1464,8 @@ async function renderMessengerDialogs() {
       }
       
       // Активный чат?
-      const isActive = String(chat.id) === String(state.currentConversationId);
+     var isActive = String(chat.id) === String(state.currentConversationId);
+      if (isActive) console.log('Активный чат:', chat.id);
       
       return `
         <button class="mkz-dialog ${isActive ? 'mkz-dialog--active' : ''}" 
