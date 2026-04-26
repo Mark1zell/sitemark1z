@@ -1507,18 +1507,33 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
     
     if (messengerTopAvatar) {
-      var avUrl = otherProfile?.avatar_url || '';
-      var avName = otherProfile?.username || 'П';
-      applyAvatar(messengerTopAvatar, avUrl, avName);
-    }
+  var avUrl = otherProfile?.avatar_url || '';
+  var avName = otherProfile?.username || 'П';
+  if (avUrl) {
+    messengerTopAvatar.style.backgroundImage = "url('" + avUrl + "')";
+    messengerTopAvatar.style.backgroundSize = 'cover';
+    messengerTopAvatar.style.backgroundPosition = 'center';
+    messengerTopAvatar.textContent = '';
+  } else {
+    messengerTopAvatar.style.backgroundImage = '';
+    messengerTopAvatar.textContent = getInitial(avName, 'П');
+  }
+}
     
     if (messengerTopSub) {
-      if (otherUserId === 'support_mark1z_design') {
-        messengerTopSub.textContent = 'Официальный чат';
-      } else {
-        messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
-      }
+  if (otherUserId === 'support_mark1z_design') {
+    messengerTopSub.innerHTML = 'Официальный чат';
+  } else {
+    var statusText = getVisibleLastSeen(otherProfile);
+    var dotColor = '#64748b';
+    if (otherProfile?.is_online) {
+      dotColor = '#22c55e';
+    } else if (statusText.indexOf('только что') >= 0 || statusText.indexOf('мин.') >= 0) {
+      dotColor = '#f97316';
     }
+    messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:6px;"></span>' + statusText;
+  }
+}
     
             // Рендер сообщений
     if (messengerMessages) {
@@ -1538,8 +1553,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             authorName = '<div class="mkz-message__title">' + escapeHtml(author?.username || 'Пользователь') + '</div>';
           }
 
-          var rowClass = isMine ? 'mkz-message-row--me' : 'mkz-message-row--them';
-          var msgClass = isMine ? 'mkz-message--me' : 'mkz-message--them';
+          var rowClass = isMine ? 'mkz-message-row--them' : 'mkz-message-row--me';
+          var msgClass = isMine ? 'mkz-message--them' : 'mkz-message--me';
 
           var attachmentHtml = '';
           if (msg.file_url) {
