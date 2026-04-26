@@ -1722,7 +1722,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
       msgContainer.scrollTop = msgContainer.scrollHeight;
     }
-  } catch (err) {
+    } catch (err) {
     console.error('openConversation error:', err);
   }
 }
