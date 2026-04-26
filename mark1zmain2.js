@@ -1378,11 +1378,11 @@ async function renderMessengerDialogs() {
       }
     }
 
-    // Загружаем профиль бота из БД
+        // Загружаем профиль бота из БД
     var brandProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
     if (!brandProfile || !brandProfile.avatar_url) {
-      var dbBrand = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').maybeSingle();
-      var dbBrandData = dbBrand.data;
+      var dbBrand = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design');
+      var dbBrandData = dbBrand.data ? dbBrand.data[0] : null;
       var brandAvatar = dbBrandData?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
       if (brandProfile) {
         brandProfile.avatar_url = brandAvatar;
