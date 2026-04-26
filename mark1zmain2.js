@@ -1506,19 +1506,34 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
     }
     
-    if (messengerTopAvatar) {
-  var avUrl = otherProfile?.avatar_url || '';
-  var avName = otherProfile?.username || 'П';
-  if (avUrl) {
-    messengerTopAvatar.style.backgroundImage = "url('" + avUrl + "')";
-    messengerTopAvatar.style.backgroundSize = 'cover';
-    messengerTopAvatar.style.backgroundPosition = 'center';
-    messengerTopAvatar.textContent = '';
-  } else {
-    messengerTopAvatar.style.backgroundImage = '';
-    messengerTopAvatar.textContent = getInitial(avName, 'П');
-  }
-}
+        if (messengerTopAvatar) {
+      var avUrl = otherProfile?.avatar_url || '';
+      var avName = otherProfile?.username || 'П';
+      // Убираем ВСЕ старые стили
+      messengerTopAvatar.removeAttribute('style');
+      messengerTopAvatar.textContent = '';
+      if (avUrl) {
+        messengerTopAvatar.style.backgroundImage = "url('" + avUrl + "')";
+        messengerTopAvatar.style.backgroundSize = 'cover';
+        messengerTopAvatar.style.backgroundPosition = 'center';
+        messengerTopAvatar.style.backgroundRepeat = 'no-repeat';
+        messengerTopAvatar.style.display = 'flex';
+        messengerTopAvatar.style.alignItems = 'center';
+        messengerTopAvatar.style.justifyContent = 'center';
+        messengerTopAvatar.style.fontWeight = '700';
+        messengerTopAvatar.style.fontSize = '18px';
+        messengerTopAvatar.style.color = '#fff';
+      } else {
+        messengerTopAvatar.style.background = 'linear-gradient(135deg, #ff2fae, #7a3cff)';
+        messengerTopAvatar.textContent = getInitial(avName, 'П');
+        messengerTopAvatar.style.display = 'flex';
+        messengerTopAvatar.style.alignItems = 'center';
+        messengerTopAvatar.style.justifyContent = 'center';
+        messengerTopAvatar.style.fontWeight = '700';
+        messengerTopAvatar.style.fontSize = '18px';
+        messengerTopAvatar.style.color = '#fff';
+      }
+    }
     
     if (messengerTopSub) {
   if (otherUserId === 'support_mark1z_design') {
