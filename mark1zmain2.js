@@ -477,6 +477,27 @@
     mediaRecorder: null, mediaChunks: [], voiceStream: null
   };
 
+    // ========== DEV-КОНСОЛЬ ДЛЯ ОТЛАДКИ ==========
+  window.mkz = {
+    state: state,
+    chat: function() { return state.currentConversationId; },
+    open: function(id) { return openConversation(id || state.currentConversationId); },
+    support: function() { return openConversation(state.supportConversationId); },
+    dialogs: function() { return renderMessengerDialogs(); },
+    cache: function() { return cacheProfiles(); },
+    messages: function() { return state.conversationMessages; },
+    profile: function() { return state.currentProfile; },
+    session: function() { return state.currentSession; },
+  };
+
+  mkz.chat()       // ID текущего чата
+  mkz.support()    // открыть чат поддержки
+  mkz.dialogs()    // обновить список диалогов
+  mkz.messages()   // показать сообщения
+  mkz.cache()      // обновить кеш профилей
+  mkz.profile()    // текущий профиль
+  mkz.session()    // сессия
+
   // ========== ФУНКЦИИ РАБОТЫ С ПРОФИЛЕМ ==========
   async function readProfileByUserId(userId) {
     try {
@@ -1506,10 +1527,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       .eq('chat_id', conversationId);
     
     const myId = state.currentSession?.user?.id;
-    console.log('DEBUG myId:', myId);
     const otherUserId = members?.find(m => m.user_id !== myId)?.user_id;
-    console.log('DEBUG: otherUserId=', otherUserId);
-    console.log('DEBUG: messengerTopAvatar exists=', !!messengerTopAvatar);
     
     // Профиль собеседника
     let otherProfile = null;
