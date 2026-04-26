@@ -1520,14 +1520,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
     }
     
-        // Рендер сообщений
+            // Рендер сообщений
     if (messengerMessages) {
       if (!state.conversationMessages.length) {
         messengerMessages.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:40px;">💬 Сообщений пока нет</div>';
       } else {
-        var myId = state.currentProfile?.id || state.currentSession?.user?.id;
+        var currentMyId = state.currentProfile?.id || state.currentSession?.user?.id;
         messengerMessages.innerHTML = state.conversationMessages.map(function(msg) {
-          var isMine = msg.sender_id === myId;
+          var isMine = msg.sender_id === currentMyId;
           var content = nl2brSafe(msg.content || '');
           var time = formatDateTime(msg.created_at);
           var edited = msg.is_edited ? ' (изм.)' : '';
@@ -1561,13 +1561,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
       messengerMessages.scrollTop = messengerMessages.scrollHeight;
     }
-    
-    if (messengerEmptyState) messengerEmptyState.style.display = 'none';
-    
-  } catch (err) {
-    console.error('openConversation error:', err);
-  }
-}
   
   function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }
   function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
