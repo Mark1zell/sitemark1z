@@ -2049,12 +2049,10 @@ if (!author) author = { username: 'Пользователь' };
     if (toggleLinkBtn && linkPanel) toggleLinkBtn.addEventListener('click', () => { linkPanel.style.display = linkPanel.style.display === 'none' ? 'block' : 'none'; toggleLinkBtn.classList.toggle('is-active', linkPanel.style.display !== 'none'); });
     if (togglePinBtn) togglePinBtn.addEventListener('click', () => { state.isPinnedDraft = !state.isPinnedDraft; togglePinBtn.classList.toggle('is-active', state.isPinnedDraft); });
     if (faqFab) faqFab.addEventListener('click', () => openScreen('faq'));
-    if (chatFab) chatFab.addEventListener('click', async () => { 
+        if (chatFab) chatFab.addEventListener('click', async () => { 
       if (!state.currentSession) { openScreen('account'); return; } 
       openScreen('messenger'); 
-      await renderMessengerDialogs(); 
-      var supportId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
-      await openConversation(supportId);
+      await renderMessengerDialogs();
     });
     stars.forEach(star => { star.addEventListener('click', () => { state.currentRating = Number(star.dataset.rating); renderStars(state.currentRating); }); });
     aboutTabs.forEach(tab => { tab.addEventListener('click', () => { aboutTabs.forEach(item => item.classList.remove('is-active')); aboutPanels.forEach(item => item.classList.remove('is-active')); tab.classList.add('is-active'); document.querySelector(`[data-about-panel="${tab.dataset.aboutTab}"]`)?.classList.add('is-active'); }); });
@@ -2285,14 +2283,6 @@ if (!author) author = { username: 'Пользователь' };
     await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
     await loadUserBio();
     bindStaticEvents();   
-    // Автооткрытие чата поддержки
-    if (state.currentSession) {
-      var supportId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
-      state.supportConversationId = supportId;
-      setTimeout(async function() {
-        await openConversation(supportId);
-      }, 500);
-    }
     supabaseClient.auth.onAuthStateChange(function(_event, session) {
       state.currentSession = session || null;
       if (state.currentSession) {
