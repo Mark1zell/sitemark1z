@@ -2096,6 +2096,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       await openConversation('daba25cb-e4e2-44b3-be59-36f0f5e38ce5');
     });
     if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
+
+    console.log('Ответ API:', JSON.stringify({ data: newChat, error: chatError }));
     
                 // ========== ОТПРАВКА ПО ENTER ==========
     if (messengerInput) {
