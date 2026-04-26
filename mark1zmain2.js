@@ -1595,7 +1595,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     
     if (messengerTopAvatar) {
       if (String(conversationId) === String(state.supportConversationId) || otherUserId === 'support_mark1z_design') {
-        var brandAvatar = brandProfile?.data?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
+        var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
         if (brandAvatar) {
           messengerTopAvatar.style.backgroundImage = "url('" + brandAvatar + "')";
           messengerTopAvatar.style.backgroundSize = 'cover';
