@@ -1781,6 +1781,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   function initSupportDialogsBackButton() { const backBtn = document.getElementById('mkzBackToAdminBtn'); if (backBtn) backBtn.addEventListener('click', () => openScreen('account')); }
 
     // ========== БЫСТРЫЙ РЕНДЕР СООБЩЕНИЙ (без перезагрузки) ==========
+  function clearMessengerAttachment() { 
+  state.pendingMessengerAttachment = null; 
+  if (messengerImageInput) messengerImageInput.value = ''; 
+  if (messengerFileInput) messengerFileInput.value = ''; 
+  if (messengerAttachMeta) messengerAttachMeta.textContent = ''; 
+}
+  
       function renderMessagesList() {
     if (!messengerMessages) return;
     var currentMyId = state.currentProfile?.id || state.currentSession?.user?.id;
@@ -1999,10 +2006,9 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         try {
           // 1. Сначала ищем существующий чат
           var existingId = await findExistingConversation(targetUserId);
-            if (existingId) {
-          // Проверяем что мы всё ещё участник
+          if (existingId) {
             var checkMember = await supabaseClient.from('chat_members').select('*').eq('chat_id', existingId).eq('user_id', myId);
-              if (!checkMember.data || checkMember.data.length === 0) {
+            if (!checkMember.data || checkMember.data.length === 0) {
               existingId = null;
             }
           }
