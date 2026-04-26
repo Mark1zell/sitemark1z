@@ -1765,7 +1765,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   }
 
       // ========== ОТПРАВКА СООБЩЕНИЯ В ЧАТ ==========
-    async function sendMessengerMessage() {
+      async function sendMessengerMessage() {
     if (!state.currentSession?.user) {
       showNotification('Войдите в аккаунт', 'warning');
       return;
