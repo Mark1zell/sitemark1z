@@ -1635,21 +1635,18 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     
     if (otherUserId && otherUserId !== 'support_mark1z_design') {
       profileBtn.onclick = function() { openPublicProfile(otherUserId); };
-            deleteChatBtn.onclick = async function() {
-        if (!confirm('Удалить этот чат?')) return;
+                  deleteChatBtn.onclick = async function() {
+        if (!confirm('Удалить этот чат? Переписка исчезнет у обоих.')) return;
         var chatId = conversationId;
-        // Удаляем себя из участников
-        await supabaseClient.from('chat_members').delete().eq('chat_id', chatId).eq('user_id', state.currentSession.user.id);
-        // Проверяем остался ли кто-то в чате
-        var { data: remaining } = await supabaseClient.from('chat_members').select('*').eq('chat_id', chatId);
-        if (!remaining || remaining.length === 0) {
-          // Если никого нет — удаляем чат и сообщения
-          await supabaseClient.from('messages').delete().eq('chat_id', chatId);
-          await supabaseClient.from('chats').delete().eq('id', chatId);
-        }
+        // Удаляем сообщения
+        await supabaseClient.from('messages').delete().eq('chat_id', chatId);
+        // Удаляем всех участников
+        await supabaseClient.from('chat_members').delete().eq('chat_id', chatId);
+        // Удаляем сам чат
+        await supabaseClient.from('chats').delete().eq('id', chatId);
         state.currentConversationId = null;
         if (messengerMessages) messengerMessages.innerHTML = '';
-        showNotification('Чат удалён', 'success');
+        showNotification('Чат удалён полностью', 'success');
         setTimeout(async function() {
           await renderMessengerDialogs();
         }, 500);
