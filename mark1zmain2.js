@@ -1607,24 +1607,50 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
     }
 
-        // Кнопка профиля в хедере
+            // Кнопки профиля и удаления чата
     setTimeout(function() {
+      // Кнопка профиля
       var profileBtn = document.getElementById('mkzMessengerProfileBtn');
       if (!profileBtn) {
         profileBtn = document.createElement('button');
         profileBtn.id = 'mkzMessengerProfileBtn';
         profileBtn.textContent = '👤';
-        profileBtn.style.cssText = 'width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;margin-left:8px;flex-shrink:0;';
+        profileBtn.style.cssText = 'width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
         var headEl = document.querySelector('#messenger .mkz-messenger-head');
         if (headEl) headEl.appendChild(profileBtn);
       }
+      
+      // Кнопка удаления чата
+      var deleteChatBtn = document.getElementById('mkzDeleteChatBtn');
+      if (!deleteChatBtn) {
+        deleteChatBtn = document.createElement('button');
+        deleteChatBtn.id = 'mkzDeleteChatBtn';
+        deleteChatBtn.textContent = '🗑️';
+        deleteChatBtn.title = 'Удалить чат';
+        deleteChatBtn.style.cssText = 'width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;margin-left:4px;flex-shrink:0;';
+        var headEl2 = document.querySelector('#messenger .mkz-messenger-head');
+        if (headEl2) headEl2.appendChild(deleteChatBtn);
+      }
+      
       if (otherUserId && otherUserId !== 'support_mark1z_design') {
         profileBtn.onclick = function() {
           openPublicProfile(otherUserId);
         };
         profileBtn.style.display = 'flex';
+        deleteChatBtn.style.display = 'flex';
+        deleteChatBtn.onclick = async function() {
+          if (!confirm('Удалить этот чат?')) return;
+          var chatId = state.currentConversationId;
+          // Удаляем себя из участников
+          await supabaseClient.from('chat_members').delete().eq('chat_id', chatId).eq('user_id', state.currentSession.user.id);
+          state.currentConversationId = null;
+          if (messengerMessages) messengerMessages.innerHTML = '';
+          await renderMessengerDialogs();
+          showNotification('Чат удалён', 'success');
+        };
       } else {
         profileBtn.style.display = 'none';
+        deleteChatBtn.style.display = 'none';
       }
     }, 300);
 
