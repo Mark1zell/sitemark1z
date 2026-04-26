@@ -1751,12 +1751,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   function initSupportDialogsBackButton() { const backBtn = document.getElementById('mkzBackToAdminBtn'); if (backBtn) backBtn.addEventListener('click', () => openScreen('account')); }
 
     // ========== БЫСТРЫЙ РЕНДЕР СООБЩЕНИЙ (без перезагрузки) ==========
-    function renderMessagesList() {
+      function renderMessagesList() {
     if (!messengerMessages) return;
     var myId = state.currentProfile?.id || state.currentSession?.user?.id;
 
     if (!state.conversationMessages.length) {
-      messengerMessages.innerHTML = '<div class="mkz-messenger-empty">💬<p>Сообщений пока нет</p></div>';
+      messengerMessages.innerHTML = '<div class="mkz-messenger-empty"><p style="text-align:center;color:rgba(255,255,255,0.5);">💬 Сообщений пока нет</p></div>';
       return;
     }
 
@@ -1764,22 +1764,31 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var isMine = msg.sender_id === myId;
       var content = nl2brSafe(msg.content || '');
       var time = formatDateTime(msg.created_at);
-      var edited = msg.is_edited ? ' <span style="opacity:0.6;font-size:0.75em;">(изм.)</span>' : '';
-      var pending = msg._pending ? ' <span style="opacity:0.4;font-size:0.7em;">...</span>' : '';
+      var edited = msg.is_edited ? ' (изм.)' : '';
+      var pending = msg._pending ? ' (отправка...)' : '';
       
       var authorName = '';
       if (!isMine) {
         var author = getMessageAuthorIdentity(msg);
-        authorName = '<div class="mkz-msg-author">' + escapeHtml(author?.username || 'Пользователь') + '</div>';
+        authorName = '<div class="mkz-message__title">' + escapeHtml(author?.username || 'Пользователь') + '</div>';
       }
 
-      return '<div class="' + (isMine ? 'mkz-msg-mine' : 'mkz-msg-notmine') + '" data-message-id="' + msg.id + '">' +
-        '<div class="mkz-msg-bubble">' +
+      var rowClass = isMine ? 'mkz-message-row--me' : 'mkz-message-row--them';
+      var msgClass = isMine ? 'mkz-message--me' : 'mkz-message--them';
+
+      var attachmentHtml = '';
+      if (msg.file_url) {
+        attachmentHtml = '<div class="mkz-message__image"><img src="' + safeUrl(msg.file_url) + '" alt="Изображение"></div>';
+      }
+
+      return '<div class="mkz-message-row ' + rowClass + '">' +
+        '<div class="mkz-message ' + msgClass + '" data-message-id="' + msg.id + '">' +
           authorName +
-          '<div class="mkz-msg-content">' + content + '</div>' +
-          '<div class="mkz-msg-meta">' +
-            '<span class="mkz-msg-time">' + time + edited + pending + '</span>' +
-            (isMine && !msg._pending ? '<span class="mkz-msg-actions"><button type="button" class="mkz-msg-btn mkz-msg-btn-edit" data-edit-message="' + msg.id + '">✏️</button><button type="button" class="mkz-msg-btn mkz-msg-btn-del" data-delete-message="' + msg.id + '">🗑️</button></span>' : '') +
+          (content ? '<div class="mkz-message__text">' + content + '</div>' : '') +
+          attachmentHtml +
+          '<div class="mkz-message__footer">' +
+            '<span class="mkz-message__time">' + time + edited + pending + '</span>' +
+            (isMine && !msg._pending ? '<span class="mkz-message__actions"><button class="mkz-message__icon-btn" data-edit-message="' + msg.id + '" title="Редактировать"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button><button class="mkz-message__icon-btn" data-delete-message="' + msg.id + '" title="Удалить"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></span>' : '') +
           '</div>' +
         '</div>' +
       '</div>';
