@@ -1378,23 +1378,24 @@ async function renderMessengerDialogs() {
       }
     }
 
-        // Загружаем профиль бота из БД
-    var brandProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
-    if (!brandProfile || !brandProfile.avatar_url) {
-      var dbBrand = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design');
-      var dbBrandData = dbBrand.data ? dbBrand.data[0] : null;
-      var brandAvatar = dbBrandData?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
-      if (brandProfile) {
-        brandProfile.avatar_url = brandAvatar;
-      } else {
-        state.allProfilesCache.push({
-          id: 'support_mark1z_design',
-          username: 'Mark1z Design',
-          avatar_url: brandAvatar,
-          is_online: true
-        });
+            // Загружаем профиль бота из БД (без ошибок)
+    try {
+      var brandProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
+      if (!brandProfile || !brandProfile.avatar_url) {
+        var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
+        if (brandProfile) {
+          brandProfile.avatar_url = brandAvatar;
+        } else {
+          state.allProfilesCache.push({
+            id: 'support_mark1z_design',
+            username: 'Mark1z Design',
+            avatar_url: brandAvatar,
+            is_online: true
+          });
+        }
       }
-      if (brandAvatar) localStorage.setItem('mkz_brand_avatar', brandAvatar);
+    } catch(e) {
+      console.log('Профиль бота не в БД, используем localStorage');
     }
     
     // 6. Для каждого чата получаем последнее сообщение
