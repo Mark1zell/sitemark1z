@@ -1559,13 +1559,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           '</div>';
         }).join('');
       }
-    messengerMessages.scrollTop = messengerMessages.scrollHeight;
+      messengerMessages.scrollTop = messengerMessages.scrollHeight;
     }
   }
   } catch (err) {
-    console.error('openConversation error:', err);
-  }
-}
 
 function clearMessengerAttachment() {
   
