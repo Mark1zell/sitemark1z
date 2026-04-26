@@ -1265,8 +1265,33 @@ async function findExistingConversation(userId) {
       state.conversations = conversations || [];
       state.conversationMembers = allMembers || [];
       state.conversationMessages = messages || [];
+          // Кешируем профили отправителей
+    var senderIds = [];
+    for (var i = 0; i < state.conversationMessages.length; i++) {
+      var sid = state.conversationMessages[i].sender_id;
+      if (sid && senderIds.indexOf(sid) === -1) senderIds.push(sid);
+    }
+    if (senderIds.length > 0) {
+      var cached = state.allProfilesCache;
+      var idsToFetch = [];
+      for (var j = 0; j < senderIds.length; j++) {
+        var found = false;
+        for (var k = 0; k < cached.length; k++) {
+          if (cached[k].id === senderIds[j]) { found = true; break; }
+        }
+        if (!found) idsToFetch.push(senderIds[j]);
+      }
+      if (idsToFetch.length > 0) {
+        var result = await supabaseClient.from('profiles').select('*').in('id', idsToFetch);
+        if (result.data) {
+          for (var l = 0; l < result.data.length; l++) {
+            state.allProfilesCache.push(result.data[l]);
+          }
+        }
+      }
+    }
       const supportConversation = state.conversations.find(c => c.is_support === true);
-      state.supportConversationId = supportConversation?.id || null;
+      state.supportConversationId = supportConversation?.id || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
     } catch (err) { console.error('fetchMessengerData error:', err); }
   }
 
