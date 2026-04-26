@@ -1536,7 +1536,7 @@ async function renderMessengerDialogs() {
 async function openConversation(conversationId, isPollingUpdate = false) {
   if (!conversationId) return;
   state.currentConversationId = conversationId;
-  
+
   // Обновляем выделение в списке диалогов
   var allDialogs = document.querySelectorAll('.mkz-dialog');
   for (var d = 0; d < allDialogs.length; d++) {
@@ -1559,7 +1559,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   // Пропускаем рендер если нет новых сообщений при polling
   if (isPollingUpdate && state._lastMessageCount === state.conversationMessages.length) return;
 
-    // Загружаем данные собеседника
+  // Загружаем данные собеседника
   var otherUserId = null;
   var otherProfile = null;
   
@@ -1593,15 +1593,15 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   } else if (otherProfile) {
     if (messengerTopName) messengerTopName.textContent = otherProfile.username || 'Пользователь';
     if (messengerTopSub) {
-  var statusText = getVisibleLastSeen(otherProfile);
-  var dotColor = '#64748b';
-  if (otherProfile.is_online) {
-    dotColor = '#22c55e';
-  } else if (statusText.indexOf('только что') >= 0 || statusText.indexOf('мин.') >= 0) {
-    dotColor = '#f97316';
-  }
-  messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:6px;"></span>' + statusText;
-}
+      var statusText = getVisibleLastSeen(otherProfile);
+      var dotColor = '#64748b';
+      if (otherProfile.is_online) {
+        dotColor = '#22c55e';
+      } else if (statusText.indexOf('только что') >= 0 || statusText.indexOf('мин.') >= 0) {
+        dotColor = '#f97316';
+      }
+      messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:6px;"></span>' + statusText;
+    }
     if (messengerTopAvatar) {
       if (otherProfile.avatar_url) {
         messengerTopAvatar.style.backgroundImage = "url('" + otherProfile.avatar_url + "')";
@@ -1614,6 +1614,51 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
     }
   }
+
+  // Кнопки профиля и удаления чата
+  setTimeout(function() {
+    var headEl = document.querySelector('#messenger .mkz-messenger-head');
+    if (!headEl) return;
+    
+    var oldProfile = document.getElementById('mkzMessengerProfileBtn');
+    var oldDelete = document.getElementById('mkzDeleteChatBtn');
+    if (oldProfile) oldProfile.remove();
+    if (oldDelete) oldDelete.remove();
+    
+    var btnsContainer = document.createElement('div');
+    btnsContainer.style.cssText = 'display:flex;align-items:center;gap:6px;margin-left:auto;';
+    
+    var deleteChatBtn = document.createElement('button');
+    deleteChatBtn.id = 'mkzDeleteChatBtn';
+    deleteChatBtn.innerHTML = '🗑️';
+    deleteChatBtn.title = 'Удалить чат';
+    deleteChatBtn.style.cssText = 'width:38px;height:38px;border:none;border-radius:10px;background:rgba(255,60,60,0.15);color:#ff4d4d;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;line-height:1;';
+    
+    var profileBtn = document.createElement('button');
+    profileBtn.id = 'mkzMessengerProfileBtn';
+    profileBtn.innerHTML = '👤';
+    profileBtn.title = 'Профиль';
+    profileBtn.style.cssText = 'width:38px;height:38px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;line-height:1;';
+    
+    btnsContainer.appendChild(deleteChatBtn);
+    btnsContainer.appendChild(profileBtn);
+    headEl.appendChild(btnsContainer);
+    
+    if (otherUserId && otherUserId !== 'support_mark1z_design') {
+      profileBtn.onclick = function() { openPublicProfile(otherUserId); };
+      deleteChatBtn.onclick = async function() {
+        if (!confirm('Удалить этот чат?')) return;
+        await supabaseClient.from('chat_members').delete().eq('chat_id', conversationId).eq('user_id', state.currentSession.user.id);
+        state.currentConversationId = null;
+        if (messengerMessages) messengerMessages.innerHTML = '';
+        await renderMessengerDialogs();
+        showNotification('Чат удалён', 'success');
+      };
+    } else {
+      profileBtn.style.display = 'none';
+      deleteChatBtn.style.display = 'none';
+    }
+  }, 300);
   
   try {
     // Загружаем сообщения
@@ -1654,76 +1699,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   } catch (err) {
     console.error('openConversation error:', err);
   }
-}
-  
-  function clearMessengerAttachment() { state.pendingMessengerAttachment = null; if (messengerImageInput) messengerImageInput.value = ''; if (messengerFileInput) messengerFileInput.value = ''; if (messengerAttachMeta) messengerAttachMeta.textContent = ''; }function getConversationPeer(conversationId) { const members = state.conversationMembers.filter(m => m.conversation_id === conversationId); const peer = members.find(m => m.user_id !== state.currentSession?.user?.id); return peer ? getProfileByUserId(peer.user_id) : null; }
-  function getUnreadCount(conversationId) { if (!state.currentSession?.user) return 0; const member = state.conversationMembers.find(m => m.conversation_id === conversationId && m.user_id === state.currentSession.user.id); const lastReadAt = member?.last_read_at ? new Date(member.last_read_at).getTime() : 0; return state.conversationMessages.filter(msg => { if (msg.user_id === state.currentSession.user.id) return false; return msg.conversation_id === conversationId && new Date(msg.created_at).getTime() > lastReadAt; }).length; }
-  async function markConversationAsRead(conversationId) { if (!state.currentSession?.user || !conversationId) return; try { await supabaseClient.from('conversation_members').update({ last_read_at: new Date().toISOString() }).eq('conversation_id', conversationId).eq('user_id', state.currentSession.user.id); } catch (err) { console.error('markConversationAsRead error:', err); } }
-  async function findOrCreateSupportConversation() { if (!state.currentSession?.user) return null; await fetchMessengerData(); if (state.supportConversationId) return state.supportConversationId; const { data: newConversation, error } = await supabaseClient.from('conversations').insert({ title: 'Mark1z Design', is_support: true, created_by: OWNER_UID, updated_at: new Date().toISOString() }).select('*').maybeSingle(); if (error || !newConversation) return null; await supabaseClient.from('conversation_members').insert([{ conversation_id: newConversation.id, user_id: OWNER_UID, last_read_at: new Date().toISOString() }, { conversation_id: newConversation.id, user_id: state.currentSession.user.id, last_read_at: null }]); state.supportConversationId = newConversation.id; await fetchMessengerData(); return newConversation.id; }
-  async function findOrCreateDirectConversation(otherUserId) {
-  if (!state.currentSession?.user) {
-    console.error('Нет авторизованного пользователя');
-    return null;
-  }
-  
-  await fetchMessengerData();
-  
-  const myId = String(state.currentSession.user.id);
-  const targetId = String(otherUserId);
-  
-  console.log('Поиск чата между', myId, 'и', targetId);
-  
-  // Ищем существующий чат
-  const existing = state.conversations.find(conv => {
-    if (conv.is_support) return false;
-    const members = state.conversationMembers
-      .filter(m => String(m.conversation_id) === String(conv.id))
-      .map(m => String(m.user_id));
-    return members.length === 2 && members.includes(myId) && members.includes(targetId);
-  });
-  
-  if (existing) {
-    console.log('Существующий чат найден:', existing.id);
-    return existing.id;
-  }
-  
-  console.log('Создаём новый чат...');
-  
-  // Создаём новый чат
-  const { data: newConversation, error } = await supabaseClient
-    .from('conversations')
-    .insert({
-      title: 'Личный чат',
-      is_direct: true,
-      is_support: false,
-      created_by: state.currentSession.user.id,
-      updated_at: new Date().toISOString()
-    })
-    .select('*')
-    .single();
-    
-  if (error || !newConversation) {
-    console.error('Ошибка создания чата:', error);
-    return null;
-  }
-  
-  console.log('Новый чат создан:', newConversation.id);
-  
-  // Добавляем участников
-  const { error: membersError } = await supabaseClient
-    .from('conversation_members')
-    .insert([
-      { conversation_id: newConversation.id, user_id: state.currentSession.user.id, last_read_at: new Date().toISOString() },
-      { conversation_id: newConversation.id, user_id: otherUserId, last_read_at: null }
-    ]);
-  
-  if (membersError) {
-    console.error('Ошибка добавления участников:', membersError);
-    return null;
-  }
-  
-  await fetchMessengerData();
-  return newConversation.id;
 }
   function renderConversationMessage(message) {
     const isOutgoing = String(message.user_id) === String(state.currentSession?.user?.id) && message.sender_mode !== 'support_brand';
