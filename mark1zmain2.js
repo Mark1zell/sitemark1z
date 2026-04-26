@@ -1947,12 +1947,9 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       return;
     }
 
-    var content = messengerInput?.value.trim() || '';
-            // Режим отправки от имени бота
+        var content = messengerInput?.value.trim() || '';
+    // Режим отправки от имени бота
     var senderId = state.currentSession.user.id;
-    if (String(state.currentConversationId) === String(state.supportConversationId) && state.supportSendMode === 'brand') {
-      senderId = state.currentSession.user.id;
-    }
     var hasAttachment = !!(state.pendingMessengerAttachment?.attachment_url);
 
     if (!content && !hasAttachment) {
