@@ -1503,6 +1503,25 @@ async function renderMessengerDialogs() {
         const chatId = btn.dataset.openChat;
         await openConversation(chatId);
       });
+
+          // Обновляем счётчик непрочитанных
+    var unreadCount = 0;
+    for (var d = 0; d < chats.length; d++) {
+      var lastMsg = lastMsgMap[chats[d].id];
+      if (lastMsg && lastMsg.sender_id !== myId) {
+        unreadCount++;
+      }
+    }
+    var badge = document.getElementById('mkzMessengerBadge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'mkzMessengerBadge';
+      badge.style.cssText = 'background:#ff2fae;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;display:none;';
+      var messengerNavBtn = document.querySelector('[data-screen-open="messenger"]');
+      if (messengerNavBtn) messengerNavBtn.appendChild(badge);
+    }
+    badge.textContent = unreadCount > 0 ? unreadCount : '';
+    badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
     });
     
     hideLoading();
@@ -1606,6 +1625,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       } else {
         messengerTopSub.textContent = getVisibleLastSeen(otherProfile);
       }
+          // Сбрасываем счётчик для текущего чата
+      var badge = document.getElementById('mkzMessengerBadge');
+      if (badge && badge.textContent) {
+        var currentUnread = parseInt(badge.textContent) || 0;
+        var newUnread = currentUnread - 1;
+        badge.textContent = newUnread > 0 ? newUnread : '';
+        badge.style.display = newUnread > 0 ? 'inline-block' : 'none';
+      }
     }
 
             // Кнопки профиля и удаления чата
@@ -1685,7 +1712,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       };
     
             // Рендер сообщений
-    if (messengerMessages) {
+    var msgContainer = document.getElementById('mkzMessengerMessages');
+    if (msgContainer) {
       if (!state.conversationMessages.length) {
         messengerMessages.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:40px;">💬 Сообщений пока нет</div>';
       } else {
