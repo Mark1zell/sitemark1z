@@ -2009,7 +2009,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         
         try {
           // 1. Сначала ищем существующий чат
-          const existingId = await findExistingConversation(targetUserId);
+          var existingId = await findExistingConversation(targetUserId);
+            if (existingId) {
+          // Проверяем что мы всё ещё участник
+            var checkMember = await supabaseClient.from('chat_members').select('*').eq('chat_id', existingId).eq('user_id', myId);
+              if (!checkMember.data || checkMember.data.length === 0) {
+              existingId = null;
+            }
+          }
           
           if (existingId) {
             console.log('✅ Найден существующий чат:', existingId);
