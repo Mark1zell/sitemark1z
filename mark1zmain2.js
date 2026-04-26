@@ -1410,9 +1410,16 @@ async function renderMessengerDialogs() {
         lastMsgMap[msg.chat_id] = msg;
       }
     }
+        // Фильтруем чаты — только те где есть сообщения
+    var filteredChats = [];
+    for (var f = 0; f < chats.length; f++) {
+      if (lastMsgMap[chats[f].id]) {
+        filteredChats.push(chats[f]);
+      }
+    }
     
     // 7. Рендерим
-    messengerDialogs.innerHTML = chats.map(chat => {
+      messengerDialogs.innerHTML = filteredChats.map(chat => {
       // Находим собеседника для этого чата
       const chatMembers = (allMembers || []).filter(m => m.chat_id === chat.id);
       const otherMemberId = chatMembers.find(m => m.user_id !== myId)?.user_id;
@@ -1505,8 +1512,8 @@ async function renderMessengerDialogs() {
     });
 
         // Обновляем счётчик непрочитанных
-    var unreadCount = 0;
-    for (var d = 0; d < chats.length; d++) {
+    var unreadTotal = 0;
+    for (var d = 0; d < filteredChats.length; d++) {
       var lastMsg = lastMsgMap[chats[d].id];
       if (lastMsg && lastMsg.sender_id !== myId && String(chats[d].id) !== String(state.currentConversationId)) {
         unreadCount++;
