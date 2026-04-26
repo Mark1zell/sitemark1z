@@ -1720,7 +1720,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     // ========== БЫСТРЫЙ РЕНДЕР СООБЩЕНИЙ (без перезагрузки) ==========
       function renderMessagesList() {
     if (!messengerMessages) return;
-    var myId = state.currentProfile?.id || state.currentSession?.user?.id;
+    var currentMyId = state.currentProfile?.id || state.currentSession?.user?.id;
 
     if (!state.conversationMessages.length) {
       messengerMessages.innerHTML = '<div class="mkz-messenger-empty"><p style="text-align:center;color:rgba(255,255,255,0.5);">💬 Сообщений пока нет</p></div>';
@@ -1728,7 +1728,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
 
     messengerMessages.innerHTML = state.conversationMessages.map(function(msg) {
-      var isMine = msg.sender_id === myId;
+      var isMine = msg.sender_id === currentMyId;
       var content = nl2brSafe(msg.content || '');
       var time = formatDateTime(msg.created_at);
       var edited = msg.is_edited ? ' (изм.)' : '';
