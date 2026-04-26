@@ -1727,6 +1727,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         msgContainer.innerHTML = html;
         msgContainer.scrollTop = msgContainer.scrollHeight;
       }
+    }
   } catch (err) {
     console.error('openConversation error:', err);
   }
