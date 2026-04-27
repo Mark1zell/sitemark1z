@@ -1905,7 +1905,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
           'Authorization': 'Bearer ' + state.currentSession.access_token,
           'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
+          'Prefer': 'return=minimal'
         },
         body: JSON.stringify(payload)
       });
@@ -2047,7 +2047,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
               'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
               'Authorization': 'Bearer ' + state.currentSession.access_token,
               'Content-Type': 'application/json',
-              'Prefer': 'return=representation'
+              'Prefer': 'return=minimal'
             },
             body: JSON.stringify({ id: newChatId, is_group: false })
           });
