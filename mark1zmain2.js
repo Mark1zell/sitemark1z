@@ -1890,7 +1890,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     state.conversationMessages.push(tempMsg);
     renderMessagesList();
 
-    try {
+        try {
       var payload = {
         chat_id: state.currentConversationId,
         sender_id: state.currentSession.user.id,
@@ -1898,11 +1898,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         type: 'text'
       };
 
-      if (tempAttachment && tempAttachment.attachment_url) {
-        payload.file_url = tempAttachment.attachment_url;
-        payload.type = tempAttachment.attachment_type && tempAttachment.attachment_type.startsWith('image/') ? 'image' : 'file';
-      }
-
+      // Отправляем через fetch вместо supabaseClient
       var result = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
         method: 'POST',
         headers: {
@@ -1913,19 +1909,17 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         },
         body: JSON.stringify(payload)
       });
-      var resultData = await result.json();
-      var hasError = !result.ok;
-
-      if (hasError) {
-        state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
-        renderMessagesList();
-        showNotification('Ошибка: ' + (resultData.message || 'Не удалось отправить'), 'error');
-        return;
+      
+      if (!result.ok) {
+        var errData = await result.json();
+        throw new Error(errData.message || 'Ошибка отправки');
       }
-
+      
+      var resultData = await result.json();
+      
       var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
-      if (idx >= 0 && result.data) {
-        state.conversationMessages[idx] = result.data;
+      if (idx >= 0 && resultData && resultData[0]) {
+        state.conversationMessages[idx] = resultData[0];
       }
       renderMessagesList();
       await renderMessengerDialogs();
@@ -1933,11 +1927,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     } catch (err) {
       state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
       renderMessagesList();
-      showNotification('Ошибка при отправке', 'error');
+      showNotification('Ошибка при отправке: ' + err.message, 'error');
     } finally {
       setButtonState(messengerSendBtn, false, '...', 'Отправить');
     }
-  }
 
   // ========== BIND STATIC EVENTS ==========
   function bindStaticEvents() {
