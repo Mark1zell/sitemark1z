@@ -2052,10 +2052,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             body: JSON.stringify({ id: newChatId, is_group: false })
           });
           
+          var chatResText = await createChatRes.text();
+          console.log('Статус chats:', createChatRes.status, 'Ответ:', chatResText);
+          
           if (!createChatRes.ok) {
-            var chatErr = await createChatRes.json();
-            console.error('❌ Ошибка создания чата:', chatErr);
-            throw new Error('Ошибка создания чата: ' + (chatErr.message || createChatRes.status));
+            console.error('❌ Ошибка создания чата:', chatResText);
+            throw new Error('Ошибка создания чата: ' + createChatRes.status);
           }
           
           console.log('💬 Чат создан:', newChatId);
