@@ -1903,16 +1903,23 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         payload.type = tempAttachment.attachment_type && tempAttachment.attachment_type.startsWith('image/') ? 'image' : 'file';
       }
 
-      var result = await supabaseClient
-        .from('messages')
-        .insert(payload)
-        .select('*')
-        .single();
+      var result = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
+        method: 'POST',
+        headers: {
+          'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+          'Authorization': 'Bearer ' + state.currentSession.access_token,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(payload)
+      });
+      var resultData = await result.json();
+      var hasError = !result.ok;
 
-      if (result.error) {
+      if (hasError) {
         state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
         renderMessagesList();
-        showNotification('Ошибка: ' + result.error.message, 'error');
+        showNotification('Ошибка: ' + (resultData.message || 'Не удалось отправить'), 'error');
         return;
       }
 
