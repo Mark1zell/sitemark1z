@@ -1931,6 +1931,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     } finally {
       setButtonState(messengerSendBtn, false, '...', 'Отправить');
     }
+  }
 
   // ========== BIND STATIC EVENTS ==========
   function bindStaticEvents() {
