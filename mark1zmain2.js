@@ -2038,44 +2038,54 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           
           // 2. Если не нашли — создаём новый
           console.log('🆕 Создаём новый чат');
-          const { data: newChat, error: chatError } = await supabaseClient
-            .from('chats')
-            .insert({ is_group: false })
-            .select('id')
-            .single();
           
-          // 🔴 ДЕТАЛЬНАЯ ОШИБКА
-          if (chatError) {
-            console.error('❌ chatError детали:', JSON.stringify(chatError, null, 2));
-            throw new Error('Ошибка создания чата: ' + chatError.message + 
-                           ' (code: ' + (chatError.code || 'нет') + ')');
+          var newChatId = crypto.randomUUID();
+          var createChatRes = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
+            method: 'POST',
+            headers: {
+              'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+              'Authorization': 'Bearer ' + state.currentSession.access_token,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({ id: newChatId, is_group: false })
+          });
+          
+          if (!createChatRes.ok) {
+            var chatErr = await createChatRes.json();
+            console.error('❌ Ошибка создания чата:', chatErr);
+            throw new Error('Ошибка создания чата: ' + (chatErr.message || createChatRes.status));
           }
           
-          if (!newChat?.id) {
-            console.error('❌ newChat пустой:', newChat);
-            throw new Error('Чат создан, но ID не получен. Ответ: ' + JSON.stringify(newChat));
-          }
+          console.log('💬 Чат создан:', newChatId);
           
           // 3. Добавляем участников
-          const { error: membersError } = await supabaseClient
-            .from('chat_members')
-            .insert([
-              { chat_id: newChat.id, user_id: myId },
-              { chat_id: newChat.id, user_id: targetUserId }
-            ]);
+          var addMembersRes = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
+            method: 'POST',
+            headers: {
+              'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+              'Authorization': 'Bearer ' + state.currentSession.access_token,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify([
+              { chat_id: newChatId, user_id: myId },
+              { chat_id: newChatId, user_id: targetUserId }
+            ])
+          });
           
-          if (membersError) {
-            console.error('❌ membersError детали:', JSON.stringify(membersError, null, 2));
-            // Пытаемся удалить пустой чат
-            await supabaseClient.from('chats').delete().eq('id', newChat.id);
-            throw new Error('Ошибка добавления участников: ' + membersError.message);
+          if (!addMembersRes.ok) {
+            var membErr = await addMembersRes.json();
+            console.error('❌ Ошибка добавления участников:', membErr);
+            await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats?id=eq.' + newChatId, {
+              method: 'DELETE',
+              headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token }
+            });
+            throw new Error('Ошибка добавления участников');
           }
-          
-          console.log('💬 Новый чат создан:', newChat.id);
           
           openScreen('messenger');
           await renderMessengerDialogs();
-          await openConversation(newChat.id);
+          await openConversation(newChatId);
           
         } catch (err) {
           console.error('❌ Полная ошибка:', err);
