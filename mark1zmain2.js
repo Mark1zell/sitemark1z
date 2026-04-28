@@ -1659,15 +1659,17 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       if (messengerTopAvatar) {
         var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
         if (!brandAvatar) {
-          try {
-            var db3 = await supabaseClient.from('profiles').select('avatar_url').eq('id', '3bf0b657-7722-4189-bd0e-6b7b9271ccdc').single();
-            if (db3 && db3.data && db3.data.avatar_url) {
-              brandAvatar = db3.data.avatar_url;
-              localStorage.setItem('mkz_brand_avatar', brandAvatar);
+         try {
+              var db3 = await supabaseClient.from('profiles').select('avatar_url').eq('id', '3bf6b657-7722-4189-bd0e-6b7b9271ccdc').maybeSingle();
+              if (db3 && db3.data && db3.data.avatar_url) {
+                brandAvatar = db3.data.avatar_url;
+                localStorage.setItem('mkz_brand_avatar', brandAvatar);
+              }
+            } catch(e) {
+              brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
             }
-          } catch(e) {}
-        }
-        if (brandAvatar) {
+          }
+          if (brandAvatar) {
           messengerTopAvatar.style.backgroundImage = "url('" + brandAvatar + "')";
           messengerTopAvatar.style.backgroundSize = 'cover';
           messengerTopAvatar.style.backgroundPosition = 'center';
@@ -1808,14 +1810,56 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
   }, 300);
 
-    // Авто-добавление в чат поддержки
+    // Создаём личный чат с админом при первом обращении в поддержку
   if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
-    var { data: alreadyMember } = await supabaseClient.from('chat_members').select('*').eq('chat_id', conversationId).eq('user_id', state.currentSession.user.id);
-    if (!alreadyMember || alreadyMember.length === 0) {
-      await supabaseClient.from('chat_members').insert({
-        chat_id: conversationId,
-        user_id: state.currentSession.user.id
-      });
+    var userId = state.currentSession.user.id;
+    if (userId !== OWNER_UID) {
+      // Ищем существующий личный чат с админом
+      var { data: existingChats } = await supabaseClient.from('chat_members').select('chat_id').eq('user_id', userId);
+      var adminChatId = null;
+      if (existingChats) {
+        for (var ec = 0; ec < existingChats.length; ec++) {
+          var { data: chatMembers } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', existingChats[ec].chat_id);
+          if (chatMembers && chatMembers.length === 2 && chatMembers.find(function(cm) { return cm.user_id === OWNER_UID; })) {
+            adminChatId = existingChats[ec].chat_id;
+            break;
+          }
+        }
+      }
+      
+      if (adminChatId) {
+        // Перенаправляем в личный чат
+        state.currentConversationId = adminChatId;
+        conversationId = adminChatId;
+        // Обновляем URL если нужно
+      } else {
+        // Создаём новый чат с админом
+        var newChatId = crypto.randomUUID();
+        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
+          method: 'POST',
+          headers: {
+            'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+            'Authorization': 'Bearer ' + state.currentSession.access_token,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ id: newChatId, is_group: false, name: 'Поддержка' })
+        });
+        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
+          method: 'POST',
+          headers: {
+            'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+            'Authorization': 'Bearer ' + state.currentSession.access_token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify([
+            { chat_id: newChatId, user_id: userId },
+            { chat_id: newChatId, user_id: OWNER_UID }
+          ])
+        });
+        state.currentConversationId = newChatId;
+        conversationId = newChatId;
+      }
     }
   }
   
@@ -2130,7 +2174,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
     var senderId = state.currentSession.user.id;
     if (String(state.currentConversationId) === String(state.supportConversationId) && state.supportSendMode === 'brand') {
-      senderId = '3bf6b657-7722-4189-bd0e-6b7b9271ccdc';
+      senderId = OWNER_UID;
     }
 
     var tempId = 'temp_' + Date.now();
