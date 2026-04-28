@@ -1455,20 +1455,10 @@ async function renderMessengerDialogs() {
         } else {
           statusText = 'Не в сети';
         }
-            } else if (otherMemberId === 'support_mark1z_design' || String(chat.id) === String(state.supportConversationId)) {
+      } else if (otherMemberId === 'support_mark1z_design' || String(chat.id) === String(state.supportConversationId)) {
         displayName = 'Mark1z Design';
-        // Пробуем взять аватарку из кеша профилей
         var supportProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
-            avatarUrl = supportProfile?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
-    if (!avatarUrl) {
-      try {
-        var db2 = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').single();
-        if (db2 && db2.data && db2.data.avatar_url) {
-          avatarUrl = db2.data.avatar_url;
-          localStorage.setItem('mkz_brand_avatar', avatarUrl);
-        }
-      } catch(e) {}
-    }
+        avatarUrl = supportProfile?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
         statusText = 'Чат для заказов и техподдержка';
       }
       
