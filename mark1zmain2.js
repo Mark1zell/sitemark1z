@@ -616,7 +616,11 @@
     if (privacyShowTelegram) privacyShowTelegram.checked = profile?.show_telegram !== false;
     if (privacyShowLastSeen) privacyShowLastSeen.checked = profile?.show_last_seen !== false;
     updateAuthUI();
-  }
+    if (document.getElementById('mkzAccountMiniName')) {
+      document.getElementById('mkzAccountMiniName').textContent = name;
+      document.getElementById('mkzAccountMiniId').textContent = 'ID: ' + publicId;
+      applyAvatar(document.getElementById('mkzAccountMiniAvatar'), profile?.avatar_url, name);
+    }
 
   function updateAuthUI() {
     const loggedIn = !!state.currentSession;
@@ -741,7 +745,7 @@
             var oldLen = state.conversationMessages.length;
             state.conversationMessages = fresh;
             if (fresh.length !== oldLen) {
-              renderMessagesList();
+              if (typeof renderMessagesList === 'function') renderMessagesList();
               await renderMessengerDialogs();
             }
           }
@@ -749,7 +753,7 @@
       }
     }, 3000);
   }
-
+  
   function stopPresenceHeartbeat() { if (state.messengerPollingTimer) { clearInterval(state.messengerPollingTimer); state.messengerPollingTimer = null; } }
 
   async function requestNotificationsIfNeeded() {
