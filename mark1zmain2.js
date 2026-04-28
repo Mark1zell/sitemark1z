@@ -2063,7 +2063,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         var preview = lastMsg ? (lastMsg.content || '').substring(0, 30) : '';
         var time = lastMsg ? formatDateTime(lastMsg.created_at) : '';
         
-        html += '<button class="mkz-dialog" data-user-id="' + uid + '" style="width:100%;text-align:left;background:rgba(0,0,0,0.3) !important;backdrop-filter:blur(8px) !important;-webkit-backdrop-filter:blur(8px) !important;border:1px solid rgba(255,255,255,0.06) !important;">';
+        var bgStyle = avatar ? 'background:linear-gradient(0deg,rgba(0,0,0,0.75),rgba(0,0,0,0.4)),url(\'' + avatar + '\') center/cover no-repeat;' : 'background:rgba(0,0,0,0.3);';
+        html += '<button class="mkz-dialog" data-user-id="' + uid + '" style="width:100%;text-align:left;' + bgStyle + 'border:1px solid rgba(255,255,255,0.06);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);">';
         html += '<div class="mkz-dialog__avatar" style="' + (avatar ? 'background-image:url(\'' + avatar + '\');background-size:cover;' : '') + '">' + (avatar ? '' : getInitial(username)) + '</div>';
         html += '<div class="mkz-dialog__body"><div class="mkz-dialog__top"><span class="mkz-dialog__name">' + username + '</span><span class="mkz-dialog__time">' + time + '</span></div>';
         html += '<div class="mkz-dialog__preview">' + preview + '</div></div>';
