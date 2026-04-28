@@ -1995,7 +1995,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
           'Authorization': 'Bearer ' + state.currentSession.access_token,
           'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          'Prefer': 'return=representation'
         },
         body: JSON.stringify(payload)
       });
@@ -2006,6 +2006,9 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
       
       var resultData = await result.json();
+      if (!result.ok) {
+        throw new Error(resultData.message || 'Ошибка отправки');
+      }
       
       var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
       if (idx >= 0 && resultData && resultData[0]) {
