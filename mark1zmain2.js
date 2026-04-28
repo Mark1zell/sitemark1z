@@ -1787,7 +1787,20 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           var time = new Date(msg.created_at).toLocaleString('ru-RU');
           html += '<div class="mkz-message-row ' + (isMine ? 'mkz-message-row--me' : 'mkz-message-row--them') + '">';
           html += '<div class="mkz-message ' + (isMine ? 'mkz-message--me' : 'mkz-message--them') + '">';
-          html += '<div class="mkz-message__text">' + content + '</div>';
+                    var attachmentHtml = '';
+          if (msg.file_url || msg.attachment_url) {
+            var fileUrl = msg.file_url || msg.attachment_url;
+            var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+            var isVideo = msg.type === 'video' || /\.(mp4|webm|mov)$/i.test(fileUrl);
+            if (isImage) {
+              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:240px;border-radius:12px;cursor:pointer;" onclick="window.open(\'' + fileUrl + '\')"></div>';
+            } else if (isVideo) {
+              attachmentHtml = '<div class="mkz-message__video"><video src="' + fileUrl + '" controls style="max-width:240px;border-radius:12px;"></video></div>';
+            } else {
+              attachmentHtml = '<div class="mkz-message__file"><a href="' + fileUrl + '" target="_blank" style="color:#fff;text-decoration:underline;">📎 ' + (msg.attachment_name || 'Файл') + '</a></div>';
+            }
+          }
+          html += '<div class="mkz-message__text">' + content + '</div>' + attachmentHtml;
           html += '<div class="mkz-message__footer"><span class="mkz-message__time">' + time + '</span></div>';
           html += '</div></div>';
         }
@@ -2241,7 +2254,34 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       });
     }
 
-    if (messengerAttachImageBtn && messengerImageInput) messengerAttachImageBtn.addEventListener('click', () => messengerImageInput.click());
+        if (messengerAttachImageBtn && messengerImageInput) {
+      messengerAttachImageBtn.addEventListener('click', function() {
+        messengerImageInput.accept = 'image/*,video/*,.pdf,.zip,.rar,.doc,.docx,.txt,.psd,.ai,.fig';
+        messengerImageInput.click();
+      });
+      messengerImageInput.addEventListener('change', async function() {
+        var file = messengerImageInput.files[0];
+        if (!file) return;
+        showLoading('Загрузка файла...');
+        try {
+          var upload = await uploadToBucket('chat-files', file, 'chat_' + state.currentSession.user.id);
+          state.pendingMessengerAttachment = {
+            attachment_url: upload.publicUrl,
+            attachment_name: file.name,
+            attachment_type: file.type
+          };
+          if (messengerAttachMeta) {
+            messengerAttachMeta.textContent = '📎 ' + file.name;
+            messengerAttachMeta.style.display = 'block';
+          }
+          showNotification('Файл прикреплён!', 'success');
+        } catch(e) {
+          showNotification('Ошибка загрузки: ' + e.message, 'error');
+        } finally {
+          hideLoading();
+        }
+      });
+    }
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
     if (messengerForm) messengerForm.addEventListener('submit', async e => { e.preventDefault(); await sendMessengerMessage(); });
     if (pinnedOwnerChatBtn) pinnedOwnerChatBtn.addEventListener('click', async function() { 
