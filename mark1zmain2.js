@@ -1844,66 +1844,53 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   }
 
   // ========== ФУНКЦИИ ПОДДЕРЖКИ ==========
-  async function loadSupportDialogs() {
-    var container = document.getElementById('mkzSupportDialogsList');
-    if (!container) return;
-    showLoading('Загрузка диалогов...');
+    async function loadSupportDialogs() {
+    var supportChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
+    
     try {
-      var supportChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
-      
-      // Получаем всех кто писал в чат поддержки
+      // Получаем всех участников чата поддержки
       var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', supportChatId);
       if (!members || members.length <= 1) {
-        container.innerHTML = '<div class="mkz-card"><p>Нет сообщений в поддержку</p></div>';
-        hideLoading();
+        messengerDialogs.innerHTML = '<div class="mkz-card"><p>Никто ещё не писал в поддержку.</p></div>';
         return;
       }
       
       // Получаем профили
-      var userIds = members.map(function(m) { return m.user_id; });
+      var userIds = members.map(function(m) { return m.user_id; }).filter(function(id) { return id !== OWNER_UID; });
       var { data: profiles } = await supabaseClient.from('profiles').select('*').in('id', userIds);
       
-      // Получаем последние сообщения от каждого
+      // Получаем последние сообщения
       var { data: messages } = await supabaseClient.from('messages')
         .select('*')
         .eq('chat_id', supportChatId)
         .order('created_at', { ascending: false });
       
-      var html = '';
+      // Рендерим в сайдбар
+      var html = '<div style="padding:8px 0;font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">💬 Поддержка</div>';
+      
       for (var i = 0; i < userIds.length; i++) {
         var uid = userIds[i];
-        if (uid === OWNER_UID) continue;
         var profile = profiles ? profiles.find(function(p) { return p.id === uid; }) : null;
         var username = profile ? profile.username : 'Пользователь';
         var avatar = profile ? profile.avatar_url : '';
         
-        var lastMsg = messages ? messages.find(function(m) { return m.sender_id === uid; }) : null;
-        var preview = lastMsg ? (lastMsg.content || '').substring(0, 40) : 'Нет сообщений';
+        var userMsgs = messages ? messages.filter(function(m) { return m.sender_id === uid; }) : [];
+        var lastMsg = userMsgs[0];
+        var preview = lastMsg ? (lastMsg.content || '').substring(0, 30) : '';
         var time = lastMsg ? formatDateTime(lastMsg.created_at) : '';
         
-        html += '<div class="mkz-support-dialog-card" data-user-id="' + uid + '" style="cursor:pointer;padding:14px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">';
-        html += '<div style="font-weight:600;color:#fff;">' + username + '</div>';
-        html += '<div style="font-size:13px;color:rgba(255,255,255,0.6);">' + preview + '</div>';
-        html += '<div style="font-size:11px;color:rgba(255,255,255,0.4);">' + time + '</div>';
-        html += '</div>';
+        html += '<button class="mkz-dialog" data-open-chat="' + supportChatId + '" data-view-as="' + uid + '" style="width:100%;text-align:left;">';
+        html += '<div class="mkz-dialog__avatar" style="' + (avatar ? 'background-image:url(\'' + avatar + '\');background-size:cover;' : '') + '">' + (avatar ? '' : getInitial(username)) + '</div>';
+        html += '<div class="mkz-dialog__body"><div class="mkz-dialog__top"><span class="mkz-dialog__name">' + username + '</span><span class="mkz-dialog__time">' + time + '</span></div>';
+        html += '<div class="mkz-dialog__preview">' + preview + '</div></div>';
+        html += '</button>';
       }
       
-      container.innerHTML = html || '<div class="mkz-card"><p>Нет сообщений в поддержку</p></div>';
+      messengerDialogs.innerHTML = html;
       
-      // Обработчики клика — открыть чат поддержки
-      var cards = container.querySelectorAll('.mkz-support-dialog-card');
-      for (var c = 0; c < cards.length; c++) {
-        cards[c].onclick = function() {
-          openConversation(supportChatId);
-          openScreen('messenger');
-        };
-      }
-      
-      hideLoading();
     } catch (err) {
       console.error('loadSupportDialogs error:', err);
-      container.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки диалогов</p></div>';
-      hideLoading();
+      messengerDialogs.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки</p></div>';
     }
   }
 
