@@ -1631,9 +1631,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var navBtn = document.querySelector('[data-screen-open="messenger"]');
       if (navBtn) navBtn.appendChild(badge);
     }
-    badge.textContent = unreadCount > 0 ? unreadCount : '';
-    badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
-
   // Пропускаем рендер если нет новых сообщений при polling
     var oldScrollTop = 0;
   var msgCont = document.getElementById('mkzMessengerMessages');
