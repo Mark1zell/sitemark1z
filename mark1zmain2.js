@@ -2014,8 +2014,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         chat_id: state.currentConversationId,
         sender_id: senderId,
         content: content || '',
-        type: 'text'
+        type: tempAttachment && tempAttachment.attachment_type && tempAttachment.attachment_type.startsWith('image/') ? 'image' : (tempAttachment ? 'file' : 'text')
       };
+      if (tempAttachment && tempAttachment.attachment_url) {
+        payload.file_url = tempAttachment.attachment_url;
+        payload.attachment_url = tempAttachment.attachment_url;
+        payload.attachment_name = tempAttachment.attachment_name;
+        payload.attachment_type = tempAttachment.attachment_type;
+      }
 
     console.log('PAYLOAD:', JSON.stringify(payload));
 
@@ -2085,7 +2091,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var sidebar = document.querySelector('#messenger .mkz-messenger-sidebar__top');
       if (sidebar) sidebar.appendChild(supportMsgBtn);
     }
-
+    if (messengerAttachImageBtn) messengerAttachImageBtn.style.display = 'none';
     if (burger && nav) burger.addEventListener('click', () => { nav.classList.toggle('is-open'); });
     navButtons.forEach(btn => { btn.addEventListener('click', () => { openScreen(btn.dataset.screenOpen); }); });
     if (userPillButton) userPillButton.addEventListener('click', () => openScreen('account'));
@@ -2378,7 +2384,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var btn = document.createElement('button');
       btn.textContent = '📎';
       btn.title = 'Прикрепить файл';
-      btn.style.cssText = 'width:38px;height:38px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;';
+      btn.style.cssText = 'width:44px;height:44px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;';
       btn.onclick = function(){
         var inp = document.createElement('input');
         inp.type = 'file';
