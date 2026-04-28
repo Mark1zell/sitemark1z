@@ -621,6 +621,7 @@
       document.getElementById('mkzAccountMiniId').textContent = 'ID: ' + publicId;
       applyAvatar(document.getElementById('mkzAccountMiniAvatar'), profile?.avatar_url, name);
     }
+  }
 
   function updateAuthUI() {
     const loggedIn = !!state.currentSession;
