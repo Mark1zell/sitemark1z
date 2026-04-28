@@ -2039,8 +2039,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var resultData = await result.json();
       
       var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
-      
-      var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
       if (idx >= 0 && resultData && resultData[0]) {
         state.conversationMessages[idx] = resultData[0];
       }
