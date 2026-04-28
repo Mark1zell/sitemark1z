@@ -2423,10 +2423,9 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (chatFab) chatFab.addEventListener('click', async () => { 
       if (!state.currentSession) { openScreen('account'); return; } 
       openScreen('messenger'); 
-      await renderMessengerDialogs();
-      // Открываем чат поддержки
       var supportId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
       await openConversation(supportId);
+      await renderMessengerDialogs();
     });
     stars.forEach(star => { star.addEventListener('click', () => { state.currentRating = Number(star.dataset.rating); renderStars(state.currentRating); }); });
     aboutTabs.forEach(tab => { tab.addEventListener('click', () => { aboutTabs.forEach(item => item.classList.remove('is-active')); aboutPanels.forEach(item => item.classList.remove('is-active')); tab.classList.add('is-active'); document.querySelector(`[data-about-panel="${tab.dataset.aboutTab}"]`)?.classList.add('is-active'); }); });
@@ -2500,8 +2499,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           if (existingId) {
             console.log('✅ Найден существующий чат:', existingId);
             openScreen('messenger');
-            await renderMessengerDialogs();
             await openConversation(existingId);
+            await renderMessengerDialogs();
             return;
           }
           
@@ -2555,8 +2554,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           }
           
           openScreen('messenger');
-          await renderMessengerDialogs();
           await openConversation(newChatId);
+          await renderMessengerDialogs();;
           
         } catch (err) {
           console.error('❌ Полная ошибка:', err);
@@ -2601,10 +2600,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       if (!state.currentSession) { openScreen('account'); return; } 
       state.supportConversationId = 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
       openScreen('messenger');
-      await renderMessengerDialogs();
       await openConversation('daba25cb-e4e2-44b3-be59-36f0f5e38ce5');
+      await renderMessengerDialogs();
     });
-    if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); await renderMessengerDialogs(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); });
+    if (messengerRefreshBtn) messengerRefreshBtn.addEventListener('click', async () => { await fetchMessengerData(); if (state.currentConversationId) await openConversation(state.currentConversationId, true); await renderMessengerDialogs(); });
     
                 // ========== ОТПРАВКА ПО ENTER ==========
     if (messengerInput) {
