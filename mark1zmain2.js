@@ -1595,6 +1595,11 @@ async function renderMessengerDialogs() {
 async function openConversation(conversationId, isPollingUpdate = false) {
   if (!conversationId) return;
   state.currentConversationId = conversationId;
+    // Показываем поле ввода и кнопки
+  var compose = document.getElementById('mkzMessengerForm');
+  if (compose) compose.style.display = 'block';
+  var headActions = document.querySelector('#messenger .mkz-messenger-head__actions');
+  if (headActions) headActions.style.display = 'flex';
 
   // Обновляем выделение в списке диалогов
   var allDialogs = document.querySelectorAll('.mkz-dialog');
@@ -2587,6 +2592,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
     await loadUserBio();
     bindStaticEvents();   
+    var compose = document.getElementById('mkzMessengerForm');
+    if (compose) compose.style.display = 'none';
+    var headActions = document.querySelector('#messenger .mkz-messenger-head__actions');
+    if (headActions) headActions.style.display = 'none';
     supabaseClient.auth.onAuthStateChange(function(_event, session) {
       state.currentSession = session || null;
       if (state.currentSession) {
