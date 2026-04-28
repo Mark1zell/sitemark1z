@@ -1566,14 +1566,15 @@ async function renderMessengerDialogs() {
       });
     });
 
-        // Обновляем счётчик непрочитанных
-        var unreadCount = 0;
-      for (var d = 0; d < personalChats.length; d++) {
-        var lastMsg = lastMsgMap[chats[d].id];
-        if (lastMsg && lastMsg.sender_id !== myId && String(chats[d].id) !== String(state.currentConversationId)) {
-          unreadCount++;
-        }
+    // Обновляем счётчик непрочитанных
+    var unreadCount = 0;
+    for (var d = 0; d < personalChats.length; d++) {
+      var lastMsg = lastMsgMap[chats[d].id];
+      if (lastMsg && lastMsg.sender_id !== myId && String(chats[d].id) !== String(state.currentConversationId)) {
+        unreadCount++;
       }
+    }
+    
     var brandAv = localStorage.getItem('mkz_brand_avatar') || '';
     if (brandAv && document.getElementById('mkzPinnedOwnerAvatar')) {
       document.getElementById('mkzPinnedOwnerAvatar').style.backgroundImage = "url('" + brandAv + "')";
