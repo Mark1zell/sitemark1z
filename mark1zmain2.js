@@ -1844,40 +1844,66 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
   // ========== ФУНКЦИИ ПОДДЕРЖКИ ==========
   async function loadSupportDialogs() {
-    const container = document.getElementById('mkzSupportDialogsList');
+    var container = document.getElementById('mkzSupportDialogsList');
     if (!container) return;
     showLoading('Загрузка диалогов...');
     try {
-      const supportConversations = state.conversations.filter(c => c.is_support === true);
-      if (!supportConversations.length) { container.innerHTML = '<div class="mkz-card"><p>Нет сообщений в поддержку</p></div>'; hideLoading(); return; }
-      const dialogs = await Promise.all(supportConversations.map(async (conv) => {
-        const member = state.conversationMembers.find(m => m.conversation_id === conv.id && m.user_id !== OWNER_UID);
-        let userProfile = null;
-        if (member) userProfile = await readProfileByUserId(member.user_id);
-        const messages = state.conversationMessages.filter(m => m.conversation_id === conv.id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        const lastMessage = messages[0];
-        const unreadCount = messages.filter(m => {
-          const isUserMessage = m.user_id !== OWNER_UID && m.sender_mode !== 'support_brand';
-          const isUnread = isUserMessage && (!member?.last_read_at || new Date(m.created_at) > new Date(member.last_read_at));
-          return isUnread;
-        }).length;
-        return { conversationId: conv.id, username: userProfile?.username || 'Пользователь', avatarUrl: userProfile?.avatar_url, lastMessageText: lastMessage?.text || lastMessage?.attachment_name || 'Вложение', lastMessageTime: lastMessage?.created_at, unreadCount };
-      }));
-      dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
-      container.innerHTML = dialogs.map(dialog => `
-        <div class="mkz-support-dialog-card ${dialog.unreadCount > 0 ? 'unread' : ''}" data-conversation-id="${dialog.conversationId}">
-          <div class="mkz-support-dialog-header">
-            <div class="mkz-support-dialog-avatar" style="${dialog.avatarUrl ? `background-image: url('${dialog.avatarUrl}'); background-size: cover;` : ''}">${!dialog.avatarUrl ? getInitial(dialog.username, 'U') : ''}</div>
-            <div class="mkz-support-dialog-info">
-              <div class="mkz-support-dialog-name">${safeText(dialog.username, 'Пользователь')}${dialog.unreadCount > 0 ? `<span class="mkz-unread-badge">${dialog.unreadCount}</span>` : ''}</div>
-              <div class="mkz-support-dialog-time">${dialog.lastMessageTime ? formatDateTime(dialog.lastMessageTime) : ''}</div>
-            </div>
-          </div>
-          <div class="mkz-support-dialog-preview">${safeText(dialog.lastMessageText, '')}</div>
-        </div>
-      `).join('');
-      $$('.mkz-support-dialog-card', container).forEach(card => { card.addEventListener('click', () => { openConversation(card.dataset.conversationId); openScreen('messenger'); }); });
-    } catch (err) { console.error('loadSupportDialogs error:', err); container.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки диалогов</p></div>'; } finally { hideLoading(); }
+      var supportChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
+      
+      // Получаем всех кто писал в чат поддержки
+      var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', supportChatId);
+      if (!members || members.length <= 1) {
+        container.innerHTML = '<div class="mkz-card"><p>Нет сообщений в поддержку</p></div>';
+        hideLoading();
+        return;
+      }
+      
+      // Получаем профили
+      var userIds = members.map(function(m) { return m.user_id; });
+      var { data: profiles } = await supabaseClient.from('profiles').select('*').in('id', userIds);
+      
+      // Получаем последние сообщения от каждого
+      var { data: messages } = await supabaseClient.from('messages')
+        .select('*')
+        .eq('chat_id', supportChatId)
+        .order('created_at', { ascending: false });
+      
+      var html = '';
+      for (var i = 0; i < userIds.length; i++) {
+        var uid = userIds[i];
+        if (uid === OWNER_UID) continue;
+        var profile = profiles ? profiles.find(function(p) { return p.id === uid; }) : null;
+        var username = profile ? profile.username : 'Пользователь';
+        var avatar = profile ? profile.avatar_url : '';
+        
+        var lastMsg = messages ? messages.find(function(m) { return m.sender_id === uid; }) : null;
+        var preview = lastMsg ? (lastMsg.content || '').substring(0, 40) : 'Нет сообщений';
+        var time = lastMsg ? formatDateTime(lastMsg.created_at) : '';
+        
+        html += '<div class="mkz-support-dialog-card" data-user-id="' + uid + '" style="cursor:pointer;padding:14px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">';
+        html += '<div style="font-weight:600;color:#fff;">' + username + '</div>';
+        html += '<div style="font-size:13px;color:rgba(255,255,255,0.6);">' + preview + '</div>';
+        html += '<div style="font-size:11px;color:rgba(255,255,255,0.4);">' + time + '</div>';
+        html += '</div>';
+      }
+      
+      container.innerHTML = html || '<div class="mkz-card"><p>Нет сообщений в поддержку</p></div>';
+      
+      // Обработчики клика — открыть чат поддержки
+      var cards = container.querySelectorAll('.mkz-support-dialog-card');
+      for (var c = 0; c < cards.length; c++) {
+        cards[c].onclick = function() {
+          openConversation(supportChatId);
+          openScreen('messenger');
+        };
+      }
+      
+      hideLoading();
+    } catch (err) {
+      console.error('loadSupportDialogs error:', err);
+      container.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки диалогов</p></div>';
+      hideLoading();
+    }
   }
 
   function initSupportDialogsButton() { const btn = document.getElementById('mkzOpenSupportChatsBtn'); if (btn) btn.addEventListener('click', async () => { await loadSupportDialogs(); openScreen('support-dialogs'); }); }
