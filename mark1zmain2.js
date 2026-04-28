@@ -2109,43 +2109,31 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
   window.showImageViewer = function(url) {
     var ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,4,8,0.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
     
     var img = document.createElement('img');
     img.src = url;
-    img.style.cssText = 'max-width:90vw;max-height:70vh;object-fit:contain;border-radius:12px;';
+    img.style.cssText = 'max-width:90vw;max-height:70vh;object-fit:contain;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
     
     var bottomBar = document.createElement('div');
-    bottomBar.style.cssText = 'display:flex;gap:10px;margin-top:16px;z-index:1;';
+    bottomBar.style.cssText = 'display:flex;gap:10px;margin-top:20px;z-index:1;';
     
-    var btnStyle = 'padding:10px 18px;border:none;border-radius:10px;color:#fff;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;';
+    var btnBase = 'padding:12px 20px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:#fff;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;transition:all 0.2s;';
     
     var downloadBtn = document.createElement('button');
     downloadBtn.innerHTML = '📥 Скачать';
-    downloadBtn.style.cssText = btnStyle + 'background:#3b82f6;';
-    downloadBtn.onclick = function(e) { e.stopPropagation(); window.open(url, '_blank'); };
+    downloadBtn.style.cssText = btnBase + 'background:linear-gradient(135deg,#7a3cff,#ff2fae);border-color:transparent;';
+    downloadBtn.onclick = function(e) { e.stopPropagation(); var a=document.createElement('a');a.href=url;a.download=url.split('/').pop()||'photo';document.body.appendChild(a);a.click();a.remove();showNotification('Фото скачивается...','success'); };
     
     var copyBtn = document.createElement('button');
     copyBtn.innerHTML = '📋 Копировать';
-    copyBtn.style.cssText = btnStyle + 'background:rgba(255,255,255,0.2);';
-    copyBtn.onclick = function(e) { e.stopPropagation(); navigator.clipboard.writeText(url); showNotification('Ссылка скопирована!', 'success'); };
+    copyBtn.style.cssText = btnBase + 'background:rgba(255,255,255,0.04);';
+    copyBtn.onclick = function(e) { e.stopPropagation(); navigator.clipboard.writeText(url); showNotification('Ссылка скопирована!','success'); };
     
     var shareBtn = document.createElement('button');
     shareBtn.innerHTML = '↗ Поделиться';
-    shareBtn.style.cssText = btnStyle + 'background:rgba(255,255,255,0.2);';
-    shareBtn.onclick = function(e) { 
-      e.stopPropagation(); 
-      ov.remove();
-      setTimeout(function() {
-        var inp = document.createElement('textarea');
-        inp.value = url;
-        document.body.appendChild(inp);
-        inp.select();
-        document.execCommand('copy');
-        inp.remove();
-        showNotification('Ссылка на фото скопирована! Отправьте её в любой чат.', 'success');
-      }, 300);
-    };
+    shareBtn.style.cssText = btnBase + 'background:rgba(255,255,255,0.04);';
+    shareBtn.onclick = function(e) { e.stopPropagation(); ov.remove(); navigator.clipboard.writeText(url); showNotification('Ссылка скопирована! Отправьте в чат.','success'); };
     
     bottomBar.appendChild(downloadBtn);
     bottomBar.appendChild(copyBtn);
@@ -2153,7 +2141,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     
     var closeBtn = document.createElement('button');
     closeBtn.textContent = '✕';
-    closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;width:40px;height:40px;border:none;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:18px;z-index:2;display:flex;align-items:center;justify-content:center;';
+    closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;width:42px;height:42px;border:1px solid rgba(255,255,255,0.1);border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:18px;z-index:2;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);';
     closeBtn.onclick = function() { ov.remove(); };
     
     ov.appendChild(closeBtn);
@@ -2162,6 +2150,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     ov.onclick = function(e) { if(e.target === ov) ov.remove(); };
     document.body.appendChild(ov);
   };
+  
   // ========== BIND STATIC EVENTS ==========
     function bindStaticEvents() {
     // Кнопка «Сообщения поддержки» только для админа
