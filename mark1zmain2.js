@@ -725,15 +725,29 @@
     openScreen('account'); showNotification('Вы вышли из аккаунта', 'info');
   }
 
-    function startPresenceHeartbeat() {
+  function startPresenceHeartbeat() {
     if (state.messengerPollingTimer) return;
     state.messengerPollingTimer = setInterval(async () => {
       if (!state.currentSession?.user) return;
       await touchCurrentProfileActivity();
       if (state.currentConversationId) {
-        try { await openConversation(state.currentConversationId, true); } catch(e) {}
+        try {
+          var { data: fresh, error } = await supabaseClient
+            .from('messages')
+            .select('*')
+            .eq('chat_id', state.currentConversationId)
+            .order('created_at', { ascending: true });
+          if (!error && fresh) {
+            var oldLen = state.conversationMessages.length;
+            state.conversationMessages = fresh;
+            if (fresh.length !== oldLen) {
+              renderMessagesList();
+              await renderMessengerDialogs();
+            }
+          }
+        } catch(e) {}
       }
-    }, 5000);
+    }, 3000);
   }
 
   function stopPresenceHeartbeat() { if (state.messengerPollingTimer) { clearInterval(state.messengerPollingTimer); state.messengerPollingTimer = null; } }
@@ -1773,7 +1787,11 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       .order('created_at', { ascending: true });
     
     if (msgError) { console.error('Ошибка загрузки сообщений:', msgError); return; }
-    
+
+    state._lastMessageCount = state.conversationMessages.length;
+    var oldScrollTop = 0;
+    var msgCont2 = document.getElementById('mkzMessengerMessages');
+    if (msgCont2) oldScrollTop = msgCont2.scrollTop;
     state.conversationMessages = messages || [];
     state._lastMessageCount = state.conversationMessages.length;
     
@@ -1814,8 +1832,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           html += '</div></div>';
         }
         msgContainer.innerHTML = html;
-        msgContainer.scrollTop = msgContainer.scrollHeight;
+        var hasNew = state._lastMessageCount && state.conversationMessages.length > state._lastMessageCount;
+        if (isPollingUpdate && !hasNew) {
+          msgContainer.scrollTop = oldScrollTop;
+        } else {
+          msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
       }
+      console.log('Сообщений загружено:', state.conversationMessages.length);
     }
   } catch (err) {
     console.error('openConversation error:', err);
