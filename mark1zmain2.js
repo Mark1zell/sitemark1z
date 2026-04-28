@@ -107,7 +107,6 @@
 
  async function uploadToBucket(bucket, file, prefix) {
     try {
-      if (bucket !== 'avatars') validateFile(file, 10);
       const optimizedFile = await optimizeImage(file);
       const ext = (optimizedFile.name.split('.').pop() || 'bin').toLowerCase();
       const path = `${prefix}_${Date.now()}.${ext}`;
