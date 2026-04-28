@@ -1976,9 +1976,19 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var rowClass = isMine ? 'mkz-message-row--me' : 'mkz-message-row--them';
       var msgClass = isMine ? 'mkz-message--me' : 'mkz-message--them';
 
-      var attachmentHtml = '';
-      if (msg.file_url) {
-        attachmentHtml = '<div class="mkz-message__image"><img src="' + safeUrl(msg.file_url) + '" alt="Изображение"></div>';
+            var attachmentHtml = '';
+      if (msg.file_url || msg.attachment_url) {
+        var urls = (msg.file_url || msg.attachment_url || '').split('|||');
+        var names = (msg.attachment_name || '').split('|||');
+        for (var u = 0; u < urls.length; u++) {
+          var fileUrl = urls[u];
+          var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+          if (isImage) {
+            attachmentHtml += '<img src="' + fileUrl + '" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:12px;margin:2px;cursor:pointer;">';
+          } else {
+            attachmentHtml += '<div><a href="' + fileUrl + '" target="_blank">📎 ' + (names[u] || 'Файл') + '</a></div>';
+          }
+        }
       }
 
       return '<div class="mkz-message-row ' + rowClass + '">' +
