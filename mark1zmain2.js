@@ -1999,8 +1999,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       chat_id: state.currentConversationId,
       sender_id: senderId,
       content: content || '',
-      type: tempAttachment ? (tempAttachment.attachment_type && tempAttachment.attachment_type.startsWith('image/') ? 'image' : 'file') : 'text',
-      file_url: tempAttachment ? tempAttachment.attachment_url || null : null,
+      type: tempFiles ? (tempFiles.attachment_type && tempFiles.attachment_type.startsWith('image/') ? 'image' : 'file') : 'text',
+      file_url: tempFiles ? tempFiles.attachment_url || null : null,
       created_at: new Date().toISOString(),
       is_edited: false,
       _pending: true
@@ -2014,13 +2014,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         chat_id: state.currentConversationId,
         sender_id: senderId,
         content: content || '',
-        type: tempAttachment && tempAttachment.attachment_type && tempAttachment.attachment_type.startsWith('image/') ? 'image' : (tempAttachment ? 'file' : 'text')
+        type: tempFiles && tempFiles.attachment_type && tempFiles.attachment_type.startsWith('image/') ? 'image' : (tempFiles ? 'file' : 'text')
       };
-      if (tempAttachment && tempAttachment.attachment_url) {
-        payload.file_url = tempAttachment.attachment_url;
-        payload.attachment_url = tempAttachment.attachment_url;
-        payload.attachment_name = tempAttachment.attachment_name;
-        payload.attachment_type = tempAttachment.attachment_type;
+      if (tempFiles && tempFiles.attachment_url) {
+        payload.file_url = tempFiles.attachment_url;
+        payload.attachment_url = tempFiles.attachment_url;
+        payload.attachment_name = tempFiles.attachment_name;
+        payload.attachment_type = tempFiles.attachment_type;
       }
 
     console.log('PAYLOAD:', JSON.stringify(payload));
