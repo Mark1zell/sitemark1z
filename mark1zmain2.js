@@ -1988,6 +1988,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         type: 'text'
       };
 
+    console.log('PAYLOAD:', JSON.stringify(payload));
+
       // Отправляем через fetch вместо supabaseClient
       var result = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
         method: 'POST',
