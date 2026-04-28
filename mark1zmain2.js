@@ -2123,7 +2123,24 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     var downloadBtn = document.createElement('button');
     downloadBtn.innerHTML = '📥 Скачать';
     downloadBtn.style.cssText = btnBase + 'background:linear-gradient(135deg,#7a3cff,#ff2fae);border-color:transparent;';
-    downloadBtn.onclick = function(e) { e.stopPropagation(); var a=document.createElement('a');a.href=url;a.download=url.split('/').pop()||'photo';document.body.appendChild(a);a.click();a.remove();showNotification('Фото скачивается...','success'); };
+       downloadBtn.onclick = async function(e) { 
+      e.stopPropagation();
+      try {
+        var response = await fetch(url);
+        var blob = await response.blob();
+        var blobUrl = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = url.split('/').pop().split('?')[0] || 'photo.jpg';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(blobUrl);
+        showNotification('Фото скачивается...', 'success');
+      } catch(err) {
+        window.open(url, '_blank');
+      }
+    };
     
     var copyBtn = document.createElement('button');
     copyBtn.innerHTML = '📋 Копировать';
