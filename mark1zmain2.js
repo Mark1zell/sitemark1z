@@ -2413,9 +2413,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         }
       }
       
-      btn.onclick = function(){
-        state.pendingFiles = [];
-        updateAttachMeta();
+        btn.onclick = function(){
         var inp = document.createElement('input');
         inp.type = 'file';
         inp.multiple = true;
