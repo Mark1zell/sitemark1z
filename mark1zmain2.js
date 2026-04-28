@@ -2253,7 +2253,43 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       });
     }
 
-            if (messengerAttachImageBtn) {
+                // Создаём кнопку скрепки
+    var attachBtn = document.createElement('button');
+    attachBtn.id = 'mkzMessengerAttachImageBtn';
+    attachBtn.textContent = '📎';
+    attachBtn.title = 'Прикрепить файл';
+    attachBtn.style.cssText = 'width:38px;height:38px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;';
+    
+    var composeBox = document.querySelector('#messenger .mkz-messenger-compose__box');
+    if (composeBox) {
+      composeBox.insertBefore(attachBtn, composeBox.firstChild);
+    }
+    
+    attachBtn.onclick = function() {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*,video/*,.pdf,.zip,.rar,.doc,.docx,.txt';
+      input.onchange = async function() {
+        var file = input.files[0];
+        if (!file) return;
+        console.log('Файл выбран:', file.name);
+        showLoading('Загрузка файла...');
+        try {
+          var upload = await uploadToBucket('chat-files', file, 'chat_' + state.currentSession.user.id);
+          state.pendingMessengerAttachment = {
+            attachment_url: upload.publicUrl,
+            attachment_name: file.name,
+            attachment_type: file.type
+          };
+          showNotification('📎 Файл прикреплён!', 'success');
+        } catch(e) {
+          showNotification('Ошибка: ' + e.message, 'error');
+        } finally {
+          hideLoading();
+        }
+      };
+      input.click();
+    };
       messengerAttachImageBtn.onclick = function() {
         var input = document.createElement('input');
         input.type = 'file';
