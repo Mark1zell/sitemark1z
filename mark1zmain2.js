@@ -733,7 +733,7 @@
         ? state.conversationMessages[state.conversationMessages.length - 1].created_at 
         : new Date(0).toISOString();
       try {
-        var res = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages?chat_id=eq.' + state.currentConversationId + '&created_at=gt.' + since + '&order=created_at.asc', {
+        var res = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages?chat_id=eq.' + state.currentConversationId + '&order=created_at.asc&limit=5', {
           headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token }
         });
         var newMsgs = await res.json();
