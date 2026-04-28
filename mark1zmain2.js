@@ -2023,6 +2023,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
       
       messengerDialogs.innerHTML = html;
+            var supportBtns = messengerDialogs.querySelectorAll('[data-open-chat]');
+      for (var s = 0; s < supportBtns.length; s++) {
+        supportBtns[s].onclick = async function() {
+          await openConversation(this.getAttribute('data-open-chat'));
+        };
+      }
       
     } catch (err) {
       console.error('loadSupportDialogs error:', err);
@@ -2185,8 +2191,52 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
       renderMessagesList();
       await renderMessengerDialogs();
-      state.pendingFiles = []; updateAttachMeta();
+      state.pendingFiles = [];
       if (typeof updateAttachMeta === 'function') updateAttachMeta();
+            // Автоответ бота поддержки
+      if (String(state.currentConversationId) === String(state.supportConversationId) && 
+          state.currentSession?.user?.id !== OWNER_UID) {
+        var userMsg = (content || '').toLowerCase();
+        var botReply = '';
+        
+        if (userMsg.includes('цена') || userMsg.includes('стоит') || userMsg.includes('сколько') || userMsg.includes('прайс')) {
+          botReply = 'Здравствуйте! Вот примерные цены:\n📌 Логотип — 600₽\n📌 Баннер/постер — 500₽\n📌 Аватарка — 500₽\n📌 Дизайн сайта — от 3000₽\n📌 Вёрстка сайта — от 15000₽\n\nТочную стоимость скажу после обсуждения деталей. Напишите @Mark1zell в Telegram!';
+        } else if (userMsg.includes('срок') || userMsg.includes('долго') || userMsg.includes('сколько дней')) {
+          botReply = 'Сроки зависят от проекта. Логотип/баннер — 1-2 дня. Сайт — от 3 дней до недели. Приложение — до 2 недель. Всё обсуждаемо!';
+        } else if (userMsg.includes('привет') || userMsg.includes('здрав') || userMsg.includes('хай') || userMsg.includes('ку')) {
+          botReply = 'Привет! 👋 Я бот Mark1z Design. Напишите ваш вопрос или заказ, и я отвечу или передам администратору. Для связи: @Mark1zell в Telegram.';
+        } else if (userMsg.includes('пример') || userMsg.includes('портфолио') || userMsg.includes('работы')) {
+          botReply = 'Портфолио можно посмотреть в разделе «Портфолио» на сайте или запросить в Telegram: @Mark1zell';
+        } else if (userMsg.includes('контакт') || userMsg.includes('связь') || userMsg.includes('телеграм') || userMsg.includes('tg')) {
+          botReply = 'Связаться с дизайнером: Telegram @Mark1zell, ВКонтакте vk.com/mark1zyyy';
+        } else if (userMsg.includes('оплат') || userMsg.includes('плат') || userMsg.includes('карт')) {
+          botReply = 'Оплата принимается на карту Т-Банка. Ссылка на оплату есть в разделе «Заказать» на сайте.';
+        } else {
+          botReply = 'Спасибо за обращение! 🙏 Администратор скоро ответит. Для быстрой связи: Telegram @Mark1zell';
+        }
+        
+        if (botReply) {
+          setTimeout(async function() {
+            var botPayload = {
+              chat_id: state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5',
+              sender_id: OWNER_UID,
+              content: botReply,
+              type: 'text'
+            };
+            await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
+              method: 'POST',
+              headers: {
+                'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+                'Authorization': 'Bearer ' + state.currentSession.access_token,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+              },
+              body: JSON.stringify(botPayload)
+            });
+            await openConversation(state.supportConversationId, true);
+          }, 2000);
+        }
+      }
 
     } catch (err) {
       state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
