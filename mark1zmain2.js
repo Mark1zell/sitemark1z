@@ -1473,7 +1473,7 @@ async function renderMessengerDialogs() {
     
     // 7. Рендерим
     var personalChats = chats.filter(function(c) {
-      return String(c.id) !== String(state.supportConversationId);
+      return String(c.id) !== String(state.supportConversationId) || isOwner();
     });
     messengerDialogs.innerHTML = personalChats.map(chat => {
       // Находим собеседника для этого чата
@@ -1833,14 +1833,23 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
   }, 300);
 
-    // Авто-добавление в чат поддержки
   if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
-    var { data: alreadyMember } = await supabaseClient.from('chat_members').select('*').eq('chat_id', conversationId).eq('user_id', state.currentSession.user.id);
-    if (!alreadyMember || alreadyMember.length === 0) {
-      await supabaseClient.from('chat_members').insert({
-        chat_id: conversationId,
-        user_id: state.currentSession.user.id
-      });
+    var userId = state.currentSession.user.id;
+    if (userId !== OWNER_UID) {
+      var adminChatId = await findExistingConversation(OWNER_UID);
+      if (!adminChatId) {
+        adminChatId = crypto.randomUUID();
+        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
+          method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ id: adminChatId, is_group: false })
+        });
+        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
+          method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json' },
+          body: JSON.stringify([{ chat_id: adminChatId, user_id: userId }, { chat_id: adminChatId, user_id: OWNER_UID }])
+        });
+      }
+      state.currentConversationId = adminChatId;
+      conversationId = adminChatId;
     }
   }
   
