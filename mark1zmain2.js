@@ -725,37 +725,15 @@
     openScreen('account'); showNotification('Вы вышли из аккаунта', 'info');
   }
 
-  function startMessagePolling() {
-    if (state.messagesPolling) return;
-    state.messagesPolling = setInterval(async function() {
-      if (!state.currentConversationId || !state.currentSession) return;
-      var since = state.conversationMessages.length > 0 
-        ? state.conversationMessages[state.conversationMessages.length - 1].created_at 
-        : new Date(0).toISOString();
-      try {
-        var res = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages?chat_id=eq.' + state.currentConversationId + '&order=created_at.asc&limit=5', {
-          headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token }
-        });
-        var newMsgs = await res.json();
-        if (newMsgs && newMsgs.length > 0) {
-          for (var n = 0; n < newMsgs.length; n++) {
-            if (!state.conversationMessages.find(function(m) { return m.id === newMsgs[n].id; })) {
-              state.conversationMessages.push(newMsgs[n]);
-            }
-          }
-          renderMessagesList();
-          renderMessengerDialogs();
-        }
-      } catch(e) {}
-    }, 3000);
-  }
-
-  function startPresenceHeartbeat() {
+    function startPresenceHeartbeat() {
     if (state.messengerPollingTimer) return;
     state.messengerPollingTimer = setInterval(async () => {
       if (!state.currentSession?.user) return;
       await touchCurrentProfileActivity();
-    }, 30000);
+      if (state.currentConversationId) {
+        try { await openConversation(state.currentConversationId, true); } catch(e) {}
+      }
+    }, 5000);
   }
 
   function stopPresenceHeartbeat() { if (state.messengerPollingTimer) { clearInterval(state.messengerPollingTimer); state.messengerPollingTimer = null; } }
@@ -1599,6 +1577,9 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   }
 
   // Пропускаем рендер если нет новых сообщений при polling
+    var oldScrollTop = 0;
+  var msgCont = document.getElementById('mkzMessengerMessages');
+  if (msgCont) oldScrollTop = msgCont.scrollTop;
   if (isPollingUpdate && state._lastMessageCount === state.conversationMessages.length) return;
 
   // Загружаем данные собеседника
@@ -2490,7 +2471,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       state.currentSession = session || null;
       if (state.currentSession) {
         startPresenceHeartbeat();
-        startMessagePolling();
         updatePresence(true);
       } else {
         stopPresenceHeartbeat();
