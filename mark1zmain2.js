@@ -1533,29 +1533,24 @@ async function renderMessengerDialogs() {
         openChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
       }
       
-      var dialogBgStyle = avatarUrl ? 'background:linear-gradient(0deg,rgba(0,0,0,0.75),rgba(0,0,0,0.5)),url(\'' + escapeHtml(avatarUrl) + '\') center/cover no-repeat;' : '';
-      return `
-  <button class="mkz-dialog ${isActive ? 'mkz-dialog--active' : ''}" 
-          type="button" 
-          data-open-chat="${chat.id}"
-          style="${dialogBgStyle}position:relative;overflow:hidden;border-radius:16px;border:2px solid ${isActive ? 'rgba(255,47,174,0.6)' : 'rgba(255,255,255,0.04)'};box-shadow:${isActive ? '0 0 20px rgba(255,47,174,0.25)' : 'none'};transition:all 0.3s;">
-    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);${avatarUrl ? '' : 'backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);'}"></div>
-    <div style="position:relative;z-index:1;display:flex;align-items:center;gap:12px;width:100%;">
-    <div class="mkz-dialog__avatar" style="width:48px;height:48px;min-width:48px;border-radius:50%;${avatarUrl ? 'background-image:url(\'' + escapeHtml(avatarUrl) + '\');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);'}display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-      ${avatarUrl ? '' : getInitial(displayName, 'П')}
-    </div>
-    <div class="mkz-dialog__body" style="flex:1;min-width:0;">
-      <div class="mkz-dialog__top">
-        <span class="mkz-dialog__name">${escapeHtml(displayName)}</span>
-        ${timeText ? '<span class="mkz-dialog__time">' + timeText + '</span>' : ''}
-      </div>
-      <div class="mkz-dialog__bottom">
-        <span class="mkz-dialog__preview">${escapeHtml(preview)}</span>
-      </div>
-      <div class="mkz-dialog__status">${statusText}</div>
-    </div>
-    </div>
-  </button>`;
+      var bgStyle = avatarUrl 
+        ? 'background:linear-gradient(0deg,rgba(0,0,0,0.75),rgba(0,0,0,0.65)),url(' + escapeHtml(avatarUrl) + ') center/cover no-repeat;' 
+        : 'background:rgba(255,255,255,0.03);';
+      
+      var borderColor = isActive ? 'rgba(255,47,174,0.7)' : 'rgba(255,255,255,0.04)';
+      var boxShadow = isActive ? '0 0 24px rgba(255,47,174,0.3), inset 0 0 0 1px rgba(255,47,174,0.2)' : 'none';
+      
+      return '<button class="mkz-dialog" type="button" data-open-chat="' + chat.id + '" style="' + bgStyle + 'border-radius:16px;border:2px solid ' + borderColor + ';box-shadow:' + boxShadow + ';transition:all 0.3s ease;padding:14px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:6px;position:relative;overflow:hidden;">' +
+        '<div style="width:46px;height:46px;min-width:46px;border-radius:50%;' + (avatarUrl ? 'background-image:url(' + escapeHtml(avatarUrl) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);') + 'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;">' + (avatarUrl ? '' : getInitial(displayName, 'П')) + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
+            '<span style="font-weight:600;font-size:14px;color:#fff;text-shadow:0 0 8px rgba(0,0,0,0.5);">' + escapeHtml(displayName) + '</span>' +
+            (timeText ? '<span style="font-size:11px;color:rgba(255,255,255,0.5);">' + timeText + '</span>' : '') +
+          '</div>' +
+          '<div style="font-size:13px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px;text-shadow:0 0 6px rgba(0,0,0,0.5);">' + escapeHtml(preview) + '</div>' +
+          '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;">' + statusText + '</div>' +
+        '</div>' +
+      '</button>';
     }).join('');
 
         // Обработчик для чата поддержки
