@@ -1027,6 +1027,11 @@
           return username.includes(prepared) || publicId.includes(prepared);
         });
       }
+     // Исключаем служебные профили
+      list = list.filter(function(p) {
+        return p.id !== '3bf6b657-7722-4189-bd0e-6b7b9271ccdc' && 
+               p.username !== 'Mark1z Design';
+      });
       state.peopleSearchResults = list;
       if (!list.length) {
         peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
