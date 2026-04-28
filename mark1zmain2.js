@@ -2253,12 +2253,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       });
     }
 
-        if (messengerAttachImageBtn && messengerImageInput) {
+      if (messengerAttachImageBtn && messengerImageInput) {
       messengerAttachImageBtn.addEventListener('click', function() {
         messengerImageInput.accept = 'image/*,video/*,.pdf,.zip,.rar,.doc,.docx,.txt,.psd,.ai,.fig';
         messengerImageInput.click();
       });
-      messengerImageInput.addEventListener('change', async function() {
+      messengerImageInput.onchange = async function() {
         var file = messengerImageInput.files[0];
         if (!file) return;
         showLoading('Загрузка файла...');
@@ -2279,7 +2279,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         } finally {
           hideLoading();
         }
-      });
+      };
     }
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
     if (messengerForm) messengerForm.addEventListener('submit', async e => { e.preventDefault(); await sendMessengerMessage(); });
