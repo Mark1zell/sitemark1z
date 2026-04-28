@@ -1671,6 +1671,27 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
   // Кнопки профиля и удаления чата
   setTimeout(function() {
+        // Кнопка переключения режима ответа (только для чата поддержки)
+    if (String(conversationId) === String(state.supportConversationId) && isOwner()) {
+      var switchBtn = document.getElementById('mkzSwitchBrandBtn');
+      if (!switchBtn) {
+        switchBtn = document.createElement('button');
+        switchBtn.id = 'mkzSwitchBrandBtn';
+        switchBtn.style.cssText = 'padding:6px 12px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-right:8px;';
+        var headEl3 = document.querySelector('#messenger .mkz-messenger-head');
+        if (headEl3) headEl3.appendChild(switchBtn);
+      }
+      var isBrand = state.supportSendMode === 'brand';
+      switchBtn.textContent = isBrand ? '🏢 Mark1z Design' : '👤 Админ';
+      switchBtn.style.background = isBrand ? 'rgba(255,47,174,0.2)' : 'rgba(255,255,255,0.08)';
+      switchBtn.style.color = '#fff';
+      switchBtn.onclick = function() {
+        state.supportSendMode = state.supportSendMode === 'brand' ? 'admin' : 'brand';
+        var newIsBrand = state.supportSendMode === 'brand';
+        switchBtn.textContent = newIsBrand ? '🏢 Mark1z Design' : '👤 Админ';
+        switchBtn.style.background = newIsBrand ? 'rgba(255,47,174,0.2)' : 'rgba(255,255,255,0.08)';
+      };
+    }
     var headEl = document.querySelector('#messenger .mkz-messenger-head');
     if (!headEl) return;
     
@@ -1931,7 +1952,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     var tempMsg = {
       id: tempId,
       chat_id: state.currentConversationId,
-      sender_id: state.currentSession.user.id,
+      sender_id: senderId,
       content: content || '',
       type: tempAttachment ? (tempAttachment.attachment_type && tempAttachment.attachment_type.startsWith('image/') ? 'image' : 'file') : 'text',
       file_url: tempAttachment ? tempAttachment.attachment_url || null : null,
@@ -1946,7 +1967,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         try {
       var payload = {
         chat_id: state.currentConversationId,
-        sender_id: state.currentSession.user.id,
+        sender_id: senderId,
         content: content || '',
         type: 'text'
       };
