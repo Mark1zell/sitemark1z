@@ -1835,6 +1835,15 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (msgCont2) oldScrollTop = msgCont2.scrollTop;
     state.conversationMessages = messages || [];
     state._lastMessageCount = state.conversationMessages.length;
+        // Обновляем время прочтения
+    if (state.currentSession?.user) {
+      try {
+        await supabaseClient.from('chat_members')
+          .update({ last_read_at: new Date().toISOString() })
+          .eq('chat_id', conversationId)
+          .eq('user_id', state.currentSession.user.id);
+      } catch(e) {}
+    }
     
     // Рендер сообщений
     var msgContainer = document.getElementById('mkzMessengerMessages');
@@ -1878,12 +1887,22 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           msgContainer.scrollTop = oldScrollTop;
         } else {
                   // Ищем первое непрочитанное сообщение (от собеседника, старше 1 минуты)
+               var lastReadAt = null;
+        if (members) {
+          var memberRecord = members.find(function(m) { return m.user_id === state.currentSession.user.id; });
+          if (memberRecord && memberRecord.last_read_at) {
+            lastReadAt = new Date(memberRecord.last_read_at).getTime();
+          }
+        }
+        
         var firstUnreadIndex = -1;
-        for (var u = state.conversationMessages.length - 1; u >= 0; u--) {
-          if (state.conversationMessages[u].sender_id !== renderMyId) {
-            firstUnreadIndex = u;
-          } else {
-            break;
+        if (lastReadAt) {
+          for (var u = 0; u < state.conversationMessages.length; u++) {
+            if (state.conversationMessages[u].sender_id !== renderMyId && 
+                new Date(state.conversationMessages[u].created_at).getTime() > lastReadAt) {
+              firstUnreadIndex = u;
+              break;
+            }
           }
         }
         
