@@ -2059,7 +2059,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         var preview = lastMsg ? (lastMsg.content || '').substring(0, 30) : '';
         var time = lastMsg ? formatDateTime(lastMsg.created_at) : '';
         
-        html += '<button class="mkz-dialog" data-open-chat="' + supportChatId + '" data-view-as="' + uid + '" style="width:100%;text-align:left;">';
+        html += '<button class="mkz-dialog" data-user-id="' + uid + '" style="width:100%;text-align:left;">';
         html += '<div class="mkz-dialog__avatar" style="' + (avatar ? 'background-image:url(\'' + avatar + '\');background-size:cover;' : '') + '">' + (avatar ? '' : getInitial(username)) + '</div>';
         html += '<div class="mkz-dialog__body"><div class="mkz-dialog__top"><span class="mkz-dialog__name">' + username + '</span><span class="mkz-dialog__time">' + time + '</span></div>';
         html += '<div class="mkz-dialog__preview">' + preview + '</div></div>';
@@ -2067,10 +2067,16 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
       
       messengerDialogs.innerHTML = html;
-            var supportBtns = messengerDialogs.querySelectorAll('[data-open-chat]');
+      var supportBtns = messengerDialogs.querySelectorAll('[data-user-id]');
       for (var s = 0; s < supportBtns.length; s++) {
         supportBtns[s].onclick = async function() {
-          await openConversation(this.getAttribute('data-open-chat'));
+          var userId = this.getAttribute('data-user-id');
+          var existingChatId = await findExistingConversation(userId);
+          if (existingChatId) {
+            await openConversation(existingChatId);
+          } else {
+            await startConversationWithUser(userId);
+          }
         };
       }
       
