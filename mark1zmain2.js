@@ -1984,7 +1984,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           var fileUrl = urls[u];
           var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
           if (isImage) {
-            attachmentHtml += '<img src="' + fileUrl + '" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:12px;margin:2px;cursor:pointer;">';
+            attachmentHtml += '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:12px;cursor:pointer;margin:2px;" onclick="showImageViewer(\'' + fileUrl + '\')"></div>';
           } else {
             attachmentHtml += '<div><a href="' + fileUrl + '" target="_blank">📎 ' + (names[u] || 'Файл') + '</a></div>';
           }
