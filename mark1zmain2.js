@@ -105,10 +105,9 @@
 
   function clearCache(key) { if (key) queryCache.delete(key); else queryCache.clear(); }
 
-  async function uploadToBucket(bucket, file, prefix) {
+ async function uploadToBucket(bucket, file, prefix) {
     try {
       if (bucket !== 'avatars') validateFile(file, 10);
-      else validateFile(file, 2);
       const optimizedFile = await optimizeImage(file);
       const ext = (optimizedFile.name.split('.').pop() || 'bin').toLowerCase();
       const path = `${prefix}_${Date.now()}.${ext}`;
@@ -566,8 +565,8 @@
   async function loadUserBio() {
     if (!state.currentSession?.user) return;
     try {
-      const { data, error } = await supabaseClient.from('profiles').select('bio').eq('id', state.currentSession.user.id).single();
-      if (error) throw error;
+      const { data, error } = await supabaseClient.from('profiles').select('bio').eq('id', state.currentSession.user.id).maybeSingle();
+      if (error || !data) return;
       if (updateBio && data?.bio) updateBio.value = data.bio;
     } catch (err) { console.error('Error loading bio:', err); }
   }
