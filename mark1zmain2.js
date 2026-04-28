@@ -2052,10 +2052,24 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       supportMsgBtn.id = 'mkzSupportMsgBtn';
       supportMsgBtn.textContent = '💬 Сообщения поддержки';
       supportMsgBtn.style.cssText = 'width:100%;padding:10px 14px;margin-top:6px;border-radius:12px;background:rgba(255,47,174,0.15);border:1px solid rgba(255,47,174,0.3);color:#fff;cursor:pointer;font-weight:600;font-size:13px;text-align:center;';
+      
+      var showingSupport = false;
+      
       supportMsgBtn.onclick = async function() {
-        await loadSupportDialogs();
-        openScreen('support-dialogs');
+        showingSupport = !showingSupport;
+        if (showingSupport) {
+          supportMsgBtn.textContent = '👤 Мои чаты';
+          supportMsgBtn.style.background = 'rgba(59,130,246,0.15)';
+          supportMsgBtn.style.borderColor = 'rgba(59,130,246,0.3)';
+          await loadSupportDialogs();
+        } else {
+          supportMsgBtn.textContent = '💬 Сообщения поддержки';
+          supportMsgBtn.style.background = 'rgba(255,47,174,0.15)';
+          supportMsgBtn.style.borderColor = 'rgba(255,47,174,0.3)';
+          await renderMessengerDialogs();
+        }
       };
+      
       var sidebar = document.querySelector('#messenger .mkz-messenger-sidebar__top');
       if (sidebar) sidebar.appendChild(supportMsgBtn);
     }
