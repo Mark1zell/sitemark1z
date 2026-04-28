@@ -2107,7 +2107,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
   }
 
-  function showImageViewer(url) {
+    window.showImageViewer = function(url) {
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
     var topBar = document.createElement('div');
