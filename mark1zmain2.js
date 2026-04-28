@@ -1569,8 +1569,8 @@ async function renderMessengerDialogs() {
     // Обновляем счётчик непрочитанных
     var unreadCount = 0;
     for (var d = 0; d < personalChats.length; d++) {
-      var lastMsg = lastMsgMap[chats[d].id];
-      if (lastMsg && lastMsg.sender_id !== myId && String(chats[d].id) !== String(state.currentConversationId)) {
+      var lastMsg = lastMsgMap[personalChats[d].id];
+      if (lastMsg && lastMsg.sender_id !== myId && String(personalChats[d].id) !== String(state.currentConversationId)) {
         unreadCount++;
       }
     }
@@ -1581,6 +1581,17 @@ async function renderMessengerDialogs() {
       document.getElementById('mkzPinnedOwnerAvatar').style.backgroundSize = 'cover';
       document.getElementById('mkzPinnedOwnerAvatar').textContent = '';
     }
+    
+    var badge = document.getElementById('mkzUnreadBadge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'mkzUnreadBadge';
+      badge.style.cssText = 'background:#ff2fae;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;display:none;';
+      var navBtn = document.querySelector('[data-screen-open="messenger"]');
+      if (navBtn) navBtn.appendChild(badge);
+    }
+    badge.textContent = unreadCount > 0 ? unreadCount : '';
+    badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
     
     hideLoading();
     
@@ -1611,14 +1622,15 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
   // Сброс счётчика
   var badge = document.getElementById('mkzUnreadBadge');
-  if (badge) {
-    var currentCount = parseInt(badge.textContent) || 0;
-    if (currentCount > 0) {
-      currentCount = currentCount - 1;
-      badge.textContent = currentCount > 0 ? currentCount : '';
-      badge.style.display = currentCount > 0 ? 'inline-block' : 'none';
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'mkzUnreadBadge';
+      badge.style.cssText = 'background:#ff2fae;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;display:none;';
+      var navBtn = document.querySelector('[data-screen-open="messenger"]');
+      if (navBtn) navBtn.appendChild(badge);
     }
-  }
+    badge.textContent = unreadCount > 0 ? unreadCount : '';
+    badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
 
   // Пропускаем рендер если нет новых сообщений при polling
     var oldScrollTop = 0;
@@ -1838,7 +1850,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           var isMine = msg.sender_id === renderMyId;
           var content = msg.content || '';
           var time = new Date(msg.created_at).toLocaleString('ru-RU');
-          html += '<div class="mkz-message-row ' + (isMine ? 'mkz-message-row--me' : 'mkz-message-row--them') + '">';
+          html += '<div class="mkz-message-row ' + (isMine ? 'mkz-message-row--me' : 'mkz-message-row--them') + '" data-message-id="' + msg.id + '">';
           html += '<div class="mkz-message ' + (isMine ? 'mkz-message--me' : 'mkz-message--them') + '">';
           var attachmentHtml = '';
           if (msg.file_url || msg.attachment_url) {
@@ -1866,7 +1878,37 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         if (isPollingUpdate && !hasNew) {
           msgContainer.scrollTop = oldScrollTop;
         } else {
+                  // Ищем первое непрочитанное сообщение (от собеседника, старше 1 минуты)
+        var firstUnreadIndex = -1;
+        for (var u = state.conversationMessages.length - 1; u >= 0; u--) {
+          if (state.conversationMessages[u].sender_id !== renderMyId) {
+            firstUnreadIndex = u;
+          } else {
+            break;
+          }
+        }
+        
+        if (firstUnreadIndex >= 0 && firstUnreadIndex < state.conversationMessages.length - 1) {
+          // Добавляем разделитель
+          var unreadMsg = state.conversationMessages[firstUnreadIndex];
+          var dividerHtml = '<div style="text-align:center;margin:16px 0;color:rgba(255,255,255,0.3);font-size:12px;">―――――― Новые сообщения ――――――</div>';
+          // Находим элемент этого сообщения и вставляем разделитель перед ним
+          setTimeout(function() {
+            var msgEl = document.querySelector('[data-message-id="' + unreadMsg.id + '"]');
+            if (msgEl) {
+              var divider = document.createElement('div');
+              divider.className = 'mkz-message-divider';
+              divider.style.cssText = 'text-align:center;margin:16px 0;color:rgba(255,255,255,0.3);font-size:12px;';
+              divider.textContent = '―――――― Новые сообщения ――――――';
+              msgEl.parentNode.insertBefore(divider, msgEl);
+              divider.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+              msgContainer.scrollTop = msgContainer.scrollHeight;
+            }
+          }, 100);
+        } else {
           msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
         }
       }
       console.log('Сообщений загружено:', state.conversationMessages.length);
