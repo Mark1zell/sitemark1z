@@ -1975,7 +1975,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
 
     var content = messengerInput ? messengerInput.value.trim() : '';
-    var hasAttachment = !!(state.pendingMessengerAttachment && state.pendingMessengerAttachment.attachment_url);
+    var hasAttachment = !!(state.pendingFiles && state.pendingFiles.length > 0);
 
     if (!content && !hasAttachment) {
       showNotification('Введите сообщение или прикрепите файл', 'warning');
@@ -1985,8 +1985,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     setButtonState(messengerSendBtn, true, '...', 'Отправить');
 
     if (messengerInput) messengerInput.value = '';
-    var tempAttachment = state.pendingMessengerAttachment;
-    clearMessengerAttachment();
+    var tempFiles = state.pendingFiles || [];
+    state.pendingFiles = [];
 
     var senderId = state.currentSession.user.id;
     if (String(state.currentConversationId) === String(state.supportConversationId) && state.supportSendMode === 'brand') {
@@ -2389,10 +2389,33 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       
       if (!state.pendingFiles) state.pendingFiles = [];
       
+      function updateAttachMeta() {
+        var meta = document.getElementById('mkzMessengerAttachMeta');
+        if (!meta) {
+          meta = document.createElement('div');
+          meta.id = 'mkzMessengerAttachMeta';
+          meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.7);padding:4px 8px;margin-top:2px;';
+          var compose = document.querySelector('#messenger .mkz-messenger-compose');
+          if (compose) compose.appendChild(meta);
+        }
+        meta.innerHTML = '';
+        for (var i = 0; i < state.pendingFiles.length; i++) {
+          var f = state.pendingFiles[i];
+          var chip = document.createElement('span');
+          chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:6px;margin-right:4px;';
+          chip.innerHTML = '📎 ' + f.attachment_name.substring(0, 20) + ' <span style="cursor:pointer;color:#ff4d4d;" data-remove="' + i + '">✕</span>';
+          chip.querySelector('[data-remove]').onclick = function(e) {
+            e.stopPropagation();
+            state.pendingFiles.splice(parseInt(this.getAttribute('data-remove')), 1);
+            updateAttachMeta();
+          };
+          meta.appendChild(chip);
+        }
+      }
+      
       btn.onclick = function(){
         state.pendingFiles = [];
-        var meta = document.getElementById('mkzMessengerAttachMeta');
-        if (meta) meta.textContent = '';
+        updateAttachMeta();
         var inp = document.createElement('input');
         inp.type = 'file';
         inp.multiple = true;
@@ -2413,15 +2436,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             } catch(e) { showNotification('Ошибка: '+e.message,'error'); }
           }
           hideLoading();
-          var meta = document.getElementById('mkzMessengerAttachMeta');
-          if (!meta) {
-            meta = document.createElement('div');
-            meta.id = 'mkzMessengerAttachMeta';
-            meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.7);padding:4px 8px;margin-top:2px;';
-            var compose = document.querySelector('#messenger .mkz-messenger-compose');
-            if (compose) compose.appendChild(meta);
-          }
-          meta.textContent = '📎 Прикреплено файлов: ' + state.pendingFiles.length;
+          updateAttachMeta();
         };
         inp.click();
       };
