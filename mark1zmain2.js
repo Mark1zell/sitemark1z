@@ -725,23 +725,29 @@
     openScreen('account'); showNotification('Вы вышли из аккаунта', 'info');
   }
 
-    function subscribeToMessages() {
-    if (state.isSubscribed) return;
-    state.isSubscribed = true;
-    
-    supabaseClient
-      .channel('messages-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, function(payload) {
-        var newMsg = payload.new;
-        // Если сообщение в текущем чате — добавляем
-        if (newMsg.chat_id === state.currentConversationId) {
-          state.conversationMessages.push(newMsg);
+  function startMessagePolling() {
+    if (state.messagesPolling) return;
+    state.messagesPolling = setInterval(async function() {
+      if (!state.currentConversationId || !state.currentSession) return;
+      var since = state.conversationMessages.length > 0 
+        ? state.conversationMessages[state.conversationMessages.length - 1].created_at 
+        : new Date(0).toISOString();
+      try {
+        var res = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages?chat_id=eq.' + state.currentConversationId + '&created_at=gt.' + since + '&order=created_at.asc', {
+          headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token }
+        });
+        var newMsgs = await res.json();
+        if (newMsgs && newMsgs.length > 0) {
+          for (var n = 0; n < newMsgs.length; n++) {
+            if (!state.conversationMessages.find(function(m) { return m.id === newMsgs[n].id; })) {
+              state.conversationMessages.push(newMsgs[n]);
+            }
+          }
           renderMessagesList();
+          renderMessengerDialogs();
         }
-        // Обновляем список диалогов
-        renderMessengerDialogs();
-      })
-      .subscribe();
+      } catch(e) {}
+    }, 3000);
   }
 
   function startPresenceHeartbeat() {
@@ -2484,7 +2490,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       state.currentSession = session || null;
       if (state.currentSession) {
         startPresenceHeartbeat();
-        subscribeToMessages();
+        startMessagePolling();
         updatePresence(true);
       } else {
         stopPresenceHeartbeat();
