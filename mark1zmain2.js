@@ -620,6 +620,7 @@
       document.getElementById('mkzAccountMiniName').textContent = name;
       document.getElementById('mkzAccountMiniId').textContent = 'ID: ' + publicId;
       applyAvatar(document.getElementById('mkzAccountMiniAvatar'), profile?.avatar_url, name);
+    }
     if (document.getElementById('mkzAccountRegistered')) {
       document.getElementById('mkzAccountRegistered').textContent = profile?.created_at ? formatDateOnly(profile.created_at) : '—';
     }
