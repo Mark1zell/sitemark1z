@@ -2074,6 +2074,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         html += '</div>';
         html += '</div>';
         html += '</button>';
+      }
       
       messengerDialogs.innerHTML = html;
       var supportBtns = messengerDialogs.querySelectorAll('[data-user-id]');
