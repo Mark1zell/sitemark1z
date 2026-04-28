@@ -1985,7 +1985,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     setButtonState(messengerSendBtn, true, '...', 'Отправить');
 
     if (messengerInput) messengerInput.value = '';
-    var tempFiles = state.pendingFiles || [];
+    var tempFiles = state.pendingFiles ? state.pendingFiles.slice() : [];
     state.pendingFiles = [];
 
     var senderId = state.currentSession.user.id;
