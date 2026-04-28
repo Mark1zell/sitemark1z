@@ -1792,7 +1792,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
             var isVideo = msg.type === 'video' || /\.(mp4|webm|mov)$/i.test(fileUrl);
             if (isImage) {
-              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:240px;border-radius:12px;cursor:pointer;" onclick="showImageModal(\'' + fileUrl + '\', \'' + (msg.attachment_name || 'Фото') + '\')"></div>';
+              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:240px;border-radius:12px;cursor:pointer;" onclick="var img=document.createElement('img');img.src=this.src;img.style.maxWidth='95vw';img.style.maxHeight='95vh';img.style.cursor='pointer';img.onclick=function(){this.remove();};var ov=document.createElement('div');ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;';ov.appendChild(img);ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);"\'' + fileUrl + '\', \'' + (msg.attachment_name || 'Фото') + '\')"></div>';
             } else if (isVideo) {
               attachmentHtml = '<div class="mkz-message__video"><video src="' + fileUrl + '" controls style="max-width:240px;border-radius:12px;"></video></div>';
             } else {
@@ -2381,41 +2381,54 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       await openConversation(state.currentConversationId, true);
       showNotification('Сообщение удалено', 'success');
     });
-          (function(){
+    (function(){
       var btn = document.createElement('button');
       btn.textContent = '📎';
       btn.title = 'Прикрепить файл';
       btn.style.cssText = 'width:44px;height:44px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;';
+      
+      if (!state.pendingFiles) state.pendingFiles = [];
+      
       btn.onclick = function(){
+        state.pendingFiles = [];
+        var meta = document.getElementById('mkzMessengerAttachMeta');
+        if (meta) meta.textContent = '';
         var inp = document.createElement('input');
         inp.type = 'file';
+        inp.multiple = true;
         inp.accept = 'image/*,video/*,.pdf,.zip,.rar,.doc,.docx,.txt';
         inp.onchange = async function(){
-          var f = inp.files[0];
-          if(!f) return;
+          var files = inp.files;
+          if (!files.length) return;
+          if (files.length > 5) {
+            showNotification('Максимум 5 файлов','warning');
+            return;
+          }
           showLoading('Загрузка...');
-          try {
-            var up = await uploadToBucket('chat-files', f, 'chat_'+state.currentSession.user.id);
-            state.pendingMessengerAttachment = {attachment_url:up.publicUrl, attachment_name:f.name, attachment_type:f.type};
-            showNotification('📎 Файл прикреплён!','success');
-            var meta = document.getElementById('mkzMessengerAttachMeta');
-            if (!meta) {
-              meta = document.createElement('div');
-              meta.id = 'mkzMessengerAttachMeta';
-              meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.7);padding:4px 8px;margin-top:2px;';
-              var compose = document.querySelector('#messenger .mkz-messenger-compose');
-              if (compose) compose.appendChild(meta);
-            }
-            meta.textContent = '📎 ' + f.name + ' (' + (f.type || 'файл') + ')';
-          } catch(e) { showNotification('Ошибка: '+e.message,'error'); }
+          state.pendingFiles = [];
+          for (var i = 0; i < files.length; i++) {
+            try {
+              var up = await uploadToBucket('chat-files', files[i], 'chat_'+state.currentSession.user.id);
+              state.pendingFiles.push({attachment_url:up.publicUrl, attachment_name:files[i].name, attachment_type:files[i].type});
+            } catch(e) { showNotification('Ошибка: '+e.message,'error'); }
+          }
           hideLoading();
+          var meta = document.getElementById('mkzMessengerAttachMeta');
+          if (!meta) {
+            meta = document.createElement('div');
+            meta.id = 'mkzMessengerAttachMeta';
+            meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.7);padding:4px 8px;margin-top:2px;';
+            var compose = document.querySelector('#messenger .mkz-messenger-compose');
+            if (compose) compose.appendChild(meta);
+          }
+          meta.textContent = '📎 Прикреплено файлов: ' + state.pendingFiles.length;
         };
         inp.click();
       };
       var box = document.querySelector('#messenger .mkz-messenger-compose__box');
       if(box) box.insertBefore(btn, box.firstChild);
     })();
-        initSupportDialogsButton();
+    initSupportDialogsButton();
     initSupportDialogsBackButton();
   }
 
