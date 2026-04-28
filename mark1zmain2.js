@@ -1573,7 +1573,13 @@ async function renderMessengerDialogs() {
       if (lastMsg && lastMsg.sender_id !== myId && String(chats[d].id) !== String(state.currentConversationId)) {
         unreadCount++;
       }
+    var brandAv = localStorage.getItem('mkz_brand_avatar') || '';
+    if (brandAv && document.getElementById('mkzPinnedOwnerAvatar')) {
+      document.getElementById('mkzPinnedOwnerAvatar').style.backgroundImage = "url('" + brandAv + "')";
+      document.getElementById('mkzPinnedOwnerAvatar').style.backgroundSize = 'cover';
+      document.getElementById('mkzPinnedOwnerAvatar').textContent = '';
     }
+    
     hideLoading();
     
   } catch (err) {
