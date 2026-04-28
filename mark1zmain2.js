@@ -1819,7 +1819,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
               var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
               var isVideo = msg.type === 'video' || /\.(mp4|webm|mov)$/i.test(fileUrl);
               if (isImage) {
-                attachmentHtml += '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:12px;cursor:pointer;margin:2px;" onclick="var img=document.createElement(\'img\');img.src=this.src;img.style.maxWidth=\'95vw\';img.style.maxHeight=\'95vh\';img.onclick=function(e){e.stopPropagation();this.remove();};var ov=document.createElement(\'div\');ov.style.cssText=\'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;\';ov.appendChild(img);ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);"></div>';
+                attachmentHtml += '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:12px;cursor:pointer;margin:2px;" onclick="showImageViewer(\'' + fileUrl + '\')"></div>';
               } else if (isVideo) {
                 attachmentHtml += '<div class="mkz-message__video"><video src="' + fileUrl + '" controls style="max-width:200px;max-height:200px;border-radius:12px;margin:2px;"></video></div>';
               } else {
@@ -2105,6 +2105,44 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     } finally {
       setButtonState(messengerSendBtn, false, '...', 'Отправить');
     }
+  }
+
+    function showImageViewer(url) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    
+    var topBar = document.createElement('div');
+    topBar.style.cssText = 'position:absolute;top:0;left:0;right:0;padding:12px;display:flex;gap:12px;z-index:1;';
+    
+    var btnStyle = 'padding:8px 14px;border:none;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:14px;';
+    
+    var downloadBtn = document.createElement('button');
+    downloadBtn.textContent = '📥 Скачать';
+    downloadBtn.style.cssText = btnStyle;
+    downloadBtn.onclick = function(e) { e.stopPropagation(); window.open(url, '_blank'); };
+    
+    var copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 Копировать';
+    copyBtn.style.cssText = btnStyle;
+    copyBtn.onclick = function(e) { e.stopPropagation(); navigator.clipboard.writeText(url); showNotification('Ссылка скопирована!', 'success'); };
+    
+    topBar.appendChild(downloadBtn);
+    topBar.appendChild(copyBtn);
+    
+    var img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = 'max-width:95vw;max-height:85vh;object-fit:contain;';
+    
+    var closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = 'position:absolute;top:12px;right:12px;width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:18px;z-index:2;';
+    closeBtn.onclick = function() { ov.remove(); };
+    
+    ov.appendChild(topBar);
+    ov.appendChild(img);
+    ov.appendChild(closeBtn);
+    ov.onclick = function(e) { if(e.target === ov) ov.remove(); };
+    document.body.appendChild(ov);
   }
 
   // ========== BIND STATIC EVENTS ==========
