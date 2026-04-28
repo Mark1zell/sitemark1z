@@ -1528,11 +1528,15 @@ async function renderMessengerDialogs() {
       // Активный чат?
      var isActive = String(chat.id) === String(state.currentConversationId);
       if (isActive) console.log('Активный чат:', chat.id);
+      var openChatId = chat.id;
+      if (String(chat.id) === String(state.supportConversationId)) {
+        openChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
+      }
       
       return `
         <button class="mkz-dialog ${isActive ? 'mkz-dialog--active' : ''}" 
                 type="button" 
-                data-open-chat="${chat.id}">
+                data-open-chat="${openChatId}"
           <div class="mkz-dialog__avatar" style="${avatarUrl ? `background-image:url('${escapeHtml(avatarUrl)}');background-size:cover;background-position:center;` : ''}">
             ${avatarUrl ? '' : getInitial(displayName, 'П')}
           </div>
