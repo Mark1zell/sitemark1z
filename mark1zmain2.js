@@ -1538,7 +1538,7 @@ async function renderMessengerDialogs() {
         : 'background:rgba(255,255,255,0.03);';
       
       var borderColor = isActive ? 'rgba(255,47,174,0.9)' : 'rgba(255,255,255,0.04)';
-      var outlineStyle = isActive ? 'outline:2px solid rgba(255,47,174,0.5);outline-offset:-2px;' : '';
+      var outlineStyle = isActive ? 'outline:3px solid rgba(255,47,174,0.8) !important;outline-offset:-3px;' : '';
       var boxShadow = isActive ? '0 0 24px rgba(255,47,174,0.3), inset 0 0 0 1px rgba(255,47,174,0.2)' : 'none';
       
       return '<button class="mkz-dialog" type="button" data-open-chat="' + chat.id + '" style="' + bgStyle + 'border-radius:16px;border:2px solid ' + borderColor + ';' + outlineStyle + 'box-shadow:' + boxShadow + ';transition:all 0.3s ease;padding:14px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:6px;position:relative;overflow:hidden;">' +
