@@ -1792,7 +1792,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
             var isVideo = msg.type === 'video' || /\.(mp4|webm|mov)$/i.test(fileUrl);
             if (isImage) {
-              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:240px;border-radius:12px;cursor:pointer;" onclick="var img=document.createElement(\'img\');img.src=this.src;img.style.maxWidth=\'95vw\';img.style.maxHeight=\'95vh\';img.onclick=function(e){e.stopPropagation();this.remove();};var ov=document.createElement(\'div\');ov.style.cssText=\'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;\';ov.appendChild(img);ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);"></div>';
+              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:12px;cursor:pointer;" onclick="var img=document.createElement(\'img\');img.src=this.src;img.style.maxWidth=\'95vw\';img.style.maxHeight=\'95vh\';img.onclick=function(e){e.stopPropagation();this.remove();};var ov=document.createElement(\'div\');ov.style.cssText=\'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;\';ov.appendChild(img);ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);"></div>';
             } else if (isVideo) {
               attachmentHtml = '<div class="mkz-message__video"><video src="' + fileUrl + '" controls style="max-width:240px;border-radius:12px;"></video></div>';
             } else {
@@ -2399,7 +2399,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         if (!meta) {
           meta = document.createElement('div');
           meta.id = 'mkzMessengerAttachMeta';
-          meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.7);padding:4px 8px;margin-top:2px;';
+          meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.7);padding:4px 8px;margin-top:2px;display:flex;flex-wrap:wrap;gap:4px;';
           var compose = document.querySelector('#messenger .mkz-messenger-compose');
           if (compose) compose.appendChild(meta);
         }
@@ -2418,7 +2418,9 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         }
       }
       
-        btn.onclick = function(){
+      btn.onclick = function(e){
+        e.preventDefault();
+        e.stopPropagation();
         var inp = document.createElement('input');
         inp.type = 'file';
         inp.multiple = true;
