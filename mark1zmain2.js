@@ -2021,15 +2021,11 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         type: 'text'
       };
       if (tempFiles && tempFiles.length > 0) {
+        payload.file_url = tempFiles.map(function(f){return f.attachment_url;}).join('|||');
+        payload.attachment_url = payload.file_url;
+        payload.attachment_name = tempFiles.map(function(f){return f.attachment_name;}).join('|||');
+        payload.attachment_type = tempFiles[0].attachment_type;
         payload.type = tempFiles[0].attachment_type && tempFiles[0].attachment_type.startsWith('image/') ? 'image' : 'file';
-        if (tempFiles.length === 1) {
-          payload.file_url = tempFiles[0].attachment_url;
-          payload.attachment_name = tempFiles[0].attachment_name;
-        } else {
-          payload.file_url = tempFiles.map(function(f){return f.attachment_url;}).join('|||');
-          payload.attachment_name = tempFiles.map(function(f){return f.attachment_name;}).join('|||');
-          payload.content = (content || '') + ' [📎 ' + tempFiles.length + ' файла]';
-        }
       }
 
     console.log('PAYLOAD:', JSON.stringify(payload));
