@@ -1792,7 +1792,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
             var isVideo = msg.type === 'video' || /\.(mp4|webm|mov)$/i.test(fileUrl);
             if (isImage) {
-                            attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:240px;border-radius:12px;cursor:pointer;" onclick="var img=document.createElement(\'img\');img.src=this.src;img.style.maxWidth=\'95vw\';img.style.maxHeight=\'95vh\';img.style.cursor=\'pointer\';img.onclick=function(){this.remove();};var ov=document.createElement(\'div\');ov.style.cssText=\'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;\';ov.appendChild(img);ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);"></div>';
+                            attachmentHtml = '<div class="mkz-message__image">              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:240px;border-radius:12px;cursor:pointer;" onclick="var img=document.createElement(\'img\');img.src=this.src;img.style.maxWidth=\'95vw\';img.style.maxHeight=\'95vh\';img.onclick=function(e){e.stopPropagation();this.remove();};var ov=document.createElement(\'div\');ov.style.cssText=\'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;\';ov.appendChild(img);ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);"></div>';
             } else if (isVideo) {
               attachmentHtml = '<div class="mkz-message__video"><video src="' + fileUrl + '" controls style="max-width:240px;border-radius:12px;"></video></div>';
             } else {
@@ -2050,13 +2050,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var resultData = await result.json();
       
       var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
-      
-      var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
       if (idx >= 0 && resultData && resultData[0]) {
         state.conversationMessages[idx] = resultData[0];
       }
       renderMessagesList();
       await renderMessengerDialogs();
+      state.pendingFiles = [];
+      if (typeof updateAttachMeta === 'function') updateAttachMeta();
 
     } catch (err) {
       state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
@@ -2431,7 +2431,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             return;
           }
           showLoading('Загрузка...');
-          state.pendingFiles = [];
           for (var i = 0; i < files.length; i++) {
             try {
               var up = await uploadToBucket('chat-files', files[i], 'chat_'+state.currentSession.user.id);
