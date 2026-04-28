@@ -475,6 +475,7 @@
     pendingMessengerAttachment: null, supportSendMode: 'admin', messengerPollingTimer: null, messagesChannel: null, messagesPolling: null, isSubscribed: false, messagesSubscription: null, knownMessageIds: new Set(), notificationsReady: false, initialMessagesHydrated: false,
     mediaRecorder: null, mediaChunks: [], voiceStream: null
   };
+  state.supportConversationId = 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
 
   // ========== DEV-КОНСОЛЬ ДЛЯ ОТЛАДКИ ==========
   window.mkz = {
