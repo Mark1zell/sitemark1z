@@ -2374,6 +2374,31 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       await openConversation(state.currentConversationId, true);
       showNotification('Сообщение удалено', 'success');
     });
+          (function(){
+      var btn = document.createElement('button');
+      btn.textContent = '📎';
+      btn.title = 'Прикрепить файл';
+      btn.style.cssText = 'width:38px;height:38px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;';
+      btn.onclick = function(){
+        var inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = 'image/*,video/*,.pdf,.zip,.rar,.doc,.docx,.txt';
+        inp.onchange = async function(){
+          var f = inp.files[0];
+          if(!f) return;
+          showLoading('Загрузка...');
+          try {
+            var up = await uploadToBucket('chat-files', f, 'chat_'+state.currentSession.user.id);
+            state.pendingMessengerAttachment = {attachment_url:up.publicUrl, attachment_name:f.name, attachment_type:f.type};
+            showNotification('📎 Файл прикреплён!','success');
+          } catch(e) { showNotification('Ошибка: '+e.message,'error'); }
+          hideLoading();
+        };
+        inp.click();
+      };
+      var box = document.querySelector('#messenger .mkz-messenger-compose__box');
+      if(box) box.insertBefore(btn, box.firstChild);
+    })();
         initSupportDialogsButton();
     initSupportDialogsBackButton();
   }
