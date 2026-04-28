@@ -725,6 +725,25 @@
     openScreen('account'); showNotification('Вы вышли из аккаунта', 'info');
   }
 
+    function subscribeToMessages() {
+    if (state.isSubscribed) return;
+    state.isSubscribed = true;
+    
+    supabaseClient
+      .channel('messages-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, function(payload) {
+        var newMsg = payload.new;
+        // Если сообщение в текущем чате — добавляем
+        if (newMsg.chat_id === state.currentConversationId) {
+          state.conversationMessages.push(newMsg);
+          renderMessagesList();
+        }
+        // Обновляем список диалогов
+        renderMessengerDialogs();
+      })
+      .subscribe();
+  }
+
   function startPresenceHeartbeat() {
     if (state.messengerPollingTimer) return;
     state.messengerPollingTimer = setInterval(async () => {
@@ -2465,6 +2484,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       state.currentSession = session || null;
       if (state.currentSession) {
         startPresenceHeartbeat();
+        subscribeToMessages();
         updatePresence(true);
       } else {
         stopPresenceHeartbeat();
