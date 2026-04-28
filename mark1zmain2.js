@@ -2014,6 +2014,21 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
   // ========== BIND STATIC EVENTS ==========
   function bindStaticEvents() {
+        // Кнопка «Сообщения поддержки» для админа
+    if (isOwner()) {
+      var supportMsgsBtn = document.createElement('button');
+      supportMsgsBtn.id = 'mkzSupportMsgsBtn';
+      supportMsgsBtn.textContent = '💬 Сообщения поддержки';
+      supportMsgsBtn.style.cssText = 'width:100%;padding:10px 14px;margin-top:6px;border-radius:12px;background:rgba(255,47,174,0.15);border:1px solid rgba(255,47,174,0.3);color:#fff;cursor:pointer;font-weight:600;font-size:13px;text-align:center;';
+      supportMsgsBtn.onclick = async function() {
+        await loadSupportDialogs();
+        openScreen('support-dialogs');
+      };
+      
+      var sidebar = document.querySelector('#messenger .mkz-messenger-sidebar__top');
+      if (sidebar) sidebar.appendChild(supportMsgsBtn);
+    }
+    
     if (burger && nav) burger.addEventListener('click', () => { nav.classList.toggle('is-open'); });
     navButtons.forEach(btn => { btn.addEventListener('click', () => { openScreen(btn.dataset.screenOpen); }); });
     if (userPillButton) userPillButton.addEventListener('click', () => openScreen('account'));
