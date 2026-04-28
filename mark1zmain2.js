@@ -1611,6 +1611,18 @@ async function renderMessengerDialogs() {
 async function openConversation(conversationId, isPollingUpdate = false) {
   if (!conversationId) return;
   state.currentConversationId = conversationId;
+    // Обновляем обводку у всех кнопок диалогов
+  var allBtns = document.querySelectorAll('[data-open-chat]');
+  for (var b = 0; b < allBtns.length; b++) {
+    var btnChatId = allBtns[b].getAttribute('data-open-chat');
+    if (String(btnChatId) === String(conversationId)) {
+      allBtns[b].style.border = '2px solid rgba(255,47,174,0.9)';
+      allBtns[b].style.boxShadow = '0 0 24px rgba(255,47,174,0.3), inset 0 0 0 1px rgba(255,47,174,0.2)';
+    } else {
+      allBtns[b].style.border = '2px solid rgba(255,255,255,0.04)';
+      allBtns[b].style.boxShadow = 'none';
+    }
+  }
     // Показываем поле ввода и кнопки
   var compose = document.getElementById('mkzMessengerForm');
   if (compose) compose.style.display = 'block';
