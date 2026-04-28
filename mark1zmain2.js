@@ -1542,9 +1542,6 @@ async function renderMessengerDialogs() {
       var boxShadow = isActive ? '0 0 24px rgba(255,47,174,0.3), inset 0 0 0 1px rgba(255,47,174,0.2)' : 'none';
 
       var openChatId = chat.id;
-      if (String(chat.id) === String(state.supportConversationId) && !isOwner()) {
-        openChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
-      }
       return '<button class="mkz-dialog" type="button" data-open-chat="' + openChatId + '" style="' + bgStyle + 'border-radius:16px;border:2px solid ' + borderColor + ';' + outlineStyle + 'box-shadow:' + boxShadow + ';transition:all 0.3s ease;padding:14px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:6px;position:relative;overflow:hidden;">' +
         '<div style="width:46px;height:46px;min-width:46px;border-radius:50%;' + (avatarUrl ? 'background-image:url(' + escapeHtml(avatarUrl) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);') + 'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;">' + (avatarUrl ? '' : getInitial(displayName, 'П')) + '</div>' +
         '<div style="flex:1;min-width:0;">' +
@@ -1570,8 +1567,13 @@ async function renderMessengerDialogs() {
     // Вешаем обработчики клика
     $$('[data-open-chat]', messengerDialogs).forEach(btn => {
       btn.addEventListener('click', async () => {
-        const chatId = btn.dataset.openChat;
-        await openConversation(chatId);
+        var chatId = btn.dataset.openChat;
+        // Если это чат поддержки и пользователь не админ — используем startConversationWithUser
+        if (String(chatId) === String(state.supportConversationId) && !isOwner()) {
+          await openConversation(chatId);
+        } else {
+          await openConversation(chatId);
+        }
       });
     });
 
@@ -1831,56 +1833,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
   }, 300);
 
-    // Создаём личный чат с админом при первом обращении в поддержку
+    // Авто-добавление в чат поддержки
   if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
-    var userId = state.currentSession.user.id;
-    if (userId !== OWNER_UID) {
-      // Ищем существующий личный чат с админом
-      var { data: existingChats } = await supabaseClient.from('chat_members').select('chat_id').eq('user_id', userId);
-      var adminChatId = null;
-      if (existingChats) {
-        for (var ec = 0; ec < existingChats.length; ec++) {
-          var { data: chatMembers } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', existingChats[ec].chat_id);
-          if (chatMembers && chatMembers.length === 2 && chatMembers.find(function(cm) { return cm.user_id === OWNER_UID; })) {
-            adminChatId = existingChats[ec].chat_id;
-            break;
-          }
-        }
-      }
-      
-      if (adminChatId) {
-        // Перенаправляем в личный чат
-        state.currentConversationId = adminChatId;
-        conversationId = adminChatId;
-        // Обновляем URL если нужно
-      } else {
-        // Создаём новый чат с админом
-        var newChatId = crypto.randomUUID();
-        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
-          method: 'POST',
-          headers: {
-            'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
-            'Authorization': 'Bearer ' + state.currentSession.access_token,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ id: newChatId, is_group: false, name: 'Поддержка' })
-        });
-        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
-          method: 'POST',
-          headers: {
-            'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
-            'Authorization': 'Bearer ' + state.currentSession.access_token,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify([
-            { chat_id: newChatId, user_id: userId },
-            { chat_id: newChatId, user_id: OWNER_UID }
-          ])
-        });
-        state.currentConversationId = newChatId;
-        conversationId = newChatId;
-      }
+    var { data: alreadyMember } = await supabaseClient.from('chat_members').select('*').eq('chat_id', conversationId).eq('user_id', state.currentSession.user.id);
+    if (!alreadyMember || alreadyMember.length === 0) {
+      await supabaseClient.from('chat_members').insert({
+        chat_id: conversationId,
+        user_id: state.currentSession.user.id
+      });
     }
   }
   
