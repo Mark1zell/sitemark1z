@@ -1743,6 +1743,17 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       deleteChatBtn.style.display = 'none';
     }
   }, 300);
+
+    // Авто-добавление в чат поддержки
+  if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
+    var { data: alreadyMember } = await supabaseClient.from('chat_members').select('*').eq('chat_id', conversationId).eq('user_id', state.currentSession.user.id);
+    if (!alreadyMember || alreadyMember.length === 0) {
+      await supabaseClient.from('chat_members').insert({
+        chat_id: conversationId,
+        user_id: state.currentSession.user.id
+      });
+    }
+  }
   
   try {
     // Загружаем сообщения
