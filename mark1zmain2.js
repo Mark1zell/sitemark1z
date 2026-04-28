@@ -1845,7 +1845,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json' },
         body: JSON.stringify([{ chat_id: adminChatId, user_id: userId }, { chat_id: adminChatId, user_id: OWNER_UID }])
       });
-      }
       state.currentConversationId = adminChatId;
       conversationId = adminChatId;
     }
