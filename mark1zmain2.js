@@ -2107,37 +2107,29 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
   }
 
-    function showImageViewer(url) {
+  function showImageViewer(url) {
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
-    
     var topBar = document.createElement('div');
     topBar.style.cssText = 'position:absolute;top:0;left:0;right:0;padding:12px;display:flex;gap:12px;z-index:1;';
-    
     var btnStyle = 'padding:8px 14px;border:none;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:14px;';
-    
     var downloadBtn = document.createElement('button');
     downloadBtn.textContent = '📥 Скачать';
     downloadBtn.style.cssText = btnStyle;
     downloadBtn.onclick = function(e) { e.stopPropagation(); window.open(url, '_blank'); };
-    
     var copyBtn = document.createElement('button');
     copyBtn.textContent = '📋 Копировать';
     copyBtn.style.cssText = btnStyle;
     copyBtn.onclick = function(e) { e.stopPropagation(); navigator.clipboard.writeText(url); showNotification('Ссылка скопирована!', 'success'); };
-    
     topBar.appendChild(downloadBtn);
     topBar.appendChild(copyBtn);
-    
     var img = document.createElement('img');
     img.src = url;
     img.style.cssText = 'max-width:95vw;max-height:85vh;object-fit:contain;';
-    
     var closeBtn = document.createElement('button');
     closeBtn.textContent = '✕';
     closeBtn.style.cssText = 'position:absolute;top:12px;right:12px;width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:18px;z-index:2;';
     closeBtn.onclick = function() { ov.remove(); };
-    
     ov.appendChild(topBar);
     ov.appendChild(img);
     ov.appendChild(closeBtn);
