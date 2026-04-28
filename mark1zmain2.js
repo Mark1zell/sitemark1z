@@ -3,8 +3,8 @@
   const SUPABASE_URL = 'https://jtokctxkrojiggjckwfn.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW';
 
-  const SUPPORT_CHAT_IDENTITY = {
-    id: 'support_mark1z_design',
+    const SUPPORT_CHAT_IDENTITY = {
+    id: '3bf0b657-7722-4189-bd0e-6b7b9271ccdc',
     username: 'Mark1z Design',
     avatar_url: '',
     bio: 'Официальный чат Mark1z Design',
@@ -1379,12 +1379,12 @@ async function renderMessengerDialogs() {
 
             // Загружаем профиль бота из БД (без ошибок)
         try {
-      var brandProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
+      var brandProfile = state.allProfilesCache.find(function(p) { return p.id === '3bf0b657-7722-4189-bd0e-6b7b9271ccdc'; });
       if (!brandProfile || !brandProfile.avatar_url) {
         var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
         if (!brandAvatar) {
           try {
-            var dbBrand = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').single();
+            var dbBrand = await supabaseClient.from('profiles').select('avatar_url').eq('id', '3bf0b657-7722-4189-bd0e-6b7b9271ccdc').single();
             if (dbBrand && dbBrand.data && dbBrand.data.avatar_url) {
               brandAvatar = dbBrand.data.avatar_url;
               localStorage.setItem('mkz_brand_avatar', brandAvatar);
@@ -1395,7 +1395,7 @@ async function renderMessengerDialogs() {
           brandProfile.avatar_url = brandAvatar;
         } else {
           state.allProfilesCache.push({
-            id: 'support_mark1z_design',
+            id: '3bf0b657-7722-4189-bd0e-6b7b9271ccdc',
             username: 'Mark1z Design',
             avatar_url: brandAvatar,
             is_online: true
@@ -1455,9 +1455,9 @@ async function renderMessengerDialogs() {
         } else {
           statusText = 'Не в сети';
         }
-      } else if (otherMemberId === 'support_mark1z_design' || String(chat.id) === String(state.supportConversationId)) {
+      } else if (otherMemberId === '3bf0b657-7722-4189-bd0e-6b7b9271ccdc' || String(chat.id) === String(state.supportConversationId)) {
         displayName = 'Mark1z Design';
-        var supportProfile = state.allProfilesCache.find(function(p) { return p.id === 'support_mark1z_design'; });
+        var supportProfile = state.allProfilesCache.find(function(p) { return p.id === '3bf0b657-7722-4189-bd0e-6b7b9271ccdc'; });
         avatarUrl = supportProfile?.avatar_url || localStorage.getItem('mkz_brand_avatar') || '';
         statusText = 'Чат для заказов и техподдержка';
       }
@@ -1566,21 +1566,21 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (members) {
       otherUserId = members.find(function(m) { return m.user_id !== state.currentSession?.user?.id; })?.user_id;
     }
-    if (otherUserId && otherUserId !== 'support_mark1z_design') {
+    if (otherUserId && otherUserId !== '3bf0b657-7722-4189-bd0e-6b7b9271ccdc') {
       var { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', otherUserId).single();
       otherProfile = profile;
     }
   } catch(e) {}
 
      // Обновляем хедер
-    if (otherUserId === 'support_mark1z_design' || String(conversationId) === String(state.supportConversationId)) {
+    if (otherUserId === '3bf0b657-7722-4189-bd0e-6b7b9271ccdc' || String(conversationId) === String(state.supportConversationId)) {
       if (messengerTopName) messengerTopName.textContent = 'Mark1z Design';
       if (messengerTopSub) messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;"></span>Чат для заказов и техподдержка';
       if (messengerTopAvatar) {
         var brandAvatar = localStorage.getItem('mkz_brand_avatar') || '';
         if (!brandAvatar) {
           try {
-            var db3 = await supabaseClient.from('profiles').select('avatar_url').eq('id', 'support_mark1z_design').single();
+            var db3 = await supabaseClient.from('profiles').select('avatar_url').eq('id', '3bf0b657-7722-4189-bd0e-6b7b9271ccdc').single();
             if (db3 && db3.data && db3.data.avatar_url) {
               brandAvatar = db3.data.avatar_url;
               localStorage.setItem('mkz_brand_avatar', brandAvatar);
@@ -1651,7 +1651,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     btnsContainer.appendChild(profileBtn);
     headEl.appendChild(btnsContainer);
     
-    if (otherUserId && otherUserId !== 'support_mark1z_design') {
+    if (otherUserId && otherUserId !== '3bf0b657-7722-4189-bd0e-6b7b9271ccdc') {
       profileBtn.onclick = function() { openPublicProfile(otherUserId); };
                   deleteChatBtn.onclick = async function() {
         if (!confirm('Удалить этот чат? Переписка исчезнет у обоих.')) return;
