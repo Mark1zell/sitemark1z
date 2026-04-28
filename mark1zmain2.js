@@ -2014,13 +2014,18 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         chat_id: state.currentConversationId,
         sender_id: senderId,
         content: content || '',
-        type: tempFiles && tempFiles.attachment_type && tempFiles.attachment_type.startsWith('image/') ? 'image' : (tempFiles ? 'file' : 'text')
+        type: 'text'
       };
-      if (tempFiles && tempFiles.attachment_url) {
-        payload.file_url = tempFiles.attachment_url;
-        payload.attachment_url = tempFiles.attachment_url;
-        payload.attachment_name = tempFiles.attachment_name;
-        payload.attachment_type = tempFiles.attachment_type;
+      if (tempFiles && tempFiles.length === 1) {
+        payload.file_url = tempFiles[0].attachment_url;
+        payload.attachment_url = tempFiles[0].attachment_url;
+        payload.attachment_name = tempFiles[0].attachment_name;
+        payload.attachment_type = tempFiles[0].attachment_type;
+        payload.type = tempFiles[0].attachment_type && tempFiles[0].attachment_type.startsWith('image/') ? 'image' : 'file';
+      } else if (tempFiles && tempFiles.length > 1) {
+        payload.file_url = tempFiles[0].attachment_url;
+        payload.type = 'file';
+        payload.content = (payload.content || '') + ' [📎 ' + tempFiles.length + ' файла]';
       }
 
     console.log('PAYLOAD:', JSON.stringify(payload));
