@@ -1948,6 +1948,11 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     var tempAttachment = state.pendingMessengerAttachment;
     clearMessengerAttachment();
 
+    var senderId = state.currentSession.user.id;
+    if (String(state.currentConversationId) === String(state.supportConversationId) && state.supportSendMode === 'brand') {
+      senderId = '3bf6b657-7722-4189-bd0e-6b7b9271ccdc';
+    }
+
     var tempId = 'temp_' + Date.now();
     var tempMsg = {
       id: tempId,
