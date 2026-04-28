@@ -2006,9 +2006,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
       
       var resultData = await result.json();
-      if (!result.ok) {
-        throw new Error(resultData.message || 'Ошибка отправки');
-      }
+      
+      var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
       
       var idx = state.conversationMessages.findIndex(function(m) { return m.id === tempId; });
       if (idx >= 0 && resultData && resultData[0]) {
