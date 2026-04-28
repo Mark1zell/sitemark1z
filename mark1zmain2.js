@@ -1598,7 +1598,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     // Показываем поле ввода и кнопки
   var compose = document.getElementById('mkzMessengerForm');
   if (compose) compose.style.display = 'block';
-  var headActions = document.querySelector('#messenger .mkz-messenger-head__actions');
+  var headActions = document.querySelector('#messenger .mkz-messenger-head');
   if (headActions) headActions.style.display = 'flex';
 
   // Обновляем выделение в списке диалогов
