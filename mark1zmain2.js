@@ -2063,13 +2063,17 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         var preview = lastMsg ? (lastMsg.content || '').substring(0, 30) : '';
         var time = lastMsg ? formatDateTime(lastMsg.created_at) : '';
         
-        var bgStyle = avatar ? 'background:linear-gradient(0deg,rgba(0,0,0,0.75),rgba(0,0,0,0.4)),url(\'' + avatar + '\') center/cover no-repeat;' : 'background:rgba(0,0,0,0.3);';
-        html += '<button class="mkz-dialog" data-user-id="' + uid + '" style="width:100%;text-align:left;' + bgStyle + 'border:1px solid rgba(255,255,255,0.06);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);">';
-        html += '<div class="mkz-dialog__avatar" style="' + (avatar ? 'background-image:url(\'' + avatar + '\');background-size:cover;' : '') + '">' + (avatar ? '' : getInitial(username)) + '</div>';
-        html += '<div class="mkz-dialog__body"><div class="mkz-dialog__top"><span class="mkz-dialog__name">' + username + '</span><span class="mkz-dialog__time">' + time + '</span></div>';
-        html += '<div class="mkz-dialog__preview">' + preview + '</div></div>';
+                var bgStyle = avatar ? 'background:linear-gradient(0deg,rgba(0,0,0,0.7),rgba(0,0,0,0.5)),url(\'' + avatar + '\') center/cover no-repeat;' : 'background:rgba(0,0,0,0.3);';
+        html += '<button class="mkz-dialog" data-user-id="' + uid + '" style="width:100%;text-align:left;' + bgStyle + 'border:1px solid rgba(255,255,255,0.06);position:relative;overflow:hidden;">';
+        html += '<div style="position:absolute;top:0;left:0;right:0;bottom:0;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"></div>';
+        html += '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:12px;width:100%;">';
+        html += '<div class="mkz-dialog__avatar" style="width:48px;height:48px;min-width:48px;border-radius:50%;' + (avatar ? 'background-image:url(\'' + avatar + '\');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);') + 'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.4);">' + (avatar ? '' : getInitial(username)) + '</div>';
+        html += '<div class="mkz-dialog__body" style="flex:1;min-width:0;">';
+        html += '<div class="mkz-dialog__top"><span class="mkz-dialog__name">' + username + '</span><span class="mkz-dialog__time">' + time + '</span></div>';
+        html += '<div class="mkz-dialog__preview">' + preview + '</div>';
+        html += '</div>';
+        html += '</div>';
         html += '</button>';
-      }
       
       messengerDialogs.innerHTML = html;
       var supportBtns = messengerDialogs.querySelectorAll('[data-user-id]');
