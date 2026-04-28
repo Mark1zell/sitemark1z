@@ -1438,10 +1438,7 @@ async function renderMessengerDialogs() {
     }
     
     // 7. Рендерим
-      var personalChats = chats.filter(function(c) {
-      return String(c.id) !== String(state.supportConversationId);
-    });
-    messengerDialogs.innerHTML = personalChats.map(chat => {
+    messengerDialogs.innerHTML = chats.map(chat => {
       // Находим собеседника для этого чата
       const chatMembers = (allMembers || []).filter(m => m.chat_id === chat.id);
       const otherMemberId = chatMembers.find(m => m.user_id !== myId)?.user_id;
