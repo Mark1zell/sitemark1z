@@ -2253,33 +2253,37 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       });
     }
 
-        if (messengerAttachImageBtn && messengerImageInput) {
-      messengerAttachImageBtn.addEventListener('click', function() {
-        messengerImageInput.accept = 'image/*,video/*,.pdf,.zip,.rar,.doc,.docx,.txt,.psd,.ai,.fig';
-        messengerImageInput.click();
-      });
-      messengerImageInput.addEventListener('change', async function() {
-        var file = messengerImageInput.files[0];
-        if (!file) return;
-        showLoading('Загрузка файла...');
-        try {
-          var upload = await uploadToBucket('chat-files', file, 'chat_' + state.currentSession.user.id);
-          state.pendingMessengerAttachment = {
-            attachment_url: upload.publicUrl,
-            attachment_name: file.name,
-            attachment_type: file.type
-          };
-          if (messengerAttachMeta) {
-            messengerAttachMeta.textContent = '📎 ' + file.name;
-            messengerAttachMeta.style.display = 'block';
+            if (messengerAttachImageBtn) {
+      messengerAttachImageBtn.onclick = function() {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*,video/*,.pdf,.zip,.rar,.doc,.docx,.txt,.psd,.ai,.fig';
+        input.onchange = async function() {
+          var file = input.files[0];
+          if (!file) return;
+          console.log('Файл выбран:', file.name);
+          showLoading('Загрузка файла...');
+          try {
+            var upload = await uploadToBucket('chat-files', file, 'chat_' + state.currentSession.user.id);
+            state.pendingMessengerAttachment = {
+              attachment_url: upload.publicUrl,
+              attachment_name: file.name,
+              attachment_type: file.type
+            };
+            console.log('Прикреплён:', state.pendingMessengerAttachment);
+            if (messengerAttachMeta) {
+              messengerAttachMeta.textContent = '📎 ' + file.name;
+              messengerAttachMeta.style.display = 'block';
+            }
+            showNotification('Файл прикреплён!', 'success');
+          } catch(e) {
+            showNotification('Ошибка загрузки: ' + e.message, 'error');
+          } finally {
+            hideLoading();
           }
-          showNotification('Файл прикреплён!', 'success');
-        } catch(e) {
-          showNotification('Ошибка загрузки: ' + e.message, 'error');
-        } finally {
-          hideLoading();
-        }
-      });
+        };
+        input.click();
+      };
     }
     if (messengerAttachFileBtn && messengerFileInput) messengerAttachFileBtn.addEventListener('click', () => messengerFileInput.click());
     if (messengerForm) messengerForm.addEventListener('submit', async e => { e.preventDefault(); await sendMessengerMessage(); });
