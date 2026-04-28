@@ -1792,7 +1792,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
             var isVideo = msg.type === 'video' || /\.(mp4|webm|mov)$/i.test(fileUrl);
             if (isImage) {
-              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:240px;border-radius:12px;cursor:pointer;" onclick="window.open(\'' + fileUrl + '\')"></div>';
+              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:240px;border-radius:12px;cursor:pointer;" onclick="showImageModal(\'' + fileUrl + '\', \'' + (msg.attachment_name || 'Фото') + '\')"></div>';
             } else if (isVideo) {
               attachmentHtml = '<div class="mkz-message__video"><video src="' + fileUrl + '" controls style="max-width:240px;border-radius:12px;"></video></div>';
             } else {
@@ -2092,6 +2092,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       if (sidebar) sidebar.appendChild(supportMsgBtn);
     }
     if (messengerAttachImageBtn) messengerAttachImageBtn.style.display = 'none';
+    if (messengerAttachFileBtn) messengerAttachFileBtn.style.display = 'none';
     if (burger && nav) burger.addEventListener('click', () => { nav.classList.toggle('is-open'); });
     navButtons.forEach(btn => { btn.addEventListener('click', () => { openScreen(btn.dataset.screenOpen); }); });
     if (userPillButton) userPillButton.addEventListener('click', () => openScreen('account'));
@@ -2397,6 +2398,15 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             var up = await uploadToBucket('chat-files', f, 'chat_'+state.currentSession.user.id);
             state.pendingMessengerAttachment = {attachment_url:up.publicUrl, attachment_name:f.name, attachment_type:f.type};
             showNotification('📎 Файл прикреплён!','success');
+            var meta = document.getElementById('mkzMessengerAttachMeta');
+            if (!meta) {
+              meta = document.createElement('div');
+              meta.id = 'mkzMessengerAttachMeta';
+              meta.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.7);padding:4px 8px;margin-top:2px;';
+              var compose = document.querySelector('#messenger .mkz-messenger-compose');
+              if (compose) compose.appendChild(meta);
+            }
+            meta.textContent = '📎 ' + f.name + ' (' + (f.type || 'файл') + ')';
           } catch(e) { showNotification('Ошибка: '+e.message,'error'); }
           hideLoading();
         };
