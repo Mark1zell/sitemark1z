@@ -1786,17 +1786,21 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           var time = new Date(msg.created_at).toLocaleString('ru-RU');
           html += '<div class="mkz-message-row ' + (isMine ? 'mkz-message-row--me' : 'mkz-message-row--them') + '">';
           html += '<div class="mkz-message ' + (isMine ? 'mkz-message--me' : 'mkz-message--them') + '">';
-                    var attachmentHtml = '';
+          var attachmentHtml = '';
           if (msg.file_url || msg.attachment_url) {
-            var fileUrl = msg.file_url || msg.attachment_url;
-            var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
-            var isVideo = msg.type === 'video' || /\.(mp4|webm|mov)$/i.test(fileUrl);
-            if (isImage) {
-              attachmentHtml = '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:12px;cursor:pointer;" onclick="var img=document.createElement(\'img\');img.src=this.src;img.style.maxWidth=\'95vw\';img.style.maxHeight=\'95vh\';img.onclick=function(e){e.stopPropagation();this.remove();};var ov=document.createElement(\'div\');ov.style.cssText=\'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;\';ov.appendChild(img);ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);"></div>';
-            } else if (isVideo) {
-              attachmentHtml = '<div class="mkz-message__video"><video src="' + fileUrl + '" controls style="max-width:240px;border-radius:12px;"></video></div>';
-            } else {
-              attachmentHtml = '<div class="mkz-message__file"><a href="' + fileUrl + '" target="_blank" style="color:#fff;text-decoration:underline;">📎 ' + (msg.attachment_name || 'Файл') + '</a></div>';
+            var urls = (msg.file_url || msg.attachment_url || '').split('|||');
+            var names = (msg.attachment_name || '').split('|||');
+            for (var u = 0; u < urls.length; u++) {
+              var fileUrl = urls[u];
+              var isImage = msg.type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+              var isVideo = msg.type === 'video' || /\.(mp4|webm|mov)$/i.test(fileUrl);
+              if (isImage) {
+                attachmentHtml += '<div class="mkz-message__image"><img src="' + fileUrl + '" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:12px;cursor:pointer;margin:2px;" onclick="var img=document.createElement(\'img\');img.src=this.src;img.style.maxWidth=\'95vw\';img.style.maxHeight=\'95vh\';img.onclick=function(e){e.stopPropagation();this.remove();};var ov=document.createElement(\'div\');ov.style.cssText=\'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;\';ov.appendChild(img);ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);"></div>';
+              } else if (isVideo) {
+                attachmentHtml += '<div class="mkz-message__video"><video src="' + fileUrl + '" controls style="max-width:200px;max-height:200px;border-radius:12px;margin:2px;"></video></div>';
+              } else {
+                attachmentHtml += '<div class="mkz-message__file"><a href="' + fileUrl + '" target="_blank" style="color:#fff;text-decoration:underline;">📎 ' + (names[u] || 'Файл') + '</a></div>';
+              }
             }
           }
           html += '<div class="mkz-message__text">' + content + '</div>' + attachmentHtml;
@@ -2016,16 +2020,16 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         content: content || '',
         type: 'text'
       };
-      if (tempFiles && tempFiles.length === 1) {
-        payload.file_url = tempFiles[0].attachment_url;
-        payload.attachment_url = tempFiles[0].attachment_url;
-        payload.attachment_name = tempFiles[0].attachment_name;
-        payload.attachment_type = tempFiles[0].attachment_type;
+      if (tempFiles && tempFiles.length > 0) {
         payload.type = tempFiles[0].attachment_type && tempFiles[0].attachment_type.startsWith('image/') ? 'image' : 'file';
-      } else if (tempFiles && tempFiles.length > 1) {
-        payload.file_url = tempFiles[0].attachment_url;
-        payload.type = 'file';
-        payload.content = (payload.content || '') + ' [📎 ' + tempFiles.length + ' файла]';
+        if (tempFiles.length === 1) {
+          payload.file_url = tempFiles[0].attachment_url;
+          payload.attachment_name = tempFiles[0].attachment_name;
+        } else {
+          payload.file_url = tempFiles.map(function(f){return f.attachment_url;}).join('|||');
+          payload.attachment_name = tempFiles.map(function(f){return f.attachment_name;}).join('|||');
+          payload.content = (content || '') + ' [📎 ' + tempFiles.length + ' файла]';
+        }
       }
 
     console.log('PAYLOAD:', JSON.stringify(payload));
@@ -2055,7 +2059,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       }
       renderMessagesList();
       await renderMessengerDialogs();
-      state.pendingFiles = [];
+      state.pendingFiles = []; updateAttachMeta();
       if (typeof updateAttachMeta === 'function') updateAttachMeta();
 
     } catch (err) {
