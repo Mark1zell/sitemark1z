@@ -1438,7 +1438,10 @@ async function renderMessengerDialogs() {
     }
     
     // 7. Рендерим
-      messengerDialogs.innerHTML = chats.map(chat => {
+      var personalChats = chats.filter(function(c) {
+      return String(c.id) !== String(state.supportConversationId);
+    });
+    messengerDialogs.innerHTML = personalChats.map(chat => {
       // Находим собеседника для этого чата
       const chatMembers = (allMembers || []).filter(m => m.chat_id === chat.id);
       const otherMemberId = chatMembers.find(m => m.user_id !== myId)?.user_id;
@@ -1531,7 +1534,7 @@ async function renderMessengerDialogs() {
 
         // Обновляем счётчик непрочитанных
     var unreadCount = 0;
-      for (var d = 0; d < chats.length; d++) {
+      for (var d = 0; d < personalChats.length; d++) {
       var lastMsg = lastMsgMap[chats[d].id];
       if (lastMsg && lastMsg.sender_id !== myId && String(chats[d].id) !== String(state.currentConversationId)) {
         unreadCount++;
