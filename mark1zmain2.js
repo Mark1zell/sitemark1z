@@ -1533,24 +1533,29 @@ async function renderMessengerDialogs() {
         openChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
       }
       
+      var dialogBgStyle = avatarUrl ? 'background:linear-gradient(0deg,rgba(0,0,0,0.75),rgba(0,0,0,0.5)),url(\'' + escapeHtml(avatarUrl) + '\') center/cover no-repeat;' : '';
       return `
-        <button class="mkz-dialog ${isActive ? 'mkz-dialog--active' : ''}" 
-                type="button" 
-                data-open-chat="${openChatId}"
-          <div class="mkz-dialog__avatar" style="${avatarUrl ? `background-image:url('${escapeHtml(avatarUrl)}');background-size:cover;background-position:center;` : ''}">
-            ${avatarUrl ? '' : getInitial(displayName, 'П')}
-          </div>
-          <div class="mkz-dialog__body">
-            <div class="mkz-dialog__top">
-              <span class="mkz-dialog__name">${escapeHtml(displayName)}</span>
-              ${timeText ? `<span class="mkz-dialog__time">${timeText}</span>` : ''}
-            </div>
-            <div class="mkz-dialog__bottom">
-              <span class="mkz-dialog__preview">${escapeHtml(preview)}</span>
-            </div>
-            <div class="mkz-dialog__status">${statusText}</div>
-          </div>
-        </button>`;
+  <button class="mkz-dialog ${isActive ? 'mkz-dialog--active' : ''}" 
+          type="button" 
+          data-open-chat="${chat.id}"
+          style="${dialogBgStyle}position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.06);">
+    <div style="position:absolute;top:0;left:0;right:0;bottom:0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);${!avatarUrl ? 'background:rgba(0,0,0,0.3);' : ''}"></div>
+    <div style="position:relative;z-index:1;display:flex;align-items:center;gap:12px;width:100%;">
+    <div class="mkz-dialog__avatar" style="width:48px;height:48px;min-width:48px;border-radius:50%;${avatarUrl ? 'background-image:url(\'' + escapeHtml(avatarUrl) + '\');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);'}display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+      ${avatarUrl ? '' : getInitial(displayName, 'П')}
+    </div>
+    <div class="mkz-dialog__body" style="flex:1;min-width:0;">
+      <div class="mkz-dialog__top">
+        <span class="mkz-dialog__name">${escapeHtml(displayName)}</span>
+        ${timeText ? '<span class="mkz-dialog__time">' + timeText + '</span>' : ''}
+      </div>
+      <div class="mkz-dialog__bottom">
+        <span class="mkz-dialog__preview">${escapeHtml(preview)}</span>
+      </div>
+      <div class="mkz-dialog__status">${statusText}</div>
+    </div>
+    </div>
+  </button>`;
     }).join('');
 
         // Обработчик для чата поддержки
