@@ -1420,6 +1420,18 @@ async function renderMessengerDialogs() {
         lastMsgMap[msg.chat_id] = msg;
       }
     }
+
+    // Загружаем аватарку бота из базы
+    var brandFromDB = localStorage.getItem('mkz_brand_avatar') || '';
+    if (!brandFromDB) {
+      try {
+        var brandDB = await supabaseClient.from('profiles').select('avatar_url').eq('id', '3bf6b657-7722-4189-bd0e-6b7b9271ccdc').single();
+        if (brandDB && brandDB.data && brandDB.data.avatar_url) {
+          brandFromDB = brandDB.data.avatar_url;
+          localStorage.setItem('mkz_brand_avatar', brandFromDB);
+        }
+      } catch(e) {}
+    }
     
     // 7. Рендерим
       messengerDialogs.innerHTML = chats.map(chat => {
@@ -1455,19 +1467,9 @@ async function renderMessengerDialogs() {
         } else {
           statusText = 'Не в сети';
         }
-      } else if (otherMemberId === '3bf0b657-7722-4189-bd0e-6b7b9271ccdc' || String(chat.id) === String(state.supportConversationId)) {
+            } else if (otherMemberId === '3bf6b657-7722-4189-bd0e-6b7b9271ccdc' || String(chat.id) === String(state.supportConversationId)) {
         displayName = 'Mark1z Design';
-        var supportProfile = state.allProfilesCache.find(function(p) { return p.id === '3bf0b657-7722-4189-bd0e-6b7b9271ccdc'; });
-        var brandFromDB = localStorage.getItem('mkz_brand_avatar') || '';
-        if (!brandFromDB) {
-        try {
-        var brandDB = await supabaseClient.from('profiles').select('avatar_url').eq('id', '3bf6b657-7722-4189-bd0e-6b7b9271ccdc').single();
-        if (brandDB && brandDB.data && brandDB.data.avatar_url) {
-          brandFromDB = brandDB.data.avatar_url;
-          localStorage.setItem('mkz_brand_avatar', brandFromDB);
-       }
-      } catch(e) {}
-}
+        var supportProfile = state.allProfilesCache.find(function(p) { return p.id === '3bf6b657-7722-4189-bd0e-6b7b9271ccdc'; });
         avatarUrl = supportProfile?.avatar_url || brandFromDB || '';
         statusText = 'Чат для заказов и техподдержка';
       }
