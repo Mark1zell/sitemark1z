@@ -1473,7 +1473,14 @@ async function renderMessengerDialogs() {
     
     // 7. Рендерим
     var personalChats = chats.filter(function(c) {
-      return String(c.id) !== String(state.supportConversationId) || isOwner();
+      if (String(c.id) === String(state.supportConversationId)) return isOwner();
+      if (!isOwner()) {
+        var chatMembers = (allMembers || []).filter(function(m) { return m.chat_id === c.id; });
+        if (chatMembers.length === 2 && chatMembers.find(function(m) { return m.user_id === OWNER_UID; }) && chatMembers.find(function(m) { return m.user_id === state.currentSession.user.id; })) {
+          return false;
+        }
+      }
+      return true;
     });
     messengerDialogs.innerHTML = personalChats.map(chat => {
       // Находим собеседника для этого чата
@@ -1836,17 +1843,35 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
     var userId = state.currentSession.user.id;
     if (userId !== OWNER_UID) {
-      var adminChatId = crypto.randomUUID();
-      await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
-        method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ id: adminChatId, is_group: false, name: 'Поддержка' })
-      });
-      await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
-        method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json' },
-        body: JSON.stringify([{ chat_id: adminChatId, user_id: userId }, { chat_id: adminChatId, user_id: OWNER_UID }])
-      });
-      state.currentConversationId = adminChatId;
-      conversationId = adminChatId;
+      // Ищем существующий чат поддержки (где только пользователь и админ)
+      var { data: userChats } = await supabaseClient.from('chat_members').select('chat_id').eq('user_id', userId);
+      var supportChatId = null;
+      if (userChats) {
+        for (var i = 0; i < userChats.length; i++) {
+          var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', userChats[i].chat_id);
+          if (members && members.length === 2 && members.find(function(m) { return m.user_id === OWNER_UID; })) {
+            supportChatId = userChats[i].chat_id;
+            break;
+          }
+        }
+      }
+      
+      if (supportChatId) {
+        state.currentConversationId = supportChatId;
+        conversationId = supportChatId;
+      } else {
+        var newId = crypto.randomUUID();
+        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
+          method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ id: newId, is_group: false })
+        });
+        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
+          method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json' },
+          body: JSON.stringify([{ chat_id: newId, user_id: userId }, { chat_id: newId, user_id: OWNER_UID }])
+        });
+        state.currentConversationId = newId;
+        conversationId = newId;
+      }
     }
   }
   
