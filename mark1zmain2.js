@@ -1538,8 +1538,8 @@ async function renderMessengerDialogs() {
   <button class="mkz-dialog ${isActive ? 'mkz-dialog--active' : ''}" 
           type="button" 
           data-open-chat="${chat.id}"
-          style="${dialogBgStyle}position:relative;overflow:hidden;border:2px solid ${isActive ? 'rgba(255,47,174,0.6)' : 'rgba(255,255,255,0.06)'};box-shadow:${isActive ? '0 0 20px rgba(255,47,174,0.3)' : 'none'};transition:all 0.3s;">
-    <div style="position:absolute;top:0;left:0;right:0;bottom:0;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);${!avatarUrl ? 'background:rgba(0,0,0,0.3);' : ''}"></div>
+          style="${dialogBgStyle}position:relative;overflow:hidden;border-radius:16px;border:2px solid ${isActive ? 'rgba(255,47,174,0.6)' : 'rgba(255,255,255,0.04)'};box-shadow:${isActive ? '0 0 20px rgba(255,47,174,0.25)' : 'none'};transition:all 0.3s;">
+    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);${avatarUrl ? '' : 'backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);'}"></div>
     <div style="position:relative;z-index:1;display:flex;align-items:center;gap:12px;width:100%;">
     <div class="mkz-dialog__avatar" style="width:48px;height:48px;min-width:48px;border-radius:50%;${avatarUrl ? 'background-image:url(\'' + escapeHtml(avatarUrl) + '\');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);'}display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
       ${avatarUrl ? '' : getInitial(displayName, 'П')}
