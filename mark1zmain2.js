@@ -1597,6 +1597,37 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           messengerTopAvatar.textContent = 'M';
         }
       }
+
+            // Двойной клик для загрузки аватарки
+      if (messengerTopAvatar && isOwner() && String(conversationId) === String(state.supportConversationId)) {
+        messengerTopAvatar.title = 'Двойной клик — сменить аватарку';
+        messengerTopAvatar.style.cursor = 'pointer';
+        messengerTopAvatar.ondblclick = async function() {
+          var input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.onchange = async function() {
+            var file = input.files[0];
+            if (!file) return;
+            var upload = await uploadToBucket('avatars', file, 'brand_avatar');
+            var brandId = '3bf0b657-7722-4189-bd0e-6b7b9271ccdc';
+            await supabaseClient.from('profiles').upsert({
+              id: brandId,
+              username: 'Mark1z Design',
+              avatar_url: upload.publicUrl,
+              is_online: true
+            }, { onConflict: 'id' });
+            localStorage.setItem('mkz_brand_avatar', upload.publicUrl);
+            messengerTopAvatar.style.backgroundImage = "url('" + upload.publicUrl + "')";
+            messengerTopAvatar.style.backgroundSize = 'cover';
+            messengerTopAvatar.style.backgroundPosition = 'center';
+            messengerTopAvatar.textContent = '';
+            showNotification('Аватарка обновлена!', 'success');
+          };
+          input.click();
+        };
+      }
+      
     } else if (otherProfile) {
     if (messengerTopName) messengerTopName.textContent = otherProfile.username || 'Пользователь';
     if (messengerTopSub) {
