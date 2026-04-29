@@ -2284,7 +2284,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       renderMessagesList();
       await renderMessengerDialogs();
       state.pendingFiles = [];
-      if (typeof updateAttachMeta === 'function') updateAttachMeta();
+      var meta = document.getElementById('mkzMessengerAttachMeta');
+      if (meta) meta.innerHTML = '';
           
       // Автоответ бота поддержки
       if (state.currentSession?.user?.id !== OWNER_UID) {
