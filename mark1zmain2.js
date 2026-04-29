@@ -2450,12 +2450,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       await openConversation(state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5');
       await renderMessengerDialogs();
     });
-    if (closeOrderModal) closeOrderModal.addEventListener('click', hideOrderModal);
-    if (orderBackdrop) orderBackdrop.addEventListener('click', hideOrderModal);
-    if (closeReviewPopup) closeReviewPopup.addEventListener('click', hideReviewPopup);
-    if (reviewPopupBackdrop) reviewPopupBackdrop.addEventListener('click', hideReviewPopup);
-    if (closeImageModal) closeImageModal.addEventListener('click', hideImageModal);
-    if (imageModalBackdrop) imageModalBackdrop.addEventListener('click', hideImageModal);
     if (backToFolders) backToFolders.addEventListener('click', showFoldersList);
     if (quickAddFolderBtn) quickAddFolderBtn.addEventListener('click', () => { folderTitle?.focus(); ownerPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     if (quickAddWorkBtn) quickAddWorkBtn.addEventListener('click', () => { if (state.currentOpenedFolderId && portfolioFolderSelect) portfolioFolderSelect.value = state.currentOpenedFolderId; portfolioTitle?.focus(); ownerPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
