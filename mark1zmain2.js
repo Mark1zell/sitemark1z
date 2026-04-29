@@ -1678,7 +1678,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   } catch(e) {}
 
      // Обновляем хедер
-      if (String(conversationId) === String(state.supportConversationId)) {
+      var isSupportChat = false;
+      try {
+        var chatInfo2 = await supabaseClient.from('chats').select('is_support').eq('id', conversationId).single();
+        isSupportChat = chatInfo2 && chatInfo2.data && chatInfo2.data.is_support;
+      } catch(e) {}
+      
+      if (String(conversationId) === String(state.supportConversationId) || isSupportChat) {
       if (messengerTopName) messengerTopName.textContent = 'Mark1z Design';
       if (messengerTopSub) messengerTopSub.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;"></span>Чат для заказов и техподдержка';
       if (messengerTopAvatar) {
