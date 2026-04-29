@@ -1473,7 +1473,7 @@ async function renderMessengerDialogs() {
     
     // 7. Рендерим
     var personalChats = chats.filter(function(c) {
-      return String(c.id) !== String(state.supportConversationId) || isOwner();
+      return String(c.id) !== String(state.supportConversationId);
     });
     messengerDialogs.innerHTML = personalChats.map(chat => {
       // Находим собеседника для этого чата
