@@ -1647,6 +1647,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   for (var d = 0; d < allDialogs.length; d++) {
     allDialogs[d].classList.remove('mkz-dialog--active');
   }
+    for (var d2 = 0; d2 < allDialogs.length; d2++) {
+    allDialogs[d2].style.border = '2px solid rgba(255,255,255,0.04)';
+    allDialogs[d2].style.boxShadow = 'none';
+  }
   var activeDialog = document.querySelector('[data-open-chat="' + conversationId + '"]');
   if (activeDialog) activeDialog.classList.add('mkz-dialog--active');
 
