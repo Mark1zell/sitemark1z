@@ -775,13 +775,6 @@
     state.notificationsReady = true;
   }
 
-  // ========== ФУНКЦИИ ПОРТФОЛИО ==========
-  function renderPortfolioSelects() {
-    if (portfolioFolderSelect) portfolioFolderSelect.innerHTML = state.folders.map(folder => `<option value="${folder.id}">${safeText(folder.title, 'Папка')}</option>`).join('');
-    if (editFolderSelect) editFolderSelect.innerHTML = state.folders.map(folder => `<option value="${folder.id}">${safeText(folder.title, 'Папка')}</option>`).join('');
-    if (editWorkSelect) editWorkSelect.innerHTML = state.items.map(item => `<option value="${item.id}">${safeText(item.title || 'Работа', 'Работа')}</option>`).join('');
-  }
-
   function showFoldersList() { state.currentOpenedFolderId = null; if (folderBrowserList) folderBrowserList.style.display = 'block'; if (folderInside) folderInside.style.display = 'none'; updateAuthUI(); }
 
   function fillEditWorkForm(workId) {
@@ -794,36 +787,238 @@
     showNotification('Работа подставлена в форму редактирования', 'info');
   }
 
-  function openFolder(folderId) {
-    state.currentOpenedFolderId = folderId;
-    const folder = state.folders.find(item => String(item.id) === String(folderId));
-    if (!folder) return;
-    const works = state.items.filter(item => String(item.folder_id) === String(folder.id));
-    if (currentFolderTitle) currentFolderTitle.textContent = folder.title || 'Папка';
-    if (currentFolderWorks) {
-      currentFolderWorks.innerHTML = works.length ? `<div class="mkz-portfolio-grid">${works.map(item => `<article class="mkz-work-card"><div class="mkz-work-card__image"><img src="${safeUrl(item.image_url || '')}" alt="${safeText(item.title || 'Работа', 'Работа')}">${isOwner() ? `<div class="mkz-work-card__admin-overlay"><button class="mkz-admin-icon" type="button" data-edit-work-inline="${item.id}">✎</button><button class="mkz-admin-icon" type="button" data-delete-work="${item.id}">✕</button></div>` : ''}</div><div class="mkz-work-card__body"><h3>${safeText(item.title || 'Без названия', 'Без названия')}</h3><p>${safeText(item.description || '', '')}</p></div></article>`).join('')}</div>` : `<div class="mkz-card"><p>В этой папке пока нет работ.</p></div>`;
+function openFolder(folderId) {
+  state.currentOpenedFolderId = folderId;
+  const folder = state.folders.find(item => String(item.id) === String(folderId));
+  if (!folder) return;
+  const works = state.items.filter(item => String(item.folder_id) === String(folder.id));
+
+  if (currentFolderTitle) currentFolderTitle.textContent = folder.title || 'Папка';
+  if (currentFolderWorks) {
+    currentFolderWorks.innerHTML = works.length
+      ? `<div class="mkz-portfolio-grid">
+          ${works.map(item => `
+            <article class="mkz-work-card" data-work-id="${item.id}">
+              <div class="mkz-work-card__image">
+                <img src="${safeUrl(item.image_url || '')}" alt="${safeText(item.title || 'Работа', 'Работа')}">
+                ${isOwner() ? `
+                  <div class="mkz-work-card__admin-overlay">
+                    <button class="mkz-admin-icon" data-edit-image="${item.id}" title="Сменить фото">✎</button>
+                    <button class="mkz-admin-icon" data-delete-work="${item.id}" title="Удалить работу">✕</button>
+                  </div>
+                ` : ''}
+              </div>
+              <div class="mkz-work-card__body">
+                <h3>${safeText(item.title || 'Без названия', 'Без названия')}</h3>
+                <p>${safeText(item.description || '', '')}</p>
+              </div>
+            </article>
+          `).join('')}
+        </div>`
+      : `<div class="mkz-card"><p>В этой папке пока нет работ.</p></div>`;
+
+    // Добавление работы (для админа)
+    if (isOwner()) {
+      const addBtn = document.createElement('button');
+      addBtn.textContent = '+ Добавить работу';
+      addBtn.className = 'mkz-btn mkz-btn--ghost';
+      addBtn.style.marginTop = '16px';
+      addBtn.onclick = async () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async () => {
+          const file = input.files[0];
+          if (!file) return;
+          showLoading('Загрузка работы...');
+          try {
+            const upload = await uploadToBucket('portfolio', file, `work_${state.currentSession.user.id}`);
+            const title = prompt('Название работы:', 'Новая работа') || 'Новая работа';
+            const desc = prompt('Описание работы:', '') || '';
+            await supabaseClient.from('portfolio_items').insert({
+              folder_id: folderId,
+              title: title.trim(),
+              description: desc.trim(),
+              image_url: upload.publicUrl,
+              sort_order: works.length
+            });
+            clearCache('portfolio_items');
+            await renderPortfolio();
+            openFolder(folderId);
+            showNotification('Работа добавлена', 'success');
+          } catch (e) {
+            showNotification('Ошибка загрузки', 'error');
+          } finally {
+            hideLoading();
+          }
+        };
+        input.click();
+      };
+      currentFolderWorks.appendChild(addBtn);
     }
-    if (folderBrowserList) folderBrowserList.style.display = 'none';
-    if (folderInside) folderInside.style.display = 'block';
-    updateAuthUI();
+
+    // Inline редактирование названия и описания (двойной клик)
+    $$('.mkz-work-card__body h3', currentFolderWorks).forEach(titleEl => {
+      titleEl.addEventListener('dblclick', async (e) => {
+        e.stopPropagation();
+        const workId = titleEl.closest('[data-work-id]').dataset.workId;
+        const newTitle = prompt('Новое название работы:', titleEl.textContent);
+        if (newTitle && newTitle.trim()) {
+          await supabaseClient.from('portfolio_items').update({ title: newTitle.trim() }).eq('id', workId);
+          titleEl.textContent = newTitle.trim();
+          showNotification('Название обновлено', 'success');
+        }
+      });
+    });
+
+    $$('.mkz-work-card__body p', currentFolderWorks).forEach(descEl => {
+      descEl.addEventListener('dblclick', async (e) => {
+        e.stopPropagation();
+        const workId = descEl.closest('[data-work-id]').dataset.workId;
+        const newDesc = prompt('Новое описание:', descEl.textContent);
+        if (newDesc !== null) {
+          await supabaseClient.from('portfolio_items').update({ description: newDesc.trim() }).eq('id', workId);
+          descEl.textContent = newDesc.trim();
+          showNotification('Описание обновлено', 'success');
+        }
+      });
+    });
   }
 
-  async function renderPortfolio() {
-    try {
-      showLoading('Загрузка портфолио...');
-      const folders = await cachedQuery('portfolio_folders', async () => { const { data } = await supabaseClient.from('portfolio_folders').select('*').order('sort_order', { ascending: true }); return data || []; });
-      const items = await cachedQuery('portfolio_items', async () => { const { data } = await supabaseClient.from('portfolio_items').select('*').order('sort_order', { ascending: true }); return data || []; });
-      state.folders = folders; state.items = items;
-      if (portfolioCount) portfolioCount.textContent = String(state.items.length);
-      if (!folderGrid) return;
-      if (!state.folders.length) { folderGrid.innerHTML = '<div class="mkz-card"><h3>Папок пока нет</h3><p>Портфолио скоро появится.</p></div>'; renderPortfolioSelects(); showFoldersList(); return; }
-      folderGrid.innerHTML = state.folders.map(folder => { const worksCount = state.items.filter(item => String(item.folder_id) === String(folder.id)).length; const cover = safeUrl(folder.cover_image_url || ''); return `<button class="mkz-folder" type="button" data-folder-open="${folder.id}">${cover ? `<span class="mkz-folder__bg" style="background-image:url('${cover}')"></span>` : ''}<span class="mkz-folder__overlay"></span><span class="mkz-folder__content"><span class="mkz-folder__icon">📁</span><span class="mkz-folder__title">${safeText(folder.title, 'Папка')}</span><span class="mkz-folder__count">${worksCount} работ</span></span></button>`; }).join('');
-      $$('[data-folder-open]', folderGrid).forEach(btn => { btn.addEventListener('click', () => openFolder(btn.dataset.folderOpen)); });
+  if (folderBrowserList) folderBrowserList.style.display = 'none';
+  if (folderInside) folderInside.style.display = 'block';
+  updateAuthUI();
+}
+
+async function renderPortfolio() {
+  try {
+    showLoading('Загрузка портфолио...');
+
+    const folders = await cachedQuery('portfolio_folders', async () => {
+      const { data } = await supabaseClient.from('portfolio_folders').select('*').order('sort_order', { ascending: true });
+      return data || [];
+    });
+    const items = await cachedQuery('portfolio_items', async () => {
+      const { data } = await supabaseClient.from('portfolio_items').select('*').order('sort_order', { ascending: true });
+      return data || [];
+    });
+
+    state.folders = folders;
+    state.items = items;
+
+    if (portfolioCount) portfolioCount.textContent = String(state.items.length);
+
+    if (!folderGrid) return;
+
+    // Кнопка «+» для новой папки
+    const addFolderBtn = document.createElement('button');
+    addFolderBtn.id = 'mkzQuickAddFolderBtn';
+    addFolderBtn.textContent = '+';
+    addFolderBtn.title = 'Новая папка';
+    addFolderBtn.style.cssText = 'margin-left:12px;width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:#fff;font-size:20px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;';
+    addFolderBtn.onclick = async () => {
+      const name = prompt('Название папки:', 'Новая папка');
+      if (!name) return;
+      await supabaseClient.from('portfolio_folders').insert({ title: name.trim(), sort_order: state.folders.length });
+      clearCache('portfolio_folders');
+      await renderPortfolio();
+      showNotification('Папка создана', 'success');
+    };
+
+    // Очищаем и вставляем кнопку
+    if (!state.folders.length) {
+      folderGrid.innerHTML = '<div class="mkz-card"><h3>Папок пока нет</h3><p>Портфолио скоро появится.</p></div>';
+      folderGrid.appendChild(addFolderBtn);
       renderPortfolioSelects();
-      if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
-      else showFoldersList();
-    } catch (err) { console.error('renderPortfolio error', err); showNotification('Ошибка загрузки портфолио', 'error'); } finally { hideLoading(); }
+      showFoldersList();
+      return;
+    }
+
+    folderGrid.innerHTML = ''; // обнуляем
+    folderGrid.appendChild(addFolderBtn); // кнопка сверху
+
+    // Рендер папок
+    state.folders.forEach(folder => {
+      const worksCount = state.items.filter(item => String(item.folder_id) === String(folder.id)).length;
+      const cover = safeUrl(folder.cover_image_url || '');
+
+      const folderEl = document.createElement('button');
+      folderEl.className = 'mkz-folder';
+      folderEl.setAttribute('data-folder-id', folder.id);
+      folderEl.innerHTML = `
+        ${cover ? `<span class="mkz-folder__bg" style="background-image:url('${cover}')"></span>` : ''}
+        <span class="mkz-folder__overlay"></span>
+        <span class="mkz-folder__content">
+          <span class="mkz-folder__icon">📁</span>
+          <span class="mkz-folder__title">${safeText(folder.title, 'Папка')}</span>
+          <span class="mkz-folder__count">${worksCount} работ</span>
+        </span>
+        ${isOwner() ? `
+          <div class="mkz-work-card__admin-overlay" style="position:absolute;top:8px;right:8px;display:flex;gap:6px;">
+            <button class="mkz-admin-icon" data-edit-folder="${folder.id}" title="Переименовать папку">✎</button>
+            <button class="mkz-admin-icon" data-delete-folder="${folder.id}" title="Удалить папку">✕</button>
+          </div>
+        ` : ''}
+      `;
+
+      // Двойной клик по названию → переименование
+      folderEl.querySelector('.mkz-folder__title').addEventListener('dblclick', async (e) => {
+        e.stopPropagation();
+        const newTitle = prompt('Новое название папки:', folder.title);
+        if (newTitle && newTitle.trim()) {
+          await supabaseClient.from('portfolio_folders').update({ title: newTitle.trim() }).eq('id', folder.id);
+          clearCache('portfolio_folders');
+          await renderPortfolio();
+          showNotification('Папка переименована', 'success');
+        }
+      });
+
+      folderEl.addEventListener('click', () => openFolder(folder.id));
+      folderGrid.appendChild(folderEl);
+    });
+
+    // Обработчики кнопок админа (делегирование)
+    folderGrid.addEventListener('click', async (e) => {
+      const editBtn = e.target.closest('[data-edit-folder]');
+      const deleteBtn = e.target.closest('[data-delete-folder]');
+      
+      if (editBtn) {
+        e.stopPropagation();
+        const folderId = editBtn.dataset.editFolder;
+        const folder = state.folders.find(f => f.id === folderId);
+        if (!folder) return;
+        const newTitle = prompt('Новое название папки:', folder.title);
+        if (newTitle && newTitle.trim()) {
+          await supabaseClient.from('portfolio_folders').update({ title: newTitle.trim() }).eq('id', folderId);
+          clearCache('portfolio_folders');
+          await renderPortfolio();
+          showNotification('Папка переименована', 'success');
+        }
+      }
+
+      if (deleteBtn) {
+        e.stopPropagation();
+        if (!confirm('Удалить папку и всё её содержимое?')) return;
+        const folderId = deleteBtn.dataset.deleteFolder;
+        await supabaseClient.from('portfolio_items').delete().eq('folder_id', folderId);
+        await supabaseClient.from('portfolio_folders').delete().eq('id', folderId);
+        clearCache('portfolio_folders');
+        clearCache('portfolio_items');
+        await renderPortfolio();
+        showNotification('Папка удалена', 'success');
+      }
+    });
+
+    renderPortfolioSelects();
+    if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
+    else showFoldersList();
+  } catch (err) {
+    console.error('renderPortfolio error', err);
+    showNotification('Ошибка загрузки портфолио', 'error');
+  } finally {
+    hideLoading();
   }
+}
 
   async function handleAddFolder() {
     if (!folderAdminForm?.reportValidity()) return;
@@ -2451,6 +2646,47 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         }
       });
     }
+      document.addEventListener('click', async (e) => {
+  const editImageBtn = e.target.closest('[data-edit-image]');
+  const deleteWorkBtn = e.target.closest('[data-delete-work]');
+
+  if (editImageBtn) {
+    e.stopPropagation();
+    const workId = editImageBtn.dataset.editImage;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      showLoading('Обновление фото...');
+      try {
+        const upload = await uploadToBucket('portfolio', file, `work_${state.currentSession.user.id}`);
+        await supabaseClient.from('portfolio_items').update({ image_url: upload.publicUrl }).eq('id', workId);
+        clearCache('portfolio_items');
+        await renderPortfolio();
+        if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
+        showNotification('Фото обновлено', 'success');
+      } catch (err) {
+        showNotification('Ошибка обновления фото', 'error');
+      } finally {
+        hideLoading();
+      }
+    };
+    input.click();
+  }
+
+  if (deleteWorkBtn) {
+    e.stopPropagation();
+    if (!confirm('Удалить работу?')) return;
+    const workId = deleteWorkBtn.dataset.deleteWork;
+    await supabaseClient.from('portfolio_items').delete().eq('id', workId);
+    clearCache('portfolio_items');
+    await renderPortfolio();
+    if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
+    showNotification('Работа удалена', 'success');
+  }
+});
     if (burger && nav) burger.addEventListener('click', () => { nav.classList.toggle('is-open'); });
     navButtons.forEach(btn => { btn.addEventListener('click', () => { openScreen(btn.dataset.screenOpen); }); });
     if (userPillButton) userPillButton.addEventListener('click', () => openScreen('account'));
