@@ -756,10 +756,9 @@
             .order('created_at', { ascending: true });
           if (!error && fresh) {
             var oldLen = state.conversationMessages.length;
-            state.conversationMessages = fresh;
             if (fresh.length !== oldLen) {
+              state.conversationMessages = fresh;
               if (typeof renderMessagesList === 'function') renderMessagesList();
-              await renderMessengerDialogs();
             }
           }
         } catch(e) {}
