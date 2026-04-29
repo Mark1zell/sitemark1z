@@ -2440,7 +2440,16 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (burger && nav) burger.addEventListener('click', () => { nav.classList.toggle('is-open'); });
     navButtons.forEach(btn => { btn.addEventListener('click', () => { openScreen(btn.dataset.screenOpen); }); });
     if (userPillButton) userPillButton.addEventListener('click', () => openScreen('account'));
-    if (openOrderModal) openOrderModal.addEventListener('click', showOrderModal);
+        if (openOrderModal) openOrderModal.addEventListener('click', async function() {
+      if (!state.currentSession) {
+        showNotification('Войдите в аккаунт для заказа', 'warning');
+        openScreen('account');
+        return;
+      }
+      openScreen('messenger');
+      await openConversation(state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5');
+      await renderMessengerDialogs();
+    });
     if (closeOrderModal) closeOrderModal.addEventListener('click', hideOrderModal);
     if (orderBackdrop) orderBackdrop.addEventListener('click', hideOrderModal);
     if (closeReviewPopup) closeReviewPopup.addEventListener('click', hideReviewPopup);
