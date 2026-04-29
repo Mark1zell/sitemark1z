@@ -1843,14 +1843,13 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
     var userId = state.currentSession.user.id;
     if (userId !== OWNER_UID) {
-      // Ищем существующий чат поддержки (где только пользователь и админ)
-      var { data: userChats } = await supabaseClient.from('chat_members').select('chat_id').eq('user_id', userId);
+      var { data: supportChats } = await supabaseClient.from('chats').select('id').eq('is_support', true);
       var supportChatId = null;
-      if (userChats) {
-        for (var i = 0; i < userChats.length; i++) {
-          var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', userChats[i].chat_id);
-          if (members && members.length === 2 && members.find(function(m) { return m.user_id === OWNER_UID; })) {
-            supportChatId = userChats[i].chat_id;
+      if (supportChats) {
+        for (var i = 0; i < supportChats.length; i++) {
+          var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', supportChats[i].id);
+          if (members && members.find(function(m) { return m.user_id === userId; })) {
+            supportChatId = supportChats[i].id;
             break;
           }
         }
@@ -1863,7 +1862,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         var newId = crypto.randomUUID();
         await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
           method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ id: newId, is_group: false })
+          body: JSON.stringify({ id: newId, is_group: false, is_support: true })
         });
         await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
           method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json' },
@@ -2523,7 +2522,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
               'Content-Type': 'application/json',
               'Prefer': 'return=minimal'
             },
-            body: JSON.stringify({ id: newChatId, is_group: false })
+            body: JSON.stringify({ id: newId, is_group: false, is_support: true })
           });
           
           var chatResText = await createChatRes.text();
