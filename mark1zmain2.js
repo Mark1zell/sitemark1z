@@ -1936,7 +1936,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
               }
             }
           }
-          html += '<div class="mkz-message__text">' + content + '</div>' + attachmentHtml;
+          var senderName = '';
+          if (!isMine) {
+            var senderProfile = state.allProfilesCache.find(function(p) { return p.id === msg.sender_id; });
+            senderName = '<div class="mkz-message__title">' + escapeHtml(senderProfile?.username || 'Пользователь') + '</div>';
+          }
+          html += senderName + '<div class="mkz-message__text">' + content + '</div>' + attachmentHtml;
           html += '<div class="mkz-message__footer"><span class="mkz-message__time">' + time + '</span></div>';
           html += '</div></div>';
         }
@@ -2169,9 +2174,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         }
       }
 
+           var senderName = '';
+      if (!isMine) {
+        var senderProfile = state.allProfilesCache.find(function(p) { return p.id === msg.sender_id; });
+        senderName = '<div class="mkz-message__title">' + escapeHtml(senderProfile?.username || 'Пользователь') + '</div>';
+      }
       return '<div class="mkz-message-row ' + rowClass + '">' +
         '<div class="mkz-message ' + msgClass + '" data-message-id="' + msg.id + '">' +
-          authorName +
+          senderName +
           (content ? '<div class="mkz-message__text">' + content + '</div>' : '') +
           attachmentHtml +
           '<div class="mkz-message__footer">' +
