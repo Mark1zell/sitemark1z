@@ -790,7 +790,7 @@ function openFolder(folderId) {
           ${works.map(item => `
             <article class="mkz-work-card" data-work-id="${item.id}">
               <div class="mkz-work-card__image">
-                <img src="${safeUrl(item.image_url || '')}" alt="${safeText(item.title || 'Работа', 'Работа')}">
+                <img src="${safeUrl(item.image_url || '')}" alt="${safeText(item.title || 'Работа', 'Работа')}" style="cursor:pointer;" onclick="showImageViewer('${safeUrl(item.image_url || '')}')">
                 ${isOwner() ? `
                   <div class="mkz-work-card__admin-overlay">
                     <button class="mkz-admin-icon" data-edit-image="${item.id}" title="Сменить фото">✎</button>
