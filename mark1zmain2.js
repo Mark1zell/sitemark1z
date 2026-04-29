@@ -790,7 +790,7 @@ function openFolder(folderId) {
           ${works.map(item => `
             <article class="mkz-work-card" data-work-id="${item.id}">
               <div class="mkz-work-card__image">
-                <img src="${safeUrl(item.image_url || '')}" alt="${safeText(item.title || 'Работа', 'Работа')}" style="cursor:pointer;" onclick="showImageViewer('${safeUrl(item.image_url || '')}')">
+                <img src="${safeUrl(item.image_url || '')}" alt="${safeText(item.title || 'Работа', 'Работа')}" style="cursor:pointer;" onclick="showImageViewer('${safeUrl(item.image_url || '')}', '${safeText(item.title || '')}', 'portfolio', '${folderId}')">
                 ${isOwner() ? `
                   <div class="mkz-work-card__admin-overlay">
                     <button class="mkz-admin-icon" data-edit-image="${item.id}" title="Сменить фото">✎</button>
@@ -2521,7 +2521,99 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
   }
 
-  window.showImageViewer = function(url) {
+  window.showImageViewer = function(url, title, source, folderId) {
+    // Собираем список изображений
+    var allImages = [];
+    var currentIndex = 0;
+    
+    if (source === 'portfolio' && folderId) {
+      var works = window.mkz.state.items.filter(function(item) { return String(item.folder_id) === String(folderId); });
+      allImages = works.map(function(w) { return { url: w.image_url, title: w.title || '' }; });
+      currentIndex = allImages.findIndex(function(img) { return img.url === url; });
+    } else {
+      allImages = [{ url: url, title: title || '' }];
+    }
+    
+    if (currentIndex < 0) currentIndex = 0;
+    
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,4,8,0.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    
+    var img = document.createElement('img');
+    img.style.cssText = 'max-width:90vw;max-height:70vh;object-fit:contain;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+    
+    function updateImage() {
+      img.src = allImages[currentIndex].url;
+      if (document.getElementById('mkzViewerTitle')) {
+        document.getElementById('mkzViewerTitle').textContent = allImages[currentIndex].title || '';
+      }
+      // Обновляем кнопки стрелок
+      if (document.getElementById('mkzPrevBtn')) {
+        document.getElementById('mkzPrevBtn').style.display = currentIndex > 0 ? 'flex' : 'none';
+      }
+      if (document.getElementById('mkzNextBtn')) {
+        document.getElementById('mkzNextBtn').style.display = currentIndex < allImages.length - 1 ? 'flex' : 'none';
+      }
+    }
+    
+    updateImage();
+    
+    // Стрелки навигации
+    if (allImages.length > 1) {
+      var prevBtn = document.createElement('button');
+      prevBtn.id = 'mkzPrevBtn';
+      prevBtn.innerHTML = '‹';
+      prevBtn.style.cssText = 'position:absolute;left:16px;top:50%;transform:translateY(-50%);width:48px;height:48px;border:1px solid rgba(255,255,255,0.15);border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:28px;display:flex;align-items:center;justify-content:center;z-index:2;backdrop-filter:blur(6px);';
+      prevBtn.onclick = function(e) { e.stopPropagation(); if (currentIndex > 0) { currentIndex--; updateImage(); } };
+      
+      var nextBtn = document.createElement('button');
+      nextBtn.id = 'mkzNextBtn';
+      nextBtn.innerHTML = '›';
+      nextBtn.style.cssText = 'position:absolute;right:16px;top:50%;transform:translateY(-50%);width:48px;height:48px;border:1px solid rgba(255,255,255,0.15);border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:28px;display:flex;align-items:center;justify-content:center;z-index:2;backdrop-filter:blur(6px);';
+      nextBtn.onclick = function(e) { e.stopPropagation(); if (currentIndex < allImages.length - 1) { currentIndex++; updateImage(); } };
+      
+      ov.appendChild(prevBtn);
+      ov.appendChild(nextBtn);
+    }
+    
+    // Заголовок
+    var titleEl = document.createElement('div');
+    titleEl.id = 'mkzViewerTitle';
+    titleEl.style.cssText = 'position:absolute;top:16px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-weight:600;z-index:2;';
+    titleEl.textContent = title || '';
+    ov.appendChild(titleEl);
+    
+    // Кнопки снизу
+    var bottomBar = document.createElement('div');
+    bottomBar.style.cssText = 'display:flex;gap:10px;margin-top:20px;z-index:1;';
+    
+    var btnBase = 'padding:12px 20px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:#fff;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;';
+    
+    var downloadBtn = document.createElement('button');
+    downloadBtn.innerHTML = '📥 Скачать';
+    downloadBtn.style.cssText = btnBase + 'background:linear-gradient(135deg,#7a3cff,#ff2fae);border-color:transparent;';
+    downloadBtn.onclick = async function(e) { e.stopPropagation(); var a=document.createElement('a');a.href=allImages[currentIndex].url;a.download=allImages[currentIndex].url.split('/').pop()||'photo';document.body.appendChild(a);a.click();a.remove(); };
+    
+    var copyBtn = document.createElement('button');
+    copyBtn.innerHTML = '📋 Копировать';
+    copyBtn.style.cssText = btnBase + 'background:rgba(255,255,255,0.04);';
+    copyBtn.onclick = function(e) { e.stopPropagation(); navigator.clipboard.writeText(allImages[currentIndex].url); showNotification('Ссылка скопирована!','success'); };
+    
+    bottomBar.appendChild(downloadBtn);
+    bottomBar.appendChild(copyBtn);
+    
+    var closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;width:42px;height:42px;border:1px solid rgba(255,255,255,0.1);border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:18px;z-index:2;';
+    closeBtn.onclick = function() { ov.remove(); };
+    
+    ov.appendChild(img);
+    ov.appendChild(bottomBar);
+    ov.appendChild(closeBtn);
+    ov.onclick = function(e) { if(e.target === ov) ov.remove(); };
+    document.body.appendChild(ov);
+  };
+  
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,4,8,0.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
     
