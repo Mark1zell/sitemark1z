@@ -1065,6 +1065,10 @@
         return p.id !== '3bf6b657-7722-4189-bd0e-6b7b9271ccdc' && 
                p.username !== 'Mark1z Design';
       });
+            // Исключаем свой профиль из поиска
+      if (state.currentSession?.user) {
+        list = list.filter(function(p) { return p.id !== state.currentSession.user.id; });
+      }
       state.peopleSearchResults = list;
       if (!list.length) {
         peopleSearchResults.innerHTML = '<div class="mkz-card"><p>Никого не найдено.</p></div>';
@@ -2443,7 +2447,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         for (var i = 0; i < allDialogs.length; i++) {
           var name = (allDialogs[i].querySelector('.mkz-dialog__name')?.textContent || '').toLowerCase();
           var preview = (allDialogs[i].querySelector('.mkz-dialog__preview')?.textContent || '').toLowerCase();
-          allDialogs[i].style.display = name.includes(query) || preview.includes(query) ? '' : 'none';
+          allDialogs[i].style.display = name.includes(query) ? '' : 'none';
         }
       });
     }
