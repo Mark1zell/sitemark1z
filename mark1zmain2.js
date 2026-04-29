@@ -934,8 +934,8 @@ async function renderPortfolio() {
       return;
     }
 
-    folderGrid.innerHTML = ''; // обнуляем
-    folderGrid.appendChild(addFolderBtn); // кнопка сверху
+    folderGrid.innerHTML = '';
+    // Кнопку + добавим ПОСЛЕ папок, а не перед
 
     // Рендер папок
     state.folders.forEach(folder => {
@@ -975,7 +975,24 @@ async function renderPortfolio() {
 
       folderEl.addEventListener('click', () => openFolder(folder.id));
       folderGrid.appendChild(folderEl);
-    });
+        });
+
+    // Кнопка "+" после всех папок, только для админа
+    if (isOwner()) {
+      const addFolderBtn = document.createElement('button');
+      addFolderBtn.className = 'mkz-folder';
+      addFolderBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:48px;color:rgba(255,255,255,0.5);cursor:pointer;min-height:220px;';
+      addFolderBtn.textContent = '+';
+      addFolderBtn.onclick = async () => {
+        const name = prompt('Название папки:', 'Новая папка');
+        if (!name) return;
+        await supabaseClient.from('portfolio_folders').insert({ title: name.trim(), sort_order: state.folders.length });
+        clearCache('portfolio_folders');
+        await renderPortfolio();
+        showNotification('Папка создана', 'success');
+      };
+      folderGrid.appendChild(addFolderBtn);
+    }
 
     // Обработчики кнопок админа (делегирование)
     folderGrid.addEventListener('click', async (e) => {
