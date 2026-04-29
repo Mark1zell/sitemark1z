@@ -909,31 +909,29 @@ async function renderPortfolio() {
     if (portfolioCount) portfolioCount.textContent = String(state.items.length);
 
     if (!folderGrid) return;
-
-    // Кнопка «+» для новой папки
-    const addFolderBtn = document.createElement('button');
-    addFolderBtn.id = 'mkzQuickAddFolderBtn';
-    addFolderBtn.textContent = '+';
-    addFolderBtn.title = 'Новая папка';
-    addFolderBtn.style.cssText = 'margin-left:12px;width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:#fff;font-size:20px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;';
-    addFolderBtn.onclick = async () => {
-      const name = prompt('Название папки:', 'Новая папка');
-      if (!name) return;
-     await supabaseClient.from('portfolio_folders').insert({ 
-      title: name.trim(), 
-      slug: name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(), 
-      sort_order: state.folders.length 
-    });
-      clearCache('portfolio_folders');
-      await renderPortfolio();
-      showNotification('Папка создана', 'success');
-    };
-
+    
     // Очищаем и вставляем кнопку
     if (!state.folders.length) {
       folderGrid.innerHTML = '<div class="mkz-card"><h3>Папок пока нет</h3><p>Портфолио скоро появится.</p></div>';
-      folderGrid.appendChild(addFolderBtn);
-      showFoldersList();
+      if (isOwner()) {
+        var emptyAddBtn = document.createElement('button');
+        emptyAddBtn.className = 'mkz-folder';
+        emptyAddBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:48px;color:rgba(255,255,255,0.5);cursor:pointer;min-height:220px;width:100%;';
+        emptyAddBtn.textContent = '+';
+        emptyAddBtn.onclick = async function() {
+          var name = prompt('Название папки:', 'Новая папка');
+          if (!name) return;
+          await supabaseClient.from('portfolio_folders').insert({ 
+            title: name.trim(), 
+            slug: name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(), 
+            sort_order: state.folders.length 
+          });
+          clearCache('portfolio_folders');
+          await renderPortfolio();
+          showNotification('Папка создана', 'success');
+        };
+        folderGrid.appendChild(emptyAddBtn);
+      }
       return;
     }
 
