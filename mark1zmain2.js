@@ -921,11 +921,17 @@ async function renderPortfolio() {
         emptyAddBtn.onclick = async function() {
           var name = prompt('Название папки:', 'Новая папка');
           if (!name) return;
-          await supabaseClient.from('portfolio_folders').insert({ 
+          var result = await supabaseClient.from('portfolio_folders').insert({ 
             title: name.trim(), 
             slug: name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(), 
             sort_order: state.folders.length 
-          });
+          }).select('*');
+          console.log('Результат вставки:', result);
+          if (result.error) {
+            console.error('Ошибка:', result.error);
+            showNotification('Ошибка: ' + result.error.message, 'error');
+            return;
+          }
           clearCache('portfolio_folders');
           await renderPortfolio();
           showNotification('Папка создана', 'success');
@@ -937,7 +943,7 @@ async function renderPortfolio() {
 
     folderGrid.innerHTML = '';
     // Кнопку + добавим ПОСЛЕ папок, а не перед
-
+    
     // Рендер папок
     state.folders.forEach(folder => {
       const worksCount = state.items.filter(item => String(item.folder_id) === String(folder.id)).length;
