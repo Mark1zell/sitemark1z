@@ -929,7 +929,6 @@ async function renderPortfolio() {
     if (!state.folders.length) {
       folderGrid.innerHTML = '<div class="mkz-card"><h3>Папок пока нет</h3><p>Портфолио скоро появится.</p></div>';
       folderGrid.appendChild(addFolderBtn);
-      renderPortfolioSelects();
       showFoldersList();
       return;
     }
@@ -1025,8 +1024,7 @@ async function renderPortfolio() {
         showNotification('Папка удалена', 'success');
       }
     });
-
-    renderPortfolioSelects();
+    
     if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
     else showFoldersList();
   } catch (err) {
