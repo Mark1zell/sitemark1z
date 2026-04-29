@@ -1549,7 +1549,7 @@ async function renderMessengerDialogs() {
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
             '<span style="font-weight:600;font-size:14px;color:#fff;text-shadow:0 0 8px rgba(0,0,0,0.5);">' + escapeHtml(displayName) + '</span>' +
-            (lastMsg && lastMsg.sender_id !== myId ? ' <span style="background:#ff2fae;color:#fff;font-size:10px;padding:2px 6px;border-radius:8px;margin-left:4px;">' + (unreadCount || '1') + '</span>' : '') +
+            (lastMsg && lastMsg.sender_id !== myId && !isActive ? ' <span style="display:inline-block;width:8px;height:8px;background:#ff2fae;border-radius:50%;"></span>' : '') +
             (timeText ? '<span style="font-size:11px;color:rgba(255,255,255,0.5);">' + timeText + '</span>' : '') +
           '</div>' +
           '<div style="font-size:13px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px;text-shadow:0 0 6px rgba(0,0,0,0.5);">' + escapeHtml(preview) + '</div>' +
