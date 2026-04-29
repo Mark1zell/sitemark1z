@@ -2084,13 +2084,22 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           this.style.boxShadow = '0 0 24px rgba(255,47,174,0.3)';
           
           var userId = this.getAttribute('data-user-id');
-          var existingChatId = await findExistingConversation(userId);
-          if (existingChatId) {
-            await openConversation(existingChatId);
+          var { data: supportChats } = await supabaseClient.from('chats').select('id').eq('is_support', true);
+          var supportChatId = null;
+          if (supportChats) {
+            for (var sc = 0; sc < supportChats.length; sc++) {
+              var { data: memb } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', supportChats[sc].id);
+              if (memb && memb.find(function(m) { return m.user_id === userId; })) {
+                supportChatId = supportChats[sc].id;
+                break;
+              }
+            }
+          }
+          if (supportChatId) {
+            await openConversation(supportChatId);
           } else {
             await startConversationWithUser(userId);
           }
-        };
       }
       
     } catch (err) {
