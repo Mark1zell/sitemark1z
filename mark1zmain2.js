@@ -2100,6 +2100,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           } else {
             await startConversationWithUser(userId);
           }
+        };
       }
       
     } catch (err) {
