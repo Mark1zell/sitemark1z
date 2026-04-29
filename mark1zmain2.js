@@ -2031,27 +2031,21 @@ async function openConversation(conversationId, isPollingUpdate = false) {
 
   // ========== ФУНКЦИИ ПОДДЕРЖКИ ==========
     async function loadSupportDialogs() {
-    var supportChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
-    
     try {
-      // Получаем всех участников чата поддержки
-      var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', supportChatId);
+      var { data: supportChats } = await supabaseClient.from('chats').select('id').eq('is_support', true);
+      var supportChatIds = supportChats ? supportChats.map(function(c) { return c.id; }) : [];
+      supportChatIds.push(state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5');
+      
+      var { data: members } = await supabaseClient.from('chat_members').select('user_id').in('chat_id', supportChatIds);
       if (!members || members.length <= 1) {
         messengerDialogs.innerHTML = '<div class="mkz-card"><p>Никто ещё не писал в поддержку.</p></div>';
         return;
       }
       
-      // Получаем профили
       var userIds = members.map(function(m) { return m.user_id; }).filter(function(id) { return id !== OWNER_UID; });
       var { data: profiles } = await supabaseClient.from('profiles').select('*').in('id', userIds);
+      var { data: messages } = await supabaseClient.from('messages').select('*').in('chat_id', supportChatIds).order('created_at', { ascending: false });
       
-      // Получаем последние сообщения
-      var { data: messages } = await supabaseClient.from('messages')
-        .select('*')
-        .eq('chat_id', supportChatId)
-        .order('created_at', { ascending: false });
-      
-      // Рендерим в сайдбар
       var html = '<div style="padding:8px 0;font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">💬 Поддержка</div>';
       
       for (var i = 0; i < userIds.length; i++) {
@@ -2059,13 +2053,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         var profile = profiles ? profiles.find(function(p) { return p.id === uid; }) : null;
         var username = profile ? profile.username : 'Пользователь';
         var avatar = profile ? profile.avatar_url : '';
-        
         var userMsgs = messages ? messages.filter(function(m) { return m.sender_id === uid; }) : [];
         var lastMsg = userMsgs[0];
         var preview = lastMsg ? (lastMsg.content || '').substring(0, 30) : '';
         var time = lastMsg ? formatDateTime(lastMsg.created_at) : '';
         
-                var bgStyle = avatar ? 'background:linear-gradient(0deg,rgba(0,0,0,0.7),rgba(0,0,0,0.5)),url(\'' + avatar + '\') center/cover no-repeat;' : 'background:rgba(0,0,0,0.3);';
+        var bgStyle = avatar ? 'background:linear-gradient(0deg,rgba(0,0,0,0.7),rgba(0,0,0,0.5)),url(\'' + avatar + '\') center/cover no-repeat;' : 'background:rgba(0,0,0,0.3);';
         html += '<button class="mkz-dialog" data-user-id="' + uid + '" style="width:100%;text-align:left;' + bgStyle + 'border:1px solid rgba(255,255,255,0.06);position:relative;overflow:hidden;">';
         html += '<div style="position:absolute;top:0;left:0;right:0;bottom:0;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"></div>';
         html += '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:12px;width:100%;">';
