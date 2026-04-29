@@ -777,16 +777,6 @@
 
   function showFoldersList() { state.currentOpenedFolderId = null; if (folderBrowserList) folderBrowserList.style.display = 'block'; if (folderInside) folderInside.style.display = 'none'; updateAuthUI(); }
 
-  function fillEditWorkForm(workId) {
-    const work = state.items.find(item => String(item.id) === String(workId));
-    if (!work) return;
-    if (editWorkSelect) editWorkSelect.value = work.id;
-    if (editWorkTitle) editWorkTitle.value = work.title || '';
-    if (editWorkDescription) editWorkDescription.value = work.description || '';
-    ownerPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showNotification('Работа подставлена в форму редактирования', 'info');
-  }
-
 function openFolder(folderId) {
   state.currentOpenedFolderId = folderId;
   const folder = state.folders.find(item => String(item.id) === String(folderId));
@@ -1073,62 +1063,6 @@ async function renderPortfolio() {
     hideLoading();
   }
 }
-
-  async function handleEditFolderCover() {
-    if (!isOwner()) return;
-    if (!folderEditForm?.reportValidity()) return;
-    const file = editFolderCover?.files?.[0];
-    if (!file) { showNotification('Выбери новую обложку', 'warning'); return; }
-    setButtonState(folderEditBtn, true, 'Сохраняю...', 'Обновить обложку');
-    try {
-      const upload = await uploadToBucket('portfolio', file, `folder_cover_edit_${state.currentSession.user.id}`);
-      const { error } = await supabaseClient.from('portfolio_folders').update({ cover_image_url: upload.publicUrl }).eq('id', editFolderSelect.value);
-      if (error) { showNotification(error.message, 'error'); return; }
-      folderEditForm.reset(); clearCache('portfolio_folders'); await renderPortfolio(); showNotification('Обложка обновлена', 'success');
-    } finally { setButtonState(folderEditBtn, false, 'Сохраняю...', 'Обновить обложку'); }
-  }
-
-  async function handleAddPortfolioItem() {
-    if (!portfolioAdminForm?.reportValidity()) return;
-    if (!isOwner()) return;
-    setButtonState(portfolioAddBtn, true, 'Загрузка...', 'Добавить в портфолио');
-    try {
-      const file = portfolioImage?.files?.[0];
-      if (!file) { showNotification('Выбери картинку', 'warning'); return; }
-      const upload = await uploadToBucket('portfolio', file, `portfolio_${state.currentSession.user.id}`);
-      const { error } = await supabaseClient.from('portfolio_items').insert({ folder_id: portfolioFolderSelect.value, title: portfolioTitle.value.trim(), description: portfolioDescription.value.trim(), image_url: upload.publicUrl, sort_order: Number(portfolioSortOrder.value || 0) });
-      if (error) { showNotification(error.message || 'Не удалось добавить работу', 'error'); return; }
-      portfolioAdminForm.reset(); clearCache('portfolio_items'); await renderPortfolio();
-      if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
-      showNotification('Работа добавлена', 'success');
-    } finally { setButtonState(portfolioAddBtn, false, 'Загрузка...', 'Добавить в портфолио'); }
-  }
-
-  async function handleEditWork() {
-    if (!isOwner()) return;
-    if (!portfolioEditForm?.reportValidity()) return;
-    setButtonState(editWorkBtn, true, 'Сохраняю...', 'Сохранить изменения');
-    try {
-      const payload = { updated_at: new Date().toISOString(), title: editWorkTitle?.value.trim() || '', description: editWorkDescription?.value.trim() || '' };
-      const file = editWorkImage?.files?.[0];
-      if (file) { const upload = await uploadToBucket('portfolio', file, `portfolio_edit_${state.currentSession.user.id}`); payload.image_url = upload.publicUrl; }
-      const { error } = await supabaseClient.from('portfolio_items').update(payload).eq('id', editWorkSelect.value);
-      if (error) { showNotification(error.message, 'error'); return; }
-      portfolioEditForm.reset(); clearCache('portfolio_items'); await renderPortfolio();
-      if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
-      showNotification('Работа обновлена', 'success');
-    } finally { setButtonState(editWorkBtn, false, 'Сохраняю...', 'Сохранить изменения'); }
-  }
-
-  async function handleDeleteWork(workId) {
-    if (!isOwner()) return;
-    if (!confirm('Удалить эту работу?')) return;
-    const { error } = await supabaseClient.from('portfolio_items').delete().eq('id', workId);
-    if (error) { showNotification(error.message || 'Не удалось удалить работу', 'error'); return; }
-    clearCache('portfolio_items'); await renderPortfolio();
-    if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
-    showNotification('Работа удалена', 'success');
-  }
 
   // ========== ФУНКЦИИ ОТЗЫВОВ ==========
   async function renderReviews() {
