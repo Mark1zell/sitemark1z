@@ -2614,66 +2614,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     document.body.appendChild(ov);
   };
   
-    var ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,4,8,0.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
-    
-    var img = document.createElement('img');
-    img.src = url;
-    img.style.cssText = 'max-width:90vw;max-height:70vh;object-fit:contain;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
-    
-    var bottomBar = document.createElement('div');
-    bottomBar.style.cssText = 'display:flex;gap:10px;margin-top:20px;z-index:1;';
-    
-    var btnBase = 'padding:12px 20px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:#fff;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;transition:all 0.2s;';
-    
-    var downloadBtn = document.createElement('button');
-    downloadBtn.innerHTML = '📥 Скачать';
-    downloadBtn.style.cssText = btnBase + 'background:linear-gradient(135deg,#7a3cff,#ff2fae);border-color:transparent;';
-       downloadBtn.onclick = async function(e) { 
-      e.stopPropagation();
-      try {
-        var response = await fetch(url);
-        var blob = await response.blob();
-        var blobUrl = window.URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = url.split('/').pop().split('?')[0] || 'photo.jpg';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(blobUrl);
-        showNotification('Фото скачивается...', 'success');
-      } catch(err) {
-        window.open(url, '_blank');
-      }
-    };
-    
-    var copyBtn = document.createElement('button');
-    copyBtn.innerHTML = '📋 Копировать';
-    copyBtn.style.cssText = btnBase + 'background:rgba(255,255,255,0.04);';
-    copyBtn.onclick = function(e) { e.stopPropagation(); navigator.clipboard.writeText(url); showNotification('Ссылка скопирована!','success'); };
-    
-    var shareBtn = document.createElement('button');
-    shareBtn.innerHTML = '↗ Поделиться';
-    shareBtn.style.cssText = btnBase + 'background:rgba(255,255,255,0.04);';
-    shareBtn.onclick = function(e) { e.stopPropagation(); ov.remove(); navigator.clipboard.writeText(url); showNotification('Ссылка скопирована! Отправьте в чат.','success'); };
-    
-    bottomBar.appendChild(downloadBtn);
-    bottomBar.appendChild(copyBtn);
-    bottomBar.appendChild(shareBtn);
-    
-    var closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕';
-    closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;width:42px;height:42px;border:1px solid rgba(255,255,255,0.1);border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:18px;z-index:2;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);';
-    closeBtn.onclick = function() { ov.remove(); };
-    
-    ov.appendChild(closeBtn);
-    ov.appendChild(img);
-    ov.appendChild(bottomBar);
-    ov.onclick = function(e) { if(e.target === ov) ov.remove(); };
-    document.body.appendChild(ov);
-  };
-  
   // ========== BIND STATIC EVENTS ==========
     function bindStaticEvents() {
     // Кнопка «Сообщения поддержки» только для админа
