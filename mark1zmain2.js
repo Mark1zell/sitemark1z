@@ -1620,6 +1620,8 @@ async function renderMessengerDialogs() {
 async function openConversation(conversationId, isPollingUpdate = false) {
   if (!conversationId) return;
   state.currentConversationId = conversationId;
+  var msgContainer = document.getElementById('mkzMessengerMessages');
+  if (msgContainer) msgContainer.style.overflowY = 'auto';
     // Обновляем обводку у всех кнопок диалогов
   var allBtns = document.querySelectorAll('[data-open-chat]');
   for (var b = 0; b < allBtns.length; b++) {
@@ -2782,6 +2784,8 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
     await loadUserBio();
     bindStaticEvents();   
+    var msgContainer = document.getElementById('mkzMessengerMessages');
+    if (msgContainer) msgContainer.style.overflowY = 'hidden';
     var compose = document.getElementById('mkzMessengerForm');
     if (compose) compose.style.display = 'none';
     var headActions = document.querySelector('#messenger .mkz-messenger-head__actions');
