@@ -921,25 +921,37 @@ async function renderPortfolio() {
         emptyAddBtn.onclick = async function() {
           var name = prompt('Название папки:', 'Новая папка');
           if (!name) return;
-          var result = await supabaseClient.from('portfolio_folders').insert({ 
+          
+          var payload = { 
             title: name.trim(), 
             slug: name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(), 
             sort_order: state.folders.length 
-          }).select('*');
-          console.log('Результат вставки:', result);
-          if (result.error) {
-            console.error('Ошибка:', result.error);
-            showNotification('Ошибка: ' + result.error.message, 'error');
+          };
+          console.log('Отправляю:', payload);
+          
+          var res = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/portfolio_folders', {
+            method: 'POST',
+            headers: {
+              'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+              'Authorization': 'Bearer ' + state.currentSession.access_token,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(payload)
+          });
+          
+          var data = await res.json();
+          console.log('Статус:', res.status, 'Ответ:', data);
+          
+          if (!res.ok) {
+            showNotification('Ошибка: ' + (data.message || res.status), 'error');
             return;
           }
+          
           clearCache('portfolio_folders');
           await renderPortfolio();
           showNotification('Папка создана', 'success');
         };
-        folderGrid.appendChild(emptyAddBtn);
-      }
-      return;
-    }
 
     folderGrid.innerHTML = '';
     // Кнопку + добавим ПОСЛЕ папок, а не перед
