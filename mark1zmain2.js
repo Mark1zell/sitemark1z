@@ -919,9 +919,9 @@ async function renderPortfolio() {
     addFolderBtn.onclick = async () => {
       const name = prompt('Название папки:', 'Новая папка');
       if (!name) return;
-      await supabaseClient.from('portfolio_folders').insert({ 
+     await supabaseClient.from('portfolio_folders').insert({ 
       title: name.trim(), 
-      slug: name.trim().toLowerCase().replace(/\s+/g, '-'), 
+      slug: name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(), 
       sort_order: state.folders.length 
     });
       clearCache('portfolio_folders');
