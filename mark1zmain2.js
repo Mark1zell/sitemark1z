@@ -998,14 +998,33 @@ async function renderPortfolio() {
 
     // Кнопка "+" после всех папок, только для админа
     if (isOwner()) {
-      const addFolderBtn = document.createElement('button');
+      var addFolderBtn = document.createElement('button');
       addFolderBtn.className = 'mkz-folder';
-      addFolderBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:48px;color:rgba(255,255,255,0.5);cursor:pointer;min-height:220px;';
+      addFolderBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:48px;color:rgba(255,255,255,0.5);cursor:pointer;min-height:220px;width:100%;';
       addFolderBtn.textContent = '+';
-      addFolderBtn.onclick = async () => {
-        const name = prompt('Название папки:', 'Новая папка');
+      addFolderBtn.onclick = async function() {
+        var name = prompt('Название папки:', 'Новая папка');
         if (!name) return;
-        await supabaseClient.from('portfolio_folders').insert({ title: name.trim(), sort_order: state.folders.length });
+        var payload = { 
+          title: name.trim(), 
+          slug: name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(), 
+          sort_order: state.folders.length 
+        };
+        var res = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/portfolio_folders', {
+          method: 'POST',
+          headers: {
+            'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+            'Authorization': 'Bearer ' + state.currentSession.access_token,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          var data = await res.json();
+          showNotification('Ошибка: ' + (data.message || res.status), 'error');
+          return;
+        }
         clearCache('portfolio_folders');
         await renderPortfolio();
         showNotification('Папка создана', 'success');
@@ -1054,20 +1073,6 @@ async function renderPortfolio() {
     hideLoading();
   }
 }
-
-  async function handleAddFolder() {
-    if (!folderAdminForm?.reportValidity()) return;
-    if (!isOwner()) return;
-    setButtonState(folderAddBtn, true, 'Добавление...', 'Добавить папку');
-    try {
-      let coverImageUrl = '';
-      const coverFile = folderCover?.files?.[0];
-      if (coverFile) { const upload = await uploadToBucket('portfolio', coverFile, `folder_cover_${state.currentSession.user.id}`); coverImageUrl = upload.publicUrl; }
-      const { error } = await supabaseClient.from('portfolio_folders').insert({ title: folderTitle?.value.trim() || '', slug: slugify(folderSlug?.value.trim() || folderTitle?.value.trim() || ''), sort_order: Number(folderSortOrder?.value || 0), cover_image_url: coverImageUrl });
-      if (error) { showNotification(error.message || 'Не удалось создать папку', 'error'); return; }
-      folderAdminForm.reset(); clearCache('portfolio_folders'); await renderPortfolio(); showNotification('Папка добавлена', 'success');
-    } finally { setButtonState(folderAddBtn, false, 'Добавление...', 'Добавить папку'); }
-  }
 
   async function handleEditFolderCover() {
     if (!isOwner()) return;
