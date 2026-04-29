@@ -2383,6 +2383,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var showingSupport = false;
       
       supportMsgBtn.onclick = async function() {
+        showingSupport = !showingSupport
         if (showingSupport) {
           supportMsgBtn.textContent = '👤 Мои чаты';
           supportMsgBtn.style.background = 'rgba(59,130,246,0.15)';
