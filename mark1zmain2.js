@@ -2075,6 +2075,14 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var supportBtns = messengerDialogs.querySelectorAll('[data-user-id]');
       for (var s = 0; s < supportBtns.length; s++) {
         supportBtns[s].onclick = async function() {
+          var allBtns = messengerDialogs.querySelectorAll('.mkz-dialog');
+          for (var b = 0; b < allBtns.length; b++) {
+            allBtns[b].style.border = '2px solid rgba(255,255,255,0.04)';
+            allBtns[b].style.boxShadow = 'none';
+          }
+          this.style.border = '2px solid rgba(255,47,174,0.9)';
+          this.style.boxShadow = '0 0 24px rgba(255,47,174,0.3)';
+          
           var userId = this.getAttribute('data-user-id');
           var existingChatId = await findExistingConversation(userId);
           if (existingChatId) {
@@ -2375,7 +2383,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       var showingSupport = false;
       
       supportMsgBtn.onclick = async function() {
-        showingSupport = !showingSupport;
         if (showingSupport) {
           supportMsgBtn.textContent = '👤 Мои чаты';
           supportMsgBtn.style.background = 'rgba(59,130,246,0.15)';
