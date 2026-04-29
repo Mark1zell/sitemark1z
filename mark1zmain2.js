@@ -2437,6 +2437,17 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     }
     if (messengerAttachImageBtn) messengerAttachImageBtn.style.display = 'none';
     if (messengerAttachFileBtn) messengerAttachFileBtn.style.display = 'none';
+    if (messengerSearch) {
+      messengerSearch.addEventListener('input', function() {
+        var query = messengerSearch.value.toLowerCase();
+        var allDialogs = document.querySelectorAll('.mkz-dialog');
+        for (var i = 0; i < allDialogs.length; i++) {
+          var name = (allDialogs[i].querySelector('.mkz-dialog__name')?.textContent || '').toLowerCase();
+          var preview = (allDialogs[i].querySelector('.mkz-dialog__preview')?.textContent || '').toLowerCase();
+          allDialogs[i].style.display = name.includes(query) || preview.includes(query) ? '' : 'none';
+        }
+      });
+    }
     if (burger && nav) burger.addEventListener('click', () => { nav.classList.toggle('is-open'); });
     navButtons.forEach(btn => { btn.addEventListener('click', () => { openScreen(btn.dataset.screenOpen); }); });
     if (userPillButton) userPillButton.addEventListener('click', () => openScreen('account'));
