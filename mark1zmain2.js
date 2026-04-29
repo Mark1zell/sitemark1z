@@ -2266,6 +2266,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       await renderMessengerDialogs();
       state.pendingFiles = [];
       if (typeof updateAttachMeta === 'function') updateAttachMeta();
+          
       // Автоответ бота поддержки
       if (state.currentSession?.user?.id !== OWNER_UID) {
         var { data: chatCheck } = await supabaseClient.from('chats').select('is_support').eq('id', state.currentConversationId).single();
@@ -2288,27 +2289,27 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         } else {
           botReply = 'Спасибо за обращение! 🙏 Администратор скоро ответит. Для быстрой связи: Telegram @Mark1zell';
         }
-        
-        if (botReply) {
-          setTimeout(async function() {
-            var botPayload = {
-              chat_id: state.currentConversationId,
-              sender_id: OWNER_UID,
-              content: botReply,
-              type: 'text'
-            };
-            await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
-              method: 'POST',
-              headers: {
-                'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
-                'Authorization': 'Bearer ' + state.currentSession.access_token,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-              },
-              body: JSON.stringify(botPayload)
-            });
-            await openConversation(state.currentConversationId, true);
-          }, 2000);
+      if (botReply) {
+        setTimeout(async function() {
+          var botPayload = {
+            chat_id: state.currentConversationId,
+            sender_id: OWNER_UID,
+            content: botReply,
+            type: 'text'
+          };
+          await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
+            method: 'POST',
+            headers: {
+              'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+              'Authorization': 'Bearer ' + state.currentSession.access_token,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(botPayload)
+          });
+          await openConversation(state.currentConversationId, true);
+        }, 2000);
+      }
         }
       }
     } catch (err) {
