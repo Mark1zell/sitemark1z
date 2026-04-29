@@ -1473,7 +1473,9 @@ async function renderMessengerDialogs() {
     
     // 7. Рендерим
     var personalChats = chats.filter(function(c) {
-      return String(c.id) !== String(state.supportConversationId);
+      if (String(c.id) === String(state.supportConversationId)) return false;
+      if (c.is_support === true) return false;
+      return true;
     });
     messengerDialogs.innerHTML = personalChats.map(chat => {
       // Находим собеседника для этого чата
