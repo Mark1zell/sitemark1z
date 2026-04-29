@@ -942,6 +942,10 @@ async function renderPortfolio() {
           await renderPortfolio();
           showNotification('Папка создана', 'success');
         };
+        folderGrid.appendChild(emptyAddBtn);
+      }
+      return;
+    }
 
     folderGrid.innerHTML = '';
     // Кнопку + добавим ПОСЛЕ папок, а не перед
