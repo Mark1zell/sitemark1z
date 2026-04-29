@@ -1473,14 +1473,7 @@ async function renderMessengerDialogs() {
     
     // 7. Рендерим
     var personalChats = chats.filter(function(c) {
-      if (String(c.id) === String(state.supportConversationId)) return isOwner();
-      if (!isOwner()) {
-        var chatMembers = (allMembers || []).filter(function(m) { return m.chat_id === c.id; });
-        if (chatMembers.length === 2 && chatMembers.find(function(m) { return m.user_id === OWNER_UID; }) && chatMembers.find(function(m) { return m.user_id === state.currentSession.user.id; })) {
-          return false;
-        }
-      }
-      return true;
+      return String(c.id) !== String(state.supportConversationId) || isOwner();
     });
     messengerDialogs.innerHTML = personalChats.map(chat => {
       // Находим собеседника для этого чата
