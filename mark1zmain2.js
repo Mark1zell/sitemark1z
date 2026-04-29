@@ -2266,10 +2266,11 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       await renderMessengerDialogs();
       state.pendingFiles = [];
       if (typeof updateAttachMeta === 'function') updateAttachMeta();
-            // Автоответ бота поддержки
-      if (String(state.currentConversationId) === String(state.supportConversationId) && 
-          state.currentSession?.user?.id !== OWNER_UID) {
-        var userMsg = (content || '').toLowerCase();
+      // Автоответ бота поддержки
+      if (state.currentSession?.user?.id !== OWNER_UID) {
+        var { data: chatCheck } = await supabaseClient.from('chats').select('is_support').eq('id', state.currentConversationId).single();
+        if (chatCheck && chatCheck.is_support) {
+          var userMsg = (content || '').toLowerCase();
         var botReply = '';
         
         if (userMsg.includes('цена') || userMsg.includes('стоит') || userMsg.includes('сколько') || userMsg.includes('прайс')) {
@@ -2291,7 +2292,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         if (botReply) {
           setTimeout(async function() {
             var botPayload = {
-              chat_id: state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5',
+              chat_id: state.currentConversationId,
               sender_id: OWNER_UID,
               content: botReply,
               type: 'text'
@@ -2306,11 +2307,10 @@ async function openConversation(conversationId, isPollingUpdate = false) {
               },
               body: JSON.stringify(botPayload)
             });
-            await openConversation(state.supportConversationId, true);
+            await openConversation(state.currentConversationId, true);
           }, 2000);
         }
       }
-
     } catch (err) {
       state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
       renderMessagesList();
