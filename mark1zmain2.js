@@ -2559,23 +2559,28 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
           var unreadMsg = state.conversationMessages[firstUnreadIndex];
           var dividerHtml = '<div style="text-align:center;margin:16px 0;color:rgba(255,255,255,0.3);font-size:12px;">―――――― Новые сообщения ――――――</div>';
           // Находим элемент этого сообщения и вставляем разделитель перед ним
-    setTimeout(async function() {
-      var msgEl = document.querySelector('[data-message-id="' + unreadMsg.id + '"]');
-      if (msgEl) {
-        var divider = document.createElement('div');
-        divider.className = 'mkz-message-divider';
-        divider.style.cssText = 'text-align:center;margin:16px 0;color:rgba(255,255,255,0.3);font-size:12px;';
-        divider.textContent = '―――――― Новые сообщения ――――――';
-        msgEl.parentNode.insertBefore(divider, msgEl);
-        divider.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      msgContainer.scrollTop = msgContainer.scrollHeight;
+          setTimeout(async function() {
+            var msgEl = document.querySelector('[data-message-id="' + unreadMsg.id + '"]');
+            if (msgEl) {
+              var divider = document.createElement('div');
+              divider.className = 'mkz-message-divider';
+              divider.style.cssText = 'text-align:center;margin:16px 0;color:rgba(255,255,255,0.3);font-size:12px;';
+              divider.textContent = '―――――― Новые сообщения ――――――';
+              msgEl.parentNode.insertBefore(divider, msgEl);
+              divider.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+              msgContainer.scrollTop = msgContainer.scrollHeight;
+            }
+          }, 100);
+        } else {
+          msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
+        console.log('Сообщений загружено:', state.conversationMessages.length);
+      }
+    } catch (err) {
+      console.error('openConversation error:', err);
     }
-  }, 100);
-  console.log('Сообщений загружено:', state.conversationMessages.length);
-} catch (err) {
-  console.error('openConversation error:', err);
-}
+  }
   function renderConversationMessage(message) {
     const isOutgoing = String(message.user_id) === String(state.currentSession?.user?.id) && message.sender_mode !== 'support_brand';
     const author = getMessageAuthorIdentity(message);
