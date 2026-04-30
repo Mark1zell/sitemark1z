@@ -2601,9 +2601,7 @@ setTimeout(() => {
 try {
   const response = await fetch('https://mark1z-proxy.keklolorbidollol321.workers.dev', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'microsoft/phi-3-mini-128k-instruct:free',
       messages: [
@@ -2615,10 +2613,7 @@ try {
           дизайн сайтов (от 3000₽), вёрстка (от 15000₽), дизайн приложений (от 3000₽).
           Отвечай дружелюбно, коротко и по делу. Если нужно — предложи связаться с @Mark1zell в Telegram.`
         },
-        {
-          role: 'user',
-          content: userMsg
-        }
+        { role: 'user', content: userMsg }
       ],
       temperature: 0.7,
       max_tokens: 500
@@ -2652,10 +2647,8 @@ try {
     });
     await openConversation(state.currentConversationId, true);
   }, 500);
-  
 } catch (err) {
-  console.error('❌ Ошибка:', err);
-  // fallback ответ
+  console.error('❌ Ошибка нейросети:', err);
   setTimeout(async () => {
     await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
       method: 'POST',
