@@ -2179,28 +2179,45 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     console.error('openConversation error:', err);
   }
   
-  // Обновляем выделение в списке диалогов (розовая обводка)
-  setTimeout(() => {
-    const allDialogs = document.querySelectorAll('.mkz-dialog');
-    console.log('🎨 Обновление обводки для чата:', conversationId);
-    
-    // Сначала сбрасываем все
-    allDialogs.forEach(dialog => {
-      dialog.classList.remove('mkz-dialog--active');
-      dialog.style.border = '2px solid rgba(255,255,255,0.04)';
-      dialog.style.boxShadow = 'none';
-    });
-    
-    // Затем подсвечиваем активный
-    const activeDialog = document.querySelector(`.mkz-dialog[data-open-chat="${conversationId}"]`);
-    if (activeDialog) {
-      activeDialog.classList.add('mkz-dialog--active');
-      activeDialog.style.border = '2px solid rgba(255,47,174,0.9)';
-      activeDialog.style.boxShadow = '0 0 24px rgba(255,47,174,0.3), inset 0 0 0 1px rgba(255,47,174,0.2)';
-      activeDialog.style.background = 'rgba(255,47,174,0.12)';
-      console.log('✅ Обводка применена');
+// Обновляем выделение в списке диалогов (розовая обводка)
+setTimeout(() => {
+  const allDialogs = document.querySelectorAll('.mkz-dialog');
+  console.log('🎨 Обновление обводки для чата:', conversationId);
+  console.log('📋 Найдено диалогов:', allDialogs.length);
+  
+  // ЖЁСТКИЙ СБРОС — проходим по каждому диалогу
+  allDialogs.forEach(dialog => {
+    // Убираем класс
+    dialog.classList.remove('mkz-dialog--active');
+    // Сбрасываем ВСЕ inline-стили, которые могли быть применены
+    dialog.style.border = '';
+    dialog.style.boxShadow = '';
+    dialog.style.background = '';
+    dialog.style.outline = '';
+    // Возвращаем стандартную рамку (она должна быть в CSS или inline из рендера)
+    // Но не трогаем background, где аватарка!
+  });
+  
+  // Затем находим активный чат
+  let activeDialog = null;
+  allDialogs.forEach(dialog => {
+    const btnChatId = dialog.getAttribute('data-open-chat');
+    if (btnChatId && String(btnChatId) === String(conversationId)) {
+      activeDialog = dialog;
     }
-  }, 150);
+  });
+  
+  if (activeDialog) {
+    // Применяем стили только к активному
+    activeDialog.classList.add('mkz-dialog--active');
+    activeDialog.style.border = '2px solid rgba(255,47,174,0.9)';
+    activeDialog.style.boxShadow = '0 0 24px rgba(255,47,174,0.3), inset 0 0 0 1px rgba(255,47,174,0.2)';
+    activeDialog.style.background = 'rgba(255,47,174,0.12)';
+    console.log('✅ Обводка применена к чату:', conversationId);
+  } else {
+    console.log('⚠️ Не найден диалог с ID:', conversationId);
+  }
+}, 150);
 }
   
   function renderConversationMessage(message) {
