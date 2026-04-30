@@ -2603,7 +2603,7 @@ try {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'openai/gpt-3.5-turbo:free',
+      model: 'deepseek/deepseek-r1-zero:free',
       messages: [
         {
           role: 'system',
