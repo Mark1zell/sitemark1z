@@ -1710,6 +1710,33 @@ async function renderMessengerDialogs() {
       if (String(chat.id) === String(state.supportConversationId)) {
         openChatId = state.supportConversationId || 'daba25cb-e4e2-44b3-be59-36f0f5e38ce5';
       }
+
+        // ========== ЦВЕТНОЙ ИНДИКАТОР РЯДОМ С ИМЕНЕМ ==========
+  let statusDot = '';
+  
+  if (chat.is_group) {
+    statusDot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8b5cf6;margin-right:8px;"></span>';
+  } else if (otherMemberId && profilesMap[otherMemberId]) {
+    const profile = profilesMap[otherMemberId];
+    if (profile.is_online) {
+      statusDot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:8px;box-shadow:0 0 6px #22c55e;"></span>';
+    } else if (profile.last_seen_at) {
+      const lastSeen = new Date(profile.last_seen_at);
+      const now = new Date();
+      const diffMins = Math.floor((now - lastSeen) / 60000);
+      if (diffMins < 5) {
+        statusDot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f97316;margin-right:8px;"></span>';
+      } else {
+        statusDot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#64748b;margin-right:8px;"></span>';
+      }
+    } else {
+      statusDot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#64748b;margin-right:8px;"></span>';
+    }
+  } else if (String(chat.id) === String(state.supportConversationId)) {
+    statusDot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:8px;"></span>';
+  }
+  
+  const nameWithDot = statusDot + escapeHtml(displayName);
       
       var bgStyle = avatarUrl 
         ? 'background:linear-gradient(0deg,rgba(0,0,0,0.75),rgba(0,0,0,0.65)),url(' + escapeHtml(avatarUrl) + ') center/cover no-repeat;' 
@@ -1724,7 +1751,7 @@ async function renderMessengerDialogs() {
         '<div style="width:46px;height:46px;min-width:46px;border-radius:50%;' + (avatarUrl ? 'background-image:url(' + escapeHtml(avatarUrl) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);') + 'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;">' + (avatarUrl ? '' : getInitial(displayName, 'П')) + '</div>' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
-            '<span style="font-weight:600;font-size:14px;color:#fff;text-shadow:0 0 8px rgba(0,0,0,0.5);">' + escapeHtml(displayName) + '</span>' +
+            '<span style="font-weight:600;font-size:14px;color:#fff;text-shadow:0 0 8px rgba(0,0,0,0.5);">' + nameWithDot + '</span>' +
             (lastMsg && lastMsg.sender_id !== myId && !isActive ? ' <span style="display:inline-block;width:8px;height:8px;background:#ff2fae;border-radius:50%;"></span>' : '') +
             (timeText ? '<span style="font-size:11px;color:rgba(255,255,255,0.5);">' + timeText + '</span>' : '') +
           '</div>' +
