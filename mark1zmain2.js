@@ -1749,7 +1749,7 @@ async function renderMessengerDialogs() {
       var openChatId = chat.id;
       return '<button class="mkz-dialog" type="button" data-open-chat="' + openChatId + '" style="' + bgStyle + 'border-radius:16px;border:2px solid ' + borderColor + ';' + outlineStyle + 'box-shadow:' + boxShadow + ';transition:all 0.3s ease;padding:14px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:6px;position:relative;overflow:hidden;">' +
         '<div style="width:46px;height:46px;min-width:46px;border-radius:50%;' + (avatarUrl ? 'background-image:url(' + escapeHtml(avatarUrl) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);') + 'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;">' + (avatarUrl ? '' : getInitial(displayName, 'П')) + '</div>' +
-        '<div style="flex:1;min-width:0;">' +
+        '<div style="flex:1;min-width:0;width:100%;">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
             '<span style="font-weight:600;font-size:14px;color:#fff;text-shadow:0 0 8px rgba(0,0,0,0.5);">' + nameWithDot + '</span>' +
             (lastMsg && lastMsg.sender_id !== myId && !isActive ? ' <span style="display:inline-block;width:8px;height:8px;background:#ff2fae;border-radius:50%;"></span>' : '') +
