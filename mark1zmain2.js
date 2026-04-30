@@ -3416,6 +3416,7 @@ initSupportDialogsBackButton();
         await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
       }, 0);
     });
+    
     document.addEventListener('visibilitychange', async function() {
       await updatePresence(!document.hidden);
     });
@@ -3423,5 +3424,7 @@ initSupportDialogsBackButton();
     window.addEventListener('beforeunload', function() {
       updatePresence(false);
     });
+
+  })();
 
 })();
