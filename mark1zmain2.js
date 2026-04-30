@@ -2535,7 +2535,6 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
         if (isPollingUpdate && !hasNew) {
           msgContainer.scrollTop = oldScrollTop;
         } else {
-          // Ищем первое непрочитанное сообщение
           var lastReadAt = null;
           if (members) {
             var memberRecord = members.find(function(m) { return m.user_id === state.currentSession.user.id; });
@@ -2575,11 +2574,9 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
           }
           console.log('Сообщений загружено:', state.conversationMessages.length);
         }
-    } catch (err) {
-      console.error('openConversation error:', err);
+      }
     }
-  }
-
+  
   function renderConversationMessage(message) {
     const isOutgoing = String(message.user_id) === String(state.currentSession?.user?.id) && message.sender_mode !== 'support_brand';
     const author = getMessageAuthorIdentity(message);
