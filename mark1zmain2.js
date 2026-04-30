@@ -2189,7 +2189,6 @@ async function openConversation(conversationId, isPollingUpdate = false) {
       dialog.classList.remove('mkz-dialog--active');
       dialog.style.border = '2px solid rgba(255,255,255,0.04)';
       dialog.style.boxShadow = 'none';
-      dialog.style.background = '';
     });
     
     // Затем подсвечиваем активный
