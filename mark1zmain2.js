@@ -1261,30 +1261,335 @@ async function renderPortfolio() {
   }
 
   // ========== НОВОСТИ ==========
-  async function renderNews() {
-    try {
-      if (!newsList) return;
-      const { data: posts, error } = await supabaseClient.from('news_posts').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      state.newsPosts = posts || [];
-      if (!state.newsPosts.length) {
-        newsList.innerHTML = '<div class="mkz-card"><p>Пока нет новостей.</p></div>';
-        return;
-      }
-      newsList.innerHTML = state.newsPosts.map(post => `
-        <div class="mkz-news-card">
-          <h3>${safeText(post.title || 'Новость')}</h3>
-          <div class="mkz-news-date">${formatDateTime(post.created_at)}</div>
-          <div class="mkz-news-text">${nl2brSafe(post.text || '')}</div>
-          ${post.image_url ? `<img src="${post.image_url}" style="max-width:100%; border-radius:12px; margin-top:12px;">` : ''}
-          ${post.figma_url ? `<a href="${post.figma_url}" target="_blank" class="mkz-btn mkz-btn--ghost" style="margin-top:12px;">Открыть ссылку</a>` : ''}
-        </div>
-      `).join('');
-    } catch (err) {
-      console.error('renderNews error:', err);
-      if (newsList) newsList.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки новостей</p></div>';
+async function renderNews() {
+  try {
+    const { data: news, error: newsError } = await supabaseClient
+      .from('news_posts')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (newsError) throw newsError;
+    state.newsPosts = news || [];
+
+    // Загружаем лайки и комментарии
+    const { data: likes } = await supabaseClient.from('news_likes').select('*');
+    const { data: comments } = await supabaseClient
+      .from('news_comments')
+      .select('*, profiles:user_id(*)')
+      .order('created_at', { ascending: true });
+    
+    state.newsLikes = likes || [];
+    state.newsComments = comments || [];
+
+    if (!newsList) return;
+
+    if (!state.newsPosts.length) {
+      newsList.innerHTML = '<div class="mkz-card"><h3>Новостей пока нет</h3><p>Будьте в курсе событий!</p></div>';
+      return;
     }
+
+    newsList.innerHTML = state.newsPosts.map(post => {
+      const postLikes = state.newsLikes.filter(l => l.post_id === post.id).length;
+      const isLiked = state.currentSession && state.newsLikes.some(l => l.post_id === post.id && l.user_id === state.currentSession.user.id);
+      const postComments = (state.newsComments || []).filter(c => c.post_id === post.id);
+      const isOwnerPost = isOwner();
+      
+      return `
+        <article class="mkz-news-card" data-news-id="${post.id}" style="margin-bottom: 24px; background: rgba(255,255,255,0.05); border-radius: 16px; overflow: hidden;">
+          ${post.image_url ? `
+            <div class="mkz-news-card__image" style="position: relative;">
+              <img src="${safeUrl(post.image_url)}" alt="${safeText(post.title)}" style="width: 100%; max-height: 400px; object-fit: cover; cursor: pointer;" onclick="showImageViewer('${safeUrl(post.image_url)}', '${safeText(post.title)}')">
+              ${isOwnerPost ? `
+                <div class="mkz-work-card__admin-overlay" style="position: absolute; top: 12px; right: 12px;">
+                  <button class="mkz-admin-icon" data-edit-news-image="${post.id}" title="Сменить фото">🖼️</button>
+                  <button class="mkz-admin-icon" data-delete-news="${post.id}" title="Удалить пост">🗑️</button>
+                </div>
+              ` : ''}
+            </div>
+          ` : isOwnerPost ? `
+            <div style="padding: 16px; background: rgba(0,0,0,0.3); text-align: center;">
+              <button class="mkz-btn mkz-btn--ghost" data-add-news-image="${post.id}">➕ Добавить изображение</button>
+            </div>
+          ` : ''}
+          
+          <div class="mkz-news-card__content" style="padding: 20px;">
+            <div class="mkz-news-card__header">
+              ${isOwnerPost ? `
+                <input type="text" class="mkz-news-title-input" data-news-title="${post.id}" value="${safeText(post.title)}" style="width: 100%; font-size: 24px; font-weight: bold; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; color: #fff;">
+              ` : `
+                <h3 style="font-size: 24px; margin-bottom: 12px;">${safeText(post.title)}</h3>
+              `}
+            </div>
+            
+            ${isOwnerPost ? `
+              <textarea class="mkz-news-text-input" data-news-text="${post.id}" style="width: 100%; min-height: 100px; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; color: #fff; resize: vertical;">${safeText(post.content)}</textarea>
+            ` : `
+              <div class="mkz-news-card__text" style="margin-bottom: 16px; line-height: 1.6;">${nl2brSafe(post.content)}</div>
+            `}
+            
+            ${post.contest_title ? `
+              <div class="mkz-news-card__contest" style="background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <h4 style="color: #ffd700; margin-bottom: 8px;">🏆 КОНКУРС: ${safeText(post.contest_title)}</h4>
+                <p style="margin-bottom: 8px;">${safeText(post.contest_description)}</p>
+                <p style="color: #ffd700;">🎁 Приз: ${safeText(post.contest_prize)}</p>
+                <p>📅 Дедлайн: ${formatDateTime(post.contest_deadline)}</p>
+                ${isOwnerPost ? `
+                  <button class="mkz-btn mkz-btn--ghost" data-edit-contest="${post.id}" style="margin-top: 8px;">✎ Редактировать конкурс</button>
+                ` : ''}
+              </div>
+            ` : ''}
+            
+            <div class="mkz-news-card__meta" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 14px; color: rgba(255,255,255,0.6);">
+              <span>📅 ${formatDateTime(post.created_at)}</span>
+              <div style="display: flex; gap: 16px;">
+                <button class="mkz-news-like-btn ${isLiked ? 'is-active' : ''}" data-like-post="${post.id}" style="background: none; border: none; cursor: pointer; color: ${isLiked ? '#ff4444' : 'rgba(255,255,255,0.6)'}; font-size: 16px;">
+                  ❤️ ${postLikes}
+                </button>
+                <button class="mkz-news-comment-toggle" data-toggle-comments="${post.id}" style="background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.6);">
+                  💬 ${postComments.length}
+                </button>
+              </div>
+            </div>
+            
+            ${isOwnerPost ? `
+              <div style="display: flex; gap: 12px; margin-bottom: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <button class="mkz-btn mkz-btn--primary" data-pin-news="${post.id}" style="flex: 1;">📌 ${post.is_pinned ? 'Открепить' : 'Закрепить'}</button>
+                <button class="mkz-btn mkz-btn--success" data-save-news="${post.id}" style="flex: 1;">💾 Сохранить изменения</button>
+              </div>
+            ` : ''}
+            
+            <div class="mkz-news-comments-section" id="comments-${post.id}" style="display: none; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+              <div class="mkz-news-comments-list" data-comments-list="${post.id}">
+                ${postComments.map(comment => `
+                  <div class="mkz-news-comment" style="margin-bottom: 12px; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                      <strong style="font-size: 14px;">${safeText(comment.profiles?.username || 'Пользователь')}</strong>
+                      <span style="font-size: 12px; opacity: 0.6;">${formatDateTime(comment.created_at)}</span>
+                    </div>
+                    <div style="font-size: 14px;">${safeText(comment.content)}</div>
+                    ${isOwner() ? `
+                      <button class="mkz-btn mkz-btn--danger mkz-delete-comment" data-delete-comment="${comment.id}" style="font-size: 10px; margin-top: 4px;">Удалить</button>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+              <div class="mkz-news-comment-form" style="margin-top: 12px; display: flex; gap: 8px;">
+                <input type="text" class="mkz-news-comment-input" data-comment-input="${post.id}" placeholder="Написать комментарий..." style="flex: 1; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 8px 16px; color: #fff;">
+                <button class="mkz-btn mkz-btn--primary mkz-submit-comment" data-submit-comment="${post.id}" style="padding: 8px 16px;">Отправить</button>
+              </div>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    // Сохранение изменений для админа
+    $$('[data-save-news]', newsList).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const postId = btn.dataset.saveNews;
+        const titleInput = $(`[data-news-title="${postId}"]`);
+        const textInput = $(`[data-news-text="${postId}"]`);
+        
+        const newTitle = titleInput?.value.trim() || 'Без названия';
+        const newText = textInput?.value.trim() || '';
+        
+        showLoading('Сохранение...');
+        const { error } = await supabaseClient
+          .from('news_posts')
+          .update({ title: newTitle, content: newText })
+          .eq('id', postId);
+        
+        if (error) {
+          showNotification('Ошибка: ' + error.message, 'error');
+        } else {
+          showNotification('Пост обновлен', 'success');
+          await renderNews();
+        }
+        hideLoading();
+      });
+    });
+
+    // Добавление/смена изображения
+    $$('[data-edit-news-image], [data-add-news-image]', newsList).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const postId = btn.dataset.editNewsImage || btn.dataset.addNewsImage;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async () => {
+          const file = input.files[0];
+          if (!file) return;
+          showLoading('Загрузка...');
+          try {
+            const upload = await uploadToBucket('news', file, `news_${postId}`);
+            await supabaseClient.from('news_posts').update({ image_url: upload.publicUrl }).eq('id', postId);
+            showNotification('Изображение обновлено', 'success');
+            await renderNews();
+          } catch (err) {
+            showNotification('Ошибка загрузки', 'error');
+          } finally {
+            hideLoading();
+          }
+        };
+        input.click();
+      });
+    });
+
+    // Закрепление поста
+    $$('[data-pin-news]', newsList).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const postId = btn.dataset.pinNews;
+        const post = state.newsPosts.find(p => p.id === postId);
+        const newPinnedState = !post.is_pinned;
+        
+        const { error } = await supabaseClient
+          .from('news_posts')
+          .update({ is_pinned: newPinnedState })
+          .eq('id', postId);
+        
+        if (!error) {
+          showNotification(newPinnedState ? 'Пост закреплен' : 'Пост откреплен', 'success');
+          await renderNews();
+        }
+      });
+    });
+
+    // Удаление поста
+    $$('[data-delete-news]', newsList).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('Удалить этот пост?')) return;
+        const postId = btn.dataset.deleteNews;
+        showLoading('Удаление...');
+        await supabaseClient.from('news_posts').delete().eq('id', postId);
+        await supabaseClient.from('news_likes').delete().eq('post_id', postId);
+        await supabaseClient.from('news_comments').delete().eq('post_id', postId);
+        clearCache('news_posts');
+        await renderNews();
+        showNotification('Пост удален', 'success');
+        hideLoading();
+      });
+    });
+
+    // Лайки
+    $$('[data-like-post]', newsList).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!state.currentSession) {
+          showNotification('Войдите чтобы лайкать', 'warning');
+          openScreen('account');
+          return;
+        }
+        const postId = btn.dataset.likePost;
+        const existing = state.newsLikes.find(l => l.post_id === postId && l.user_id === state.currentSession.user.id);
+        
+        if (existing) {
+          await supabaseClient.from('news_likes').delete().eq('id', existing.id);
+        } else {
+          await supabaseClient.from('news_likes').insert({ post_id: postId, user_id: state.currentSession.user.id });
+        }
+        await renderNews();
+      });
+    });
+
+    // Переключение комментариев
+    $$('[data-toggle-comments]', newsList).forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const postId = btn.dataset.toggleComments;
+        const commentsDiv = document.getElementById(`comments-${postId}`);
+        if (commentsDiv) {
+          const isVisible = commentsDiv.style.display === 'block';
+          commentsDiv.style.display = isVisible ? 'none' : 'block';
+        }
+      });
+    });
+
+    // Отправка комментария
+    $$('[data-submit-comment]', newsList).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!state.currentSession) {
+          showNotification('Войдите чтобы комментировать', 'warning');
+          openScreen('account');
+          return;
+        }
+        const postId = btn.dataset.submitComment;
+        const input = $(`[data-comment-input="${postId}"]`);
+        const content = input?.value.trim();
+        if (!content) {
+          showNotification('Напишите комментарий', 'warning');
+          return;
+        }
+        
+        const { error } = await supabaseClient.from('news_comments').insert({
+          post_id: postId,
+          user_id: state.currentSession.user.id,
+          content: content
+        });
+        
+        if (error) {
+          showNotification('Ошибка: ' + error.message, 'error');
+        } else {
+          input.value = '';
+          await renderNews();
+          showNotification('Комментарий добавлен', 'success');
+          const commentsDiv = document.getElementById(`comments-${postId}`);
+          if (commentsDiv) commentsDiv.style.display = 'block';
+        }
+      });
+    });
+
+    // Удаление комментария (только админ)
+    $$('[data-delete-comment]', newsList).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!isOwner()) return;
+        const commentId = btn.dataset.deleteComment;
+        await supabaseClient.from('news_comments').delete().eq('id', commentId);
+        await renderNews();
+        showNotification('Комментарий удален', 'success');
+      });
+    });
+
+  } catch (err) {
+    console.error('renderNews error', err);
+    showNotification('Ошибка загрузки новостей', 'error');
   }
+}
+
+async function editContest(postId) {
+  if (!isOwner()) return;
+  
+  const post = state.newsPosts.find(p => p.id === postId);
+  if (!post) return;
+  
+  const title = prompt('Название конкурса:', post.contest_title || '');
+  const description = prompt('Описание конкурса:', post.contest_description || '');
+  const prize = prompt('Приз:', post.contest_prize || '');
+  const deadline = prompt('Дедлайн (YYYY-MM-DD):', post.contest_deadline?.split('T')[0] || '');
+  
+  showLoading('Сохранение конкурса...');
+  
+  const { error } = await supabaseClient.from('news_posts').update({
+    contest_title: title || null,
+    contest_description: description || null,
+    contest_prize: prize || null,
+    contest_deadline: deadline || null
+  }).eq('id', postId);
+  
+  hideLoading();
+  
+  if (error) {
+    showNotification('Ошибка: ' + error.message, 'error');
+  } else {
+    showNotification('Конкурс обновлен', 'success');
+    await renderNews();
+  }
+}
 
   async function handleAddNewsPost() { console.warn('handleAddNewsPost: не реализована'); }
   async function handleDeleteNewsPost(postId) { console.warn('handleDeleteNewsPost: не реализована'); }
