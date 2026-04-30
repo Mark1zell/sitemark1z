@@ -2576,6 +2576,7 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
         }
       }
     }
+  }
   
   function renderConversationMessage(message) {
     const isOutgoing = String(message.user_id) === String(state.currentSession?.user?.id) && message.sender_mode !== 'support_brand';
