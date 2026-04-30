@@ -2807,7 +2807,15 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           // 2. Если не нашли — создаём новый
           console.log('🆕 Создаём новый чат');
           
-          var newChatId = crypto.randomUUID();
+          // Универсальная генерация ID (работает везде)
+        function generateUUID() {
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0;
+            var v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+        }
+var newChatId = generateUUID();
           console.log('🔑 Сгенерирован ID чата:', newChatId);
           
           var createChatRes = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
