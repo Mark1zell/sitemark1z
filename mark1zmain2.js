@@ -846,6 +846,37 @@ function openFolder(folderId) {
       };
       currentFolderWorks.appendChild(addBtn);
     }
+        // Кнопка смены обложки папки (только для админа)
+    if (isOwner()) {
+      const coverBtn = document.createElement('button');
+      coverBtn.innerHTML = '🖼️ Сменить обложку папки';
+      coverBtn.className = 'mkz-btn mkz-btn--ghost';
+      coverBtn.style.marginTop = '8px';
+      coverBtn.onclick = async () => {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.onchange = async () => {
+          const file = fileInput.files[0];
+          if (!file) return;
+          showLoading('Загрузка обложки...');
+          try {
+            const upload = await uploadToBucket('portfolio', file, `folder_cover_${folderId}`);
+            await supabaseClient.from('portfolio_folders').update({ cover_image_url: upload.publicUrl }).eq('id', folderId);
+            clearCache('portfolio_folders');
+            await renderPortfolio();
+            openFolder(folderId);
+            showNotification('Обложка папки обновлена', 'success');
+          } catch (err) {
+            showNotification('Ошибка загрузки', 'error');
+          } finally {
+            hideLoading();
+          }
+        };
+        fileInput.click();
+      };
+      currentFolderWorks.appendChild(coverBtn);
+    }
 
     // Inline редактирование названия (клик по h3)
     $$('.mkz-work-card__body h3', currentFolderWorks).forEach(titleEl => {
