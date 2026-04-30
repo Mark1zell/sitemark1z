@@ -2566,10 +2566,10 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
                 divider.textContent = '―――――― Новые сообщения ――――――';
                 msgEl.parentNode.insertBefore(divider, msgEl);
                 divider.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else {
-                  msgContainer.scrollTop = msgContainer.scrollHeight;
-                }
-              }, 100);
+              } else {
+                msgContainer.scrollTop = msgContainer.scrollHeight;
+              }
+            }, 100);
             } else {
               msgContainer.scrollTop = msgContainer.scrollHeight;
             }
