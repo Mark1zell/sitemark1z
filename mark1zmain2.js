@@ -2585,51 +2585,104 @@ setTimeout(() => {
       var meta = document.getElementById('mkzMessengerAttachMeta');
       if (meta) meta.innerHTML = '';
           
-      // Автоответ бота поддержки
+// ========== УМНЫЙ БОТ ЧЕРЕЗ НЕЙРОСЕТЬ (OpenRouter) ==========
       if (state.currentSession?.user?.id !== OWNER_UID) {
-        var { data: chatCheck } = await supabaseClient.from('chats').select('is_support').eq('id', state.currentConversationId).single();
-        if (chatCheck && chatCheck.is_support) {
-          var userMsg = (content || '').toLowerCase();
-        var botReply = '';
+        const { data: chatInfo } = await supabaseClient
+          .from('chats')
+          .select('is_support')
+          .eq('id', state.currentConversationId)
+          .single();
         
-        if (userMsg.includes('цена') || userMsg.includes('стоит') || userMsg.includes('сколько') || userMsg.includes('прайс')) {
-          botReply = 'Здравствуйте! Вот примерные цены:\n📌 Логотип — 600₽\n📌 Баннер/постер — 500₽\n📌 Аватарка — 500₽\n📌 Дизайн сайта — от 3000₽\n📌 Вёрстка сайта — от 15000₽\n\nТочную стоимость скажу после обсуждения деталей. Напишите @Mark1zell в Telegram!';
-        } else if (userMsg.includes('срок') || userMsg.includes('долго') || userMsg.includes('сколько дней')) {
-          botReply = 'Сроки зависят от проекта. Логотип/баннер — 1-2 дня. Сайт — от 3 дней до недели. Приложение — до 2 недель. Всё обсуждаемо!';
-        } else if (userMsg.includes('привет') || userMsg.includes('здрав') || userMsg.includes('хай') || userMsg.includes('ку')) {
-          botReply = 'Привет! 👋 Я бот Mark1z Design. Напишите ваш вопрос или заказ, и я отвечу или передам администратору. Для связи: @Mark1zell в Telegram.';
-        } else if (userMsg.includes('пример') || userMsg.includes('портфолио') || userMsg.includes('работы')) {
-          botReply = 'Портфолио можно посмотреть в разделе «Портфолио» на сайте или запросить в Telegram: @Mark1zell';
-        } else if (userMsg.includes('контакт') || userMsg.includes('связь') || userMsg.includes('телеграм') || userMsg.includes('tg')) {
-          botReply = 'Связаться с дизайнером: Telegram @Mark1zell, ВКонтакте vk.com/mark1zyyy';
-        } else if (userMsg.includes('оплат') || userMsg.includes('плат') || userMsg.includes('карт')) {
-          botReply = 'Оплата принимается на карту Т-Банка. Ссылка на оплату есть в разделе «Заказать» на сайте.';
-        } else {
-          botReply = 'Спасибо за обращение! 🙏 Администратор скоро ответит. Для быстрой связи: Telegram @Mark1zell';
+        if (chatInfo?.is_support) {
+          const userMsg = content || '';
+          if (userMsg.trim()) {
+            console.log('🤖 Отправляем запрос к нейросети...');
+            
+            try {
+              const OPENROUTER_API_KEY = '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';
+              
+              const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                  'HTTP-Referer': window.location.origin,
+                  'X-Title': 'Mark1z Design'
+                },
+                body: JSON.stringify({
+                  model: 'google/gemini-2.0-flash-lite-preview-02-05:free',
+                  messages: [
+                    {
+                      role: 'system',
+                      content: `Ты — Mark1z Design, вежливый и профессиональный AI-ассистент дизайнера. 
+                      Ты помогаешь клиентам с заказами, отвечаешь на вопросы о дизайне, ценах, сроках.
+                      Твои услуги: логотипы (от 600₽), баннеры (от 500₽), аватарки (от 500₽), 
+                      дизайн сайтов (от 3000₽), вёрстка (от 15000₽), дизайн приложений (от 3000₽).
+                      Отвечай дружелюбно, коротко и по делу. Если нужно — предложи связаться с @Mark1zell в Telegram.`
+                    },
+                    {
+                      role: 'user',
+                      content: userMsg
+                    }
+                  ],
+                  temperature: 0.7,
+                  max_tokens: 500
+                })
+              });
+              
+              const data = await response.json();
+              let botReply = '🙏 Спасибо за обращение! Администратор скоро ответит. Для быстрой связи: Telegram @Mark1zell';
+              
+              if (data && data.choices && data.choices[0] && data.choices[0].message) {
+                botReply = data.choices[0].message.content;
+                console.log('✅ Ответ нейросети получен');
+              } else {
+                console.error('Ошибка API:', data);
+              }
+              
+              setTimeout(async () => {
+                await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
+                  method: 'POST',
+                  headers: {
+                    'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+                    'Authorization': 'Bearer ' + state.currentSession.access_token,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    chat_id: state.currentConversationId,
+                    sender_id: OWNER_UID,
+                    content: botReply,
+                    type: 'text'
+                  })
+                });
+                
+                await openConversation(state.currentConversationId, true);
+              }, 500);
+              
+            } catch (err) {
+              console.error('❌ Ошибка нейросети:', err);
+              setTimeout(async () => {
+                await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
+                  method: 'POST',
+                  headers: {
+                    'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+                    'Authorization': 'Bearer ' + state.currentSession.access_token,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    chat_id: state.currentConversationId,
+                    sender_id: OWNER_UID,
+                    content: '🔧 Технические работы с AI. Напишите @Mark1zell в Telegram для быстрой связи!',
+                    type: 'text'
+                  })
+                });
+                await openConversation(state.currentConversationId, true);
+              }, 500);
+            }
+          }
         }
-      if (botReply) {
-        setTimeout(async function() {
-          var botPayload = {
-            chat_id: state.currentConversationId,
-            sender_id: OWNER_UID,
-            content: botReply,
-            type: 'text'
-          };
-          await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
-            method: 'POST',
-            headers: {
-              'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
-              'Authorization': 'Bearer ' + state.currentSession.access_token,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation'
-            },
-            body: JSON.stringify(botPayload)
-          });
-          await openConversation(state.currentConversationId, true);
-        }, 2000);
       }
-        }
-      }
+      
     } catch (err) {
       state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
       renderMessagesList();
