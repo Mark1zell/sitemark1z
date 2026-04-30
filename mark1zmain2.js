@@ -2042,7 +2042,21 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         showNotification('Чат удалён полностью', 'success');
           setTimeout(async function() {
           await fetchMessengerData();
-          await renderMessengerDialogs();
+          // Обновляем только этот диалог
+const dialogEl = document.querySelector(`.mkz-dialog[data-open-chat="${conversationId}"]`);
+if (dialogEl) {
+  dialogEl.style.border = '2px solid rgba(255,47,174,0.9)';
+  dialogEl.style.boxShadow = '0 0 24px rgba(255,47,174,0.3)';
+  dialogEl.classList.add('mkz-dialog--active');
+}
+// Удаляем класс у всех остальных
+document.querySelectorAll('.mkz-dialog').forEach(d => {
+  if (d.getAttribute('data-open-chat') !== String(conversationId)) {
+    d.classList.remove('mkz-dialog--active');
+    d.style.border = '';
+    d.style.boxShadow = '';
+  }
+});
         }, 500);
       };
     } else {
@@ -2267,7 +2281,6 @@ setTimeout(() => {
       if (newMessages && newMessages.length > 0) {
         console.log('📨 Найдено новых сообщений (polling):', newMessages.length);
         state.conversationMessages = [...state.conversationMessages, ...newMessages];
-        await renderMessengerDialogs();
         if (state.currentConversationId) await openConversation(state.currentConversationId, true);
       }
     }, 3000);
@@ -2512,7 +2525,6 @@ setTimeout(() => {
         state.conversationMessages[idx] = resultData[0];
       }
       renderMessagesList();
-      await renderMessengerDialogs();
       state.pendingFiles = [];
       var meta = document.getElementById('mkzMessengerAttachMeta');
       if (meta) meta.innerHTML = '';
