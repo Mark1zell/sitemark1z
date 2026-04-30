@@ -902,7 +902,6 @@ function openFolder(folderId) {
         });
       }
     }
-  }
 
   if (folderBrowserList) folderBrowserList.style.display = 'none';
   if (folderInside) folderInside.style.display = 'block';
