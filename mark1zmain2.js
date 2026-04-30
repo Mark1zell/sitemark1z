@@ -872,7 +872,7 @@ function openFolder(folderId) {
           };
           input.onkeydown = function(ev) { if (ev.key === 'Enter') input.blur(); if (ev.key === 'Escape') { input.value = oldValue; input.blur(); } };
         });
-      });
+      }
 
       if (isOwner()) {
         $$('.mkz-work-card__body p', currentFolderWorks).forEach(descEl => {
