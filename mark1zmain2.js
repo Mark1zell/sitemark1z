@@ -2749,7 +2749,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     if (backToPeopleBtn) backToPeopleBtn.addEventListener('click', () => openScreen('people'));
     if (updateBioBtn) updateBioBtn.addEventListener('click', saveUserBio);
 
-    // ========== КНОПКА «НАПИСАТЬ» ИЗ ПРОФИЛЯ (ФИКС 2 В 1: нет дублей + проверки) ==========
+    // ========== КНОПКА «НАПИСАТЬ» ИЗ ПРОФИЛЯ (ИСПРАВЛЕНА) ==========
     if (openProfileMessengerBtn) {
       // Убираем старые обработчики
       const newBtn = openProfileMessengerBtn.cloneNode(true);
@@ -2784,7 +2784,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           return;
         }
 
-                showLoading('Открываем чат...');
+        showLoading('Открываем чат...');
         
         try {
           // 1. Сначала ищем существующий чат
@@ -2808,22 +2808,22 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           console.log('🆕 Создаём новый чат');
           
           var newChatId = crypto.randomUUID();
+          console.log('🔑 Сгенерирован ID чата:', newChatId);
+          
           var createChatRes = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
             method: 'POST',
             headers: {
               'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
               'Authorization': 'Bearer ' + state.currentSession.access_token,
               'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
+              'Prefer': 'return=representation'
             },
-            body: JSON.stringify({ id: newId, is_group: false, is_support: true })
+            body: JSON.stringify({ id: newChatId, is_group: false })
           });
           
-          var chatResText = await createChatRes.text();
-          console.log('Статус chats:', createChatRes.status, 'Ответ:', chatResText);
-          
           if (!createChatRes.ok) {
-            console.error('❌ Ошибка создания чата:', chatResText);
+            var errText = await createChatRes.text();
+            console.error('❌ Ошибка создания чата:', errText);
             throw new Error('Ошибка создания чата: ' + createChatRes.status);
           }
           
@@ -2846,6 +2846,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           if (!addMembersRes.ok) {
             var membErr = await addMembersRes.json();
             console.error('❌ Ошибка добавления участников:', membErr);
+            // Откатываем создание чата
             await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats?id=eq.' + newChatId, {
               method: 'DELETE',
               headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token }
@@ -2853,9 +2854,12 @@ async function openConversation(conversationId, isPollingUpdate = false) {
             throw new Error('Ошибка добавления участников');
           }
           
+          console.log('👥 Участники добавлены');
+          
           openScreen('messenger');
           await openConversation(newChatId);
-          await renderMessengerDialogs();;
+          await renderMessengerDialogs();
+          showNotification('Чат создан!', 'success');
           
         } catch (err) {
           console.error('❌ Полная ошибка:', err);
