@@ -2598,87 +2598,82 @@ setTimeout(() => {
           if (userMsg.trim()) {
             console.log('🤖 Отправляем запрос к нейросети...');
             
-            try {
-              const OPENROUTER_API_KEY = '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';
-              
-              const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                  'HTTP-Referer': window.location.origin,
-                  'X-Title': 'Mark1z Design'
-                },
-                body: JSON.stringify({
-                  model: 'microsoft/phi-3-mini-128k-instruct:free',
-                  messages: [
-                    {
-                      role: 'system',
-                      content: `Ты — Mark1z Design, вежливый и профессиональный AI-ассистент дизайнера. 
-                      Ты помогаешь клиентам с заказами, отвечаешь на вопросы о дизайне, ценах, сроках.
-                      Твои услуги: логотипы (от 600₽), баннеры (от 500₽), аватарки (от 500₽), 
-                      дизайн сайтов (от 3000₽), вёрстка (от 15000₽), дизайн приложений (от 3000₽).
-                      Отвечай дружелюбно, коротко и по делу. Если нужно — предложи связаться с @Mark1zell в Telegram.`
-                    },
-                    {
-                      role: 'user',
-                      content: userMsg
-                    }
-                  ],
-                  temperature: 0.7,
-                  max_tokens: 500
-                })
-              });
-              
-              const data = await response.json();
-              let botReply = '🙏 Спасибо за обращение! Администратор скоро ответит. Для быстрой связи: Telegram @Mark1zell';
-              
-              if (data && data.choices && data.choices[0] && data.choices[0].message) {
-                botReply = data.choices[0].message.content;
-                console.log('✅ Ответ нейросети получен');
-              } else {
-                console.error('Ошибка API:', data);
-              }
-              
-              setTimeout(async () => {
-                await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
-                  method: 'POST',
-                  headers: {
-                    'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
-                    'Authorization': 'Bearer ' + state.currentSession.access_token,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    chat_id: state.currentConversationId,
-                    sender_id: OWNER_UID,
-                    content: botReply,
-                    type: 'text'
-                  })
-                });
-                
-                await openConversation(state.currentConversationId, true);
-              }, 500);
-              
-            } catch (err) {
-              console.error('❌ Ошибка нейросети:', err);
-              setTimeout(async () => {
-                await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
-                  method: 'POST',
-                  headers: {
-                    'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
-                    'Authorization': 'Bearer ' + state.currentSession.access_token,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    chat_id: state.currentConversationId,
-                    sender_id: OWNER_UID,
-                    content: '🔧 Технические работы с AI. Напишите @Mark1zell в Telegram для быстрой связи!',
-                    type: 'text'
-                  })
-                });
-                await openConversation(state.currentConversationId, true);
-              }, 500);
-            }
+try {
+  const response = await fetch('https://mark1z-proxy.keklolorbidollol321.workers.dev', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'microsoft/phi-3-mini-128k-instruct:free',
+      messages: [
+        {
+          role: 'system',
+          content: `Ты — Mark1z Design, вежливый и профессиональный AI-ассистент дизайнера. 
+          Ты помогаешь клиентам с заказами, отвечаешь на вопросы о дизайне, ценах, сроках.
+          Твои услуги: логотипы (от 600₽), баннеры (от 500₽), аватарки (от 500₽), 
+          дизайн сайтов (от 3000₽), вёрстка (от 15000₽), дизайн приложений (от 3000₽).
+          Отвечай дружелюбно, коротко и по делу. Если нужно — предложи связаться с @Mark1zell в Telegram.`
+        },
+        {
+          role: 'user',
+          content: userMsg
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  });
+  
+  const data = await response.json();
+  let botReply = '🙏 Спасибо за обращение! Администратор скоро ответит. Для быстрой связи: Telegram @Mark1zell';
+  
+  if (data && data.choices && data.choices[0] && data.choices[0].message) {
+    botReply = data.choices[0].message.content;
+    console.log('✅ Ответ нейросети получен');
+  } else {
+    console.error('Ошибка API:', data);
+  }
+  
+  setTimeout(async () => {
+    await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
+      method: 'POST',
+      headers: {
+        'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+        'Authorization': 'Bearer ' + state.currentSession.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: state.currentConversationId,
+        sender_id: OWNER_UID,
+        content: botReply,
+        type: 'text'
+      })
+    });
+    await openConversation(state.currentConversationId, true);
+  }, 500);
+  
+} catch (err) {
+  console.error('❌ Ошибка:', err);
+  // fallback ответ
+  setTimeout(async () => {
+    await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
+      method: 'POST',
+      headers: {
+        'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+        'Authorization': 'Bearer ' + state.currentSession.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: state.currentConversationId,
+        sender_id: OWNER_UID,
+        content: '🔧 Технические работы. Напишите @Mark1zell в Telegram!',
+        type: 'text'
+      })
+    });
+    await openConversation(state.currentConversationId, true);
+  }, 500);
+}
           }
         }
       }
