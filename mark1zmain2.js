@@ -3384,23 +3384,20 @@ var newChatId = generateUUID();
       };
       var box = document.querySelector('#messenger .mkz-messenger-compose__box');
     if(box) box.insertBefore(btn, box.firstChild);
-  })();
-  
-  initSupportDialogsButton();
-  initSupportDialogsBackButton();
-  
-}  // ← ЭТА СКОБКА ЗАКРЫВАЕТ bindStaticEvents()
+})();
 
-;
-
+initSupportDialogsButton();
+initSupportDialogsBackButton();
+}
 // ========== CSS STYLING ==========
-(function addStyles() {
+setTimeout(function() {
   var style = document.createElement('style');
   style.textContent = '.mkz-support-mode-selector{background:linear-gradient(135deg,rgba(255,47,174,0.1),rgba(122,60,255,0.1));border-radius:20px;padding:14px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.1)}.mkz-message{display:flex;margin-bottom:8px}.mkz-msg-mine{justify-content:flex-end}.mkz-msg-notmine{justify-content:flex-start}.mkz-msg-bubble{max-width:75%;padding:10px 14px;border-radius:18px;word-break:break-word}.mkz-msg-mine .mkz-msg-bubble{background:linear-gradient(135deg,#7a3cff,#ff2fae);color:#fff;border-bottom-right-radius:4px}.mkz-msg-notmine .mkz-msg-bubble{background:rgba(255,255,255,0.12);color:#fff;border-bottom-left-radius:4px}.mkz-msg-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px}.mkz-msg-time{font-size:0.7em;opacity:0.6}.mkz-msg-actions{display:none;gap:4px;margin-left:8px}.mkz-msg-bubble:hover .mkz-msg-actions{display:inline-flex}.mkz-msg-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:6px;opacity:0.7}.mkz-msg-btn:hover{opacity:1;background:rgba(255,255,255,0.15)}.mkz-msg-btn-del:hover{color:#ff4d4d}.mkz-msg-btn-edit:hover{color:#ffb800}.mkz-msg-author{font-size:0.75em;font-weight:600;margin-bottom:2px;opacity:0.8;padding-left:4px}.mkz-loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);display:none;justify-content:center;align-items:center;flex-direction:column;z-index:10000}.mkz-loading-spinner{width:50px;height:50px;border:4px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:mkz-spin 0.8s linear infinite}@keyframes mkz-spin{to{transform:rotate(360deg)}}.mkz-loading-message{color:#fff;margin-top:20px;font-size:14px}.mkz-dialog{background:rgba(255,255,255,0.03);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.05);transition:all 0.2s}.mkz-dialog:hover{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1)}.mkz-dialog--active{background:rgba(255,47,174,0.12);border-color:rgba(255,47,174,0.25)}.mkz-dialog__avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ff2fae,#7a3cff);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;background-size:cover;background-position:center}';
   document.head.appendChild(style);
-})();
-  // ========== INIT ==========
-  (async function init() {
+}, 0);
+
+// ========== INIT ==========
+    (async function init() {
     await fetchSessionAndProfile();
     await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
     await loadUserBio();
