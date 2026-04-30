@@ -2575,7 +2575,6 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
           }
           console.log('Сообщений загружено:', state.conversationMessages.length);
         }
-      }
     } catch (err) {
       console.error('openConversation error:', err);
     }
