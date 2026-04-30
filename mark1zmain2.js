@@ -1755,47 +1755,8 @@ async function editContest(postId) {
   }
 }
 
-    // ========== ПОИСК СУЩЕСТВУЮЩЕГО ЧАТА 1-на-1 ==========
-async function findExistingConversation(userId) {
-  if (!state.currentSession?.user) return null;
-  const myUserId = state.currentSession.user.id;
-  
-  const { data: myChats } = await supabaseClient
-    .from('chat_members')
-    .select('chat_id')
-    .eq('user_id', myUserId);
-  
-  if (!myChats?.length) return null;
-  
-  const myChatIds = myChats.map(m => m.chat_id);
-  
-  const { data: allMembers } = await supabaseClient
-    .from('chat_members')
-    .select('chat_id, user_id')
-    .in('chat_id', myChatIds);
-  
-  const chatsMap = {};
-  for (const m of allMembers || []) {
-    if (!chatsMap[m.chat_id]) chatsMap[m.chat_id] = new Set();
-    chatsMap[m.chat_id].add(m.user_id);
-  }
-  
-  for (const [chatId, userIds] of Object.entries(chatsMap)) {
-    if (userIds.size === 2 && userIds.has(myUserId) && userIds.has(userId)) {
-      const { data: chat } = await supabaseClient
-        .from('chats')
-        .select('is_group')
-        .eq('id', chatId)
-        .single();
-      if (chat && !chat.is_group) return chatId;
-    }
-  }
-  
-  return null;
-}
-
-    // ========== НАЧАТЬ ЧАТ С ПОЛЬЗОВАТЕЛЕМ ==========
-  async function startConversationWithUser(userId) {
+// ========== НАЧАТЬ ЧАТ С ПОЛЬЗОВАТЕЛЕМ ==========
+async function startConversationWithUser(userId) {
   if (!state.currentSession?.user) {
     showNotification('Сначала войдите в аккаунт', 'warning');
     return null;
@@ -1812,38 +1773,34 @@ async function findExistingConversation(userId) {
 
   // 2. Создаём новый чат
   try {
-    const { data: newChat, error: chatError } = await supabaseClient
+    const newChatId = generateUUID(); // ← ЗДЕСЬ ИСПОЛЬЗУЕМ generateUUID
+    
+    const { error: chatError } = await supabaseClient
       .from('chats')
-      .insert({ is_group: false })
-      .select('id')
-      .single();
+      .insert({ id: newChatId, is_group: false });
 
     if (chatError) {
       console.error('Ошибка создания чата:', chatError);
       throw new Error('Не удалось создать чат: ' + chatError.message);
-    }
-    
-    if (!newChat?.id) {
-      throw new Error('Не удалось создать чат: пустой ответ');
     }
 
     // 3. Добавляем участников
     const { error: membersError } = await supabaseClient
       .from('chat_members')
       .insert([
-        { chat_id: newChat.id, user_id: myId },
-        { chat_id: newChat.id, user_id: userId }
+        { chat_id: newChatId, user_id: myId },
+        { chat_id: newChatId, user_id: userId }
       ]);
 
     if (membersError) {
       console.error('Ошибка добавления участников:', membersError);
       // Удаляем пустой чат
-      await supabaseClient.from('chats').delete().eq('id', newChat.id);
+      await supabaseClient.from('chats').delete().eq('id', newChatId);
       throw new Error('Не удалось добавить участников: ' + membersError.message);
     }
 
-    console.log('🆕 Чат создан:', newChat.id);
-    return newChat.id;
+    console.log('🆕 Чат создан:', newChatId);
+    return newChatId;
 
   } catch (err) {
     console.error('startConversationWithUser error:', err);
