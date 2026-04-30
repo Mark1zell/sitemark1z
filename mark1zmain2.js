@@ -2568,15 +2568,13 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
         divider.textContent = '―――――― Новые сообщения ――――――';
         msgEl.parentNode.insertBefore(divider, msgEl);
         divider.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        msgContainer.scrollTop = msgContainer.scrollHeight;
-      }
-    }, 100);
-      console.log('Сообщений загружено:', state.conversationMessages.length);
+    } else {
+      msgContainer.scrollTop = msgContainer.scrollHeight;
     }
-  } catch (err) {
-    console.error('openConversation error:', err);
-  }
+  }, 100);
+  console.log('Сообщений загружено:', state.conversationMessages.length);
+} catch (err) {
+  console.error('openConversation error:', err);
 }
   function renderConversationMessage(message) {
     const isOutgoing = String(message.user_id) === String(state.currentSession?.user?.id) && message.sender_mode !== 'support_brand';
