@@ -2337,7 +2337,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
   }
 
   // Кнопки профиля и удаления чата
-  setTimeout(function() {
+  setTimeout(async function() {
         // Кнопка переключения режима ответа (только для чата поддержки)
     if (String(conversationId) === String(state.supportConversationId) && isOwner()) {
       var switchBtn = document.getElementById('mkzSwitchBrandBtn');
