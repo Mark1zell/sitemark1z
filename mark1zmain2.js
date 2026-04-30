@@ -1734,6 +1734,31 @@ async function renderMessengerDialogs() {
       '</button>';
     }).join('');
 
+    // В функции openConversation(), после state.currentConversationId = conversationId;
+
+// Обновляем обводку у всех кнопок диалогов
+setTimeout(() => {
+    const allDialogs = document.querySelectorAll('.mkz-dialog, [data-open-chat]');
+    console.log('🎨 Обновление обводки для чата:', conversationId);
+    
+    allDialogs.forEach(dialog => {
+        const btnChatId = dialog.getAttribute('data-open-chat');
+        if (btnChatId && String(btnChatId) === String(conversationId)) {
+            dialog.style.border = '2px solid rgba(255,47,174,0.9)';
+            dialog.style.boxShadow = '0 0 24px rgba(255,47,174,0.3), inset 0 0 0 1px rgba(255,47,174,0.2)';
+            dialog.style.background = 'rgba(255,47,174,0.12)';
+            dialog.classList.add('mkz-dialog--active');
+            console.log('✅ Обводка применена к чату:', conversationId);
+        } else if (dialog.getAttribute('data-open-chat')) {
+            dialog.style.border = '2px solid rgba(255,255,255,0.04)';
+            dialog.style.boxShadow = 'none';
+            dialog.style.background = '';
+            dialog.style.outline = '';
+            dialog.classList.remove('mkz-dialog--active');
+        }
+    });
+}, 100); // Небольшая задержка, чтобы DOM успел обновиться
+
         // Обработчик для чата поддержки
     var supportBtn = messengerDialogs.querySelector('[data-open-chat="' + state.supportConversationId + '"]');
     if (supportBtn) {
