@@ -848,32 +848,59 @@ function openFolder(folderId) {
     }
 
     // Inline редактирование названия и описания (двойной клик)
-    $$('.mkz-work-card__body h3', currentFolderWorks).forEach(titleEl => {
-      titleEl.addEventListener('dblclick', async (e) => {
-        e.stopPropagation();
-        const workId = titleEl.closest('[data-work-id]').dataset.workId;
-        const newTitle = prompt('Новое название работы:', titleEl.textContent);
-        if (newTitle && newTitle.trim()) {
-          await supabaseClient.from('portfolio_items').update({ title: newTitle.trim() }).eq('id', workId);
-          titleEl.textContent = newTitle.trim();
-          showNotification('Название обновлено', 'success');
-        }
+      $$('.mkz-work-card__body h3', currentFolderWorks).forEach(titleEl => {
+          if (isOwner()) {
+          titleEl.addEventListener('click', async function(e) {
+          if (e.target.tagName === 'INPUT') return;
+          e.stopPropagation();
+          var workId = this.closest('[data-work-id]').dataset.workId;
+          var oldValue = this.textContent;
+          var input = document.createElement('input');
+          input.value = oldValue;
+          input.style.cssText = 'width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:4px 8px;border-radius:8px;font-size:inherit;';
+          this.textContent = '';
+          this.appendChild(input);
+          input.focus();
+          input.onblur = async function() {
+            var newValue = input.value.trim();
+            if (newValue && newValue !== oldValue) {
+              await supabaseClient.from('portfolio_items').update({ title: newValue }).eq('id', workId);
+              clearCache('portfolio_items');
+            }
+            await renderPortfolio();
+            if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
+          };
+          input.onkeydown = function(ev) { if (ev.key === 'Enter') input.blur(); if (ev.key === 'Escape') { input.value = oldValue; input.blur(); } };
+        });
       });
-    });
 
-    $$('.mkz-work-card__body p', currentFolderWorks).forEach(descEl => {
-      descEl.addEventListener('dblclick', async (e) => {
-        e.stopPropagation();
-        const workId = descEl.closest('[data-work-id]').dataset.workId;
-        const newDesc = prompt('Новое описание:', descEl.textContent);
-        if (newDesc !== null) {
-          await supabaseClient.from('portfolio_items').update({ description: newDesc.trim() }).eq('id', workId);
-          descEl.textContent = newDesc.trim();
-          showNotification('Описание обновлено', 'success');
-        }
-      });
-    });
-  }
+      if (isOwner()) {
+        $$('.mkz-work-card__body p', currentFolderWorks).forEach(descEl => {
+          descEl.style.cursor = 'text';
+          descEl.addEventListener('click', async (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            e.stopPropagation();
+            var workId = descEl.closest('[data-work-id]').dataset.workId;
+            var oldValue = descEl.textContent;
+            var input = document.createElement('input');
+            input.value = oldValue;
+            input.style.cssText = 'width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:4px 8px;border-radius:8px;font-size:inherit;';
+            descEl.textContent = '';
+            descEl.appendChild(input);
+            input.focus();
+            input.onblur = async function() {
+              var newValue = input.value.trim();
+              if (newValue !== oldValue) {
+                await supabaseClient.from('portfolio_items').update({ description: newValue }).eq('id', workId);
+                clearCache('portfolio_items');
+              }
+              await renderPortfolio();
+              if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
+            };
+            input.onkeydown = function(ev) { if (ev.key === 'Enter') input.blur(); if (ev.key === 'Escape') { input.value = oldValue; input.blur(); } };
+          });
+        });
+      }
 
   if (folderBrowserList) folderBrowserList.style.display = 'none';
   if (folderInside) folderInside.style.display = 'block';
