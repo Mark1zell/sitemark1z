@@ -132,6 +132,14 @@
     return String(value).replace(/[&<>"']/g, function(m) { return map[m]; });
   }
 
+  function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
   function safeText(value, fallback = '') {
     const prepared = String(value ?? '').trim();
     return prepared ? escapeHtml(prepared) : fallback;
@@ -2421,7 +2429,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
         state.currentConversationId = supportChatId;
         conversationId = supportChatId;
       } else {
-        var newId = crypto.randomUUID();
+        var newId = generateUUID();
         await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
           method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
           body: JSON.stringify({ id: newId, is_group: false, is_support: true })
@@ -3185,7 +3193,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
           // 2. Если не нашли — создаём новый
           console.log('🆕 Создаём новый чат');
           
-          var newChatId = crypto.randomUUID();
+          var newChatId = generateUUID();
           var createChatRes = await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
             method: 'POST',
             headers: {
