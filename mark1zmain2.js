@@ -3391,40 +3391,41 @@ initSupportDialogsBackButton();
 }
 
 // ========== INIT ==========
-    (async function init() {
-    await fetchSessionAndProfile();
-    await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
-    await loadUserBio();
-    bindStaticEvents();   
-    var msgContainer = document.getElementById('mkzMessengerMessages');
-    if (msgContainer) msgContainer.style.overflowY = 'hidden';
-    var compose = document.getElementById('mkzMessengerForm');
-    if (compose) compose.style.display = 'none';
-    var headActions = document.querySelector('#messenger .mkz-messenger-head__actions');
-    if (headActions) headActions.style.display = 'none';
-    supabaseClient.auth.onAuthStateChange(function(_event, session) {
-      state.currentSession = session || null;
-      if (state.currentSession) {
-        startPresenceHeartbeat();
-        updatePresence(true);
-      } else {
-        stopPresenceHeartbeat();
-      }
-      setTimeout(async function() {
-        await fetchSessionAndProfile();
-        await loadUserBio();
-        await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
-      }, 0);
-    });
-    
-    document.addEventListener('visibilitychange', async function() {
-      await updatePresence(!document.hidden);
-    });
-    
-    window.addEventListener('beforeunload', function() {
-      updatePresence(false);
-    });
+(async function init() {
+  await fetchSessionAndProfile();
+  await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
+  await loadUserBio();
+  bindStaticEvents();   
+  var msgContainer = document.getElementById('mkzMessengerMessages');
+  if (msgContainer) msgContainer.style.overflowY = 'hidden';
+  var compose = document.getElementById('mkzMessengerForm');
+  if (compose) compose.style.display = 'none';
+  var headActions = document.querySelector('#messenger .mkz-messenger-head__actions');
+  if (headActions) headActions.style.display = 'none';
+  
+  supabaseClient.auth.onAuthStateChange(function(_event, session) {
+    state.currentSession = session || null;
+    if (state.currentSession) {
+      startPresenceHeartbeat();
+      updatePresence(true);
+    } else {
+      stopPresenceHeartbeat();
+    }
+    setTimeout(async function() {
+      await fetchSessionAndProfile();
+      await loadUserBio();
+      await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
+    }, 0);
+  });
+  
+  document.addEventListener('visibilitychange', async function() {
+    await updatePresence(!document.hidden);
+  });
+  
+  window.addEventListener('beforeunload', function() {
+    updatePresence(false);
+  });
 
-  })();
+})();
 
 })();
