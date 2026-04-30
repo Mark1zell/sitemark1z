@@ -2386,64 +2386,74 @@ async function openConversation(conversationId, isPollingUpdate = false) {
     btnsContainer.appendChild(profileBtn);
     headEl.appendChild(btnsContainer);
     
-    if (otherUserId && otherUserId !== '3bf0b657-7722-4189-bd0e-6b7b9271ccdc') {
-      profileBtn.onclick = function() { openPublicProfile(otherUserId); };
-                  deleteChatBtn.onclick = async function() {
-        if (!confirm('Удалить этот чат? Переписка исчезнет у обоих.')) return;
-        var chatId = conversationId;
-        // Удаляем сообщения
-        await supabaseClient.from('messages').delete().eq('chat_id', chatId);
-        // Удаляем всех участников
-        await supabaseClient.from('chat_members').delete().eq('chat_id', chatId);
-        // Удаляем сам чат
-        await supabaseClient.from('chats').delete().eq('id', chatId);
-        state.currentConversationId = null;
-        if (messengerMessages) messengerMessages.innerHTML = '';
-        showNotification('Чат удалён полностью', 'success');
-          setTimeout(async function() {
-          await fetchMessengerData();
-          await renderMessengerDialogs();
-        }, 500);
-      };
-    } else {
-      profileBtn.style.display = 'none';
-      deleteChatBtn.style.display = 'none';
-    }
-  }, 300);
+if (otherUserId && otherUserId !== '3bf0b657-7722-4189-bd0e-6b7b9271ccdc') {
+  profileBtn.onclick = function() { openPublicProfile(otherUserId); };
+  deleteChatBtn.onclick = async function() {
+    if (!confirm('Удалить этот чат? Переписка исчезнет у обоих.')) return;
+    var chatId = conversationId;
+    // Удаляем сообщения
+    await supabaseClient.from('conversation_messages').delete().eq('conversation_id', chatId);
+    // Удаляем всех участников
+    await supabaseClient.from('conversation_members').delete().eq('conversation_id', chatId);
+    // Удаляем сам чат
+    await supabaseClient.from('conversations').delete().eq('id', chatId);
+    state.currentConversationId = null;
+    if (messengerMessages) messengerMessages.innerHTML = '';
+    showNotification('Чат удалён полностью', 'success');
+    setTimeout(async function() {
+      await fetchMessengerData();
+      await renderMessengerDialogs();
+    }, 500);
+  };
+} else {
+  profileBtn.style.display = 'none';
+  deleteChatBtn.style.display = 'none';
+}
 
-  if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
-    var userId = state.currentSession.user.id;
-    if (userId !== OWNER_UID) {
-      var { data: supportChats } = await supabaseClient.from('chats').select('id').eq('is_support', true);
-      var supportChatId = null;
-      if (supportChats) {
-        for (var i = 0; i < supportChats.length; i++) {
-          var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', supportChats[i].id);
-          if (members && members.find(function(m) { return m.user_id === userId; })) {
-            supportChatId = supportChats[i].id;
-            break;
-          }
+if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
+  var userId = state.currentSession.user.id;
+  if (userId !== OWNER_UID) {
+    var { data: supportChats } = await supabaseClient.from('conversations').select('id').eq('is_support', true);
+    var supportChatId = null;
+    if (supportChats) {
+      for (var i = 0; i < supportChats.length; i++) {
+        var { data: members } = await supabaseClient.from('conversation_members').select('user_id').eq('conversation_id', supportChats[i].id);
+        if (members && members.find(function(m) { return m.user_id === userId; })) {
+          supportChatId = supportChats[i].id;
+          break;
         }
       }
-      
-      if (supportChatId) {
-        state.currentConversationId = supportChatId;
-        conversationId = supportChatId;
-      } else {
-        var newId = generateUUID();
-        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
-          method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ id: newId, is_group: false, is_support: true })
-        });
-        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
-          method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json' },
-          body: JSON.stringify([{ chat_id: newId, user_id: userId }, { chat_id: newId, user_id: OWNER_UID }])
-        });
-        state.currentConversationId = newId;
-        conversationId = newId;
-      }
+    }
+    
+    if (supportChatId) {
+      state.currentConversationId = supportChatId;
+      conversationId = supportChatId;
+    } else {
+      var newId = generateUUID();
+      await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/conversations', {
+        method: 'POST', 
+        headers: { 
+          'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 
+          'Authorization': 'Bearer ' + state.currentSession.access_token, 
+          'Content-Type': 'application/json', 
+          'Prefer': 'return=minimal' 
+        },
+        body: JSON.stringify({ id: newId, is_group: false, is_support: true })
+      });
+      await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/conversation_members', {
+        method: 'POST', 
+        headers: { 
+          'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 
+          'Authorization': 'Bearer ' + state.currentSession.access_token, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify([{ conversation_id: newId, user_id: userId }, { conversation_id: newId, user_id: OWNER_UID }])
+      });
+      state.currentConversationId = newId;
+      conversationId = newId;
     }
   }
+}
   
   try {
     // Загружаем сообщения
@@ -3203,7 +3213,7 @@ async function openConversation(conversationId, isPollingUpdate = false) {
               'Content-Type': 'application/json',
               'Prefer': 'return=minimal'
             },
-            body: JSON.stringify({ id: newId, is_group: false, is_support: true })
+            body: JSON.stringify({ id: newChatId, is_group: false, is_support: false })
           });
           
           var chatResText = await createChatRes.text();
