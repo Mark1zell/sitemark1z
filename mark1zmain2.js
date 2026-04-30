@@ -2481,9 +2481,9 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
         // Обновляем время прочтения
     if (state.currentSession?.user) {
       try {
-        await supabaseClient.from('conversation_members')
-          .update({ last_read_at: new Date().toISOString() })
-          .eq('chat_id', conversationId)
+        await supabaseClient.from('chat_members')  // ← верните обратно chat_members
+  .update({ last_read_at: new Date().toISOString() })
+  .eq('chat_id', conversationId)  // ← chat_id для старых таблиц
           .eq('user_id', state.currentSession.user.id);
       } catch(e) {}
     }
@@ -2559,7 +2559,7 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
           var unreadMsg = state.conversationMessages[firstUnreadIndex];
           var dividerHtml = '<div style="text-align:center;margin:16px 0;color:rgba(255,255,255,0.3);font-size:12px;">―――――― Новые сообщения ――――――</div>';
           // Находим элемент этого сообщения и вставляем разделитель перед ним
-          setTimeout(function() {
+          setTimeout(async function() {
             var msgEl = document.querySelector('[data-message-id="' + unreadMsg.id + '"]');
             if (msgEl) {
               var divider = document.createElement('div');
