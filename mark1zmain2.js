@@ -2850,7 +2850,6 @@ allDialogs.forEach(dialog => {
             console.log('✅ Найден существующий чат:', existingId);
             openScreen('messenger');
             await openConversation(existingId);
-            await renderMessengerDialogs();
             return;
           }
           
