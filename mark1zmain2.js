@@ -874,38 +874,43 @@ function openFolder(folderId) {
         });
       }
 
-      if (isOwner()) {
-        $$('.mkz-work-card__body p', currentFolderWorks).forEach(descEl => {
-          descEl.style.cursor = 'text';
-          descEl.addEventListener('click', async (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            e.stopPropagation();
-            var workId = descEl.closest('[data-work-id]').dataset.workId;
-            var oldValue = descEl.textContent;
-            var input = document.createElement('input');
-            input.value = oldValue;
-            input.style.cssText = 'width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:4px 8px;border-radius:8px;font-size:inherit;';
-            descEl.textContent = '';
-            descEl.appendChild(input);
-            input.focus();
-            input.onblur = async function() {
-              var newValue = input.value.trim();
-              if (newValue !== oldValue) {
-                await supabaseClient.from('portfolio_items').update({ description: newValue }).eq('id', workId);
-                clearCache('portfolio_items');
-              }
-              await renderPortfolio();
-              if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
-            };
-            input.onkeydown = function(ev) { if (ev.key === 'Enter') input.blur(); if (ev.key === 'Escape') { input.value = oldValue; input.blur(); } };
-          });
-        });
-      }
-    }
+if (isOwner()) {
+  $$('.mkz-work-card__body p', currentFolderWorks).forEach(descEl => {
+    descEl.style.cursor = 'text';
+    descEl.addEventListener('click', async (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      e.stopPropagation();
+      var workId = descEl.closest('[data-work-id]').dataset.workId;
+      var oldValue = descEl.textContent;
+      var input = document.createElement('input');
+      input.value = oldValue;
+      input.style.cssText = 'width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:4px 8px;border-radius:8px;font-size:inherit;';
+      descEl.textContent = '';
+      descEl.appendChild(input);
+      input.focus();
+      input.onblur = async function() {
+        var newValue = input.value.trim();
+        if (newValue !== oldValue) {
+          await supabaseClient.from('portfolio_items').update({ description: newValue }).eq('id', workId);
+          clearCache('portfolio_items');
+        }
+        await renderPortfolio();
+        if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
+      };
+      input.onkeydown = function(ev) { 
+        if (ev.key === 'Enter') input.blur(); 
+        if (ev.key === 'Escape') { 
+          input.value = oldValue; 
+          input.blur(); 
+        } 
+      };
+    });
+  });
+} 
 
-  if (folderBrowserList) folderBrowserList.style.display = 'none';
-  if (folderInside) folderInside.style.display = 'block';
-  updateAuthUI();
+if (folderBrowserList) folderBrowserList.style.display = 'none';
+if (folderInside) folderInside.style.display = 'block';
+updateAuthUI();
 }
 
 async function renderPortfolio() {
