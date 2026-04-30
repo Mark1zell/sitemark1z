@@ -2599,7 +2599,7 @@ setTimeout(() => {
             console.log('🤖 Отправляем запрос к нейросети...');
             
             try {
-              const OPENROUTER_API_KEY = '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';
+              const OPENROUTER_API_KEY = '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';
               
               const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
