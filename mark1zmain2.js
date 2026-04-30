@@ -2570,9 +2570,8 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
                 msgContainer.scrollTop = msgContainer.scrollHeight;
               }
             }, 100);
-            } else {
-              msgContainer.scrollTop = msgContainer.scrollHeight;
-            }
+          } else {
+            msgContainer.scrollTop = msgContainer.scrollHeight;
           }
           console.log('Сообщений загружено:', state.conversationMessages.length);
         }
@@ -2584,7 +2583,7 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
 
   function renderConversationMessage(message) {
     const isOutgoing = String(message.user_id) === String(state.currentSession?.user?.id) && message.sender_mode !== 'support_brand';
-     const author = getMessageAuthorIdentity(message);
+    const author = getMessageAuthorIdentity(message);
     const authorName = safeText(author?.username || (isOutgoing ? 'Вы' : 'Mark1z Design'), isOutgoing ? 'Вы' : 'Mark1z Design');
     const attachmentUrl = safeUrl(message.attachment_url || '');
     const attachmentName = safeText(message.attachment_name || 'Файл', 'Файл');
