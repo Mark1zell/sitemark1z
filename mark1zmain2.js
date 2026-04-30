@@ -847,10 +847,10 @@ function openFolder(folderId) {
       currentFolderWorks.appendChild(addBtn);
     }
 
-    // Inline редактирование названия и описания (двойной клик)
-      $$('.mkz-work-card__body h3', currentFolderWorks).forEach(titleEl => {
-          if (isOwner()) {
-          titleEl.addEventListener('click', async function(e) {
+    // Inline редактирование названия (клик по h3)
+    $$('.mkz-work-card__body h3', currentFolderWorks).forEach(titleEl => {
+      if (isOwner()) {
+        titleEl.addEventListener('click', async function(e) {
           if (e.target.tagName === 'INPUT') return;
           e.stopPropagation();
           var workId = this.closest('[data-work-id]').dataset.workId;
@@ -870,48 +870,57 @@ function openFolder(folderId) {
             await renderPortfolio();
             if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
           };
-          input.onkeydown = function(ev) { if (ev.key === 'Enter') input.blur(); if (ev.key === 'Escape') { input.value = oldValue; input.blur(); } };
+          input.onkeydown = function(ev) { 
+            if (ev.key === 'Enter') input.blur(); 
+            if (ev.key === 'Escape') { 
+              input.value = oldValue; 
+              input.blur(); 
+            } 
+          };
         });
       }
+    }); // ← ЭТА СКОБКА ЗАКРЫВАЕТ forEach
 
-if (isOwner()) {
-  $$('.mkz-work-card__body p', currentFolderWorks).forEach(descEl => {
-    descEl.style.cursor = 'text';
-    descEl.addEventListener('click', async (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      e.stopPropagation();
-      var workId = descEl.closest('[data-work-id]').dataset.workId;
-      var oldValue = descEl.textContent;
-      var input = document.createElement('input');
-      input.value = oldValue;
-      input.style.cssText = 'width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:4px 8px;border-radius:8px;font-size:inherit;';
-      descEl.textContent = '';
-      descEl.appendChild(input);
-      input.focus();
-      input.onblur = async function() {
-        var newValue = input.value.trim();
-        if (newValue !== oldValue) {
-          await supabaseClient.from('portfolio_items').update({ description: newValue }).eq('id', workId);
-          clearCache('portfolio_items');
-        }
-        await renderPortfolio();
-        if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
-      };
-      input.onkeydown = function(ev) { 
-        if (ev.key === 'Enter') input.blur(); 
-        if (ev.key === 'Escape') { 
-          input.value = oldValue; 
-          input.blur(); 
-        } 
-      };
-    });
-  });
-} 
+    // Inline редактирование описания (клик по p) - ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА
+    if (isOwner()) {
+      $$('.mkz-work-card__body p', currentFolderWorks).forEach(descEl => {
+        descEl.style.cursor = 'text';
+        descEl.addEventListener('click', async (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+          e.stopPropagation();
+          var workId = descEl.closest('[data-work-id]').dataset.workId;
+          var oldValue = descEl.textContent;
+          var input = document.createElement('input');
+          input.value = oldValue;
+          input.style.cssText = 'width:100%;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:4px 8px;border-radius:8px;font-size:inherit;';
+          descEl.textContent = '';
+          descEl.appendChild(input);
+          input.focus();
+          input.onblur = async function() {
+            var newValue = input.value.trim();
+            if (newValue !== oldValue) {
+              await supabaseClient.from('portfolio_items').update({ description: newValue }).eq('id', workId);
+              clearCache('portfolio_items');
+            }
+            await renderPortfolio();
+            if (state.currentOpenedFolderId) openFolder(state.currentOpenedFolderId);
+          };
+          input.onkeydown = function(ev) { 
+            if (ev.key === 'Enter') input.blur(); 
+            if (ev.key === 'Escape') { 
+              input.value = oldValue; 
+              input.blur(); 
+            } 
+          };
+        });
+      });
+    } // ← ЭТА СКОБКА ЗАКРЫВАЕТ if (isOwner())
+  } // ← ЭТА СКОБКА ЗАКРЫВАЕТ if (currentFolderWorks)
 
-if (folderBrowserList) folderBrowserList.style.display = 'none';
-if (folderInside) folderInside.style.display = 'block';
-updateAuthUI();
-}
+  if (folderBrowserList) folderBrowserList.style.display = 'none';
+  if (folderInside) folderInside.style.display = 'block';
+  updateAuthUI();
+} // ← ЭТА СКОБКА ЗАКРЫВАЕТ ВСЮ ФУНКЦИЮ openFolder
 
 async function renderPortfolio() {
   try {
