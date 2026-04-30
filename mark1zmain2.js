@@ -2065,38 +2065,94 @@ document.querySelectorAll('.mkz-dialog').forEach(d => {
     }
   }, 300);
 
-  if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
-    var userId = state.currentSession.user.id;
-    if (userId !== OWNER_UID) {
-      var { data: supportChats } = await supabaseClient.from('chats').select('id').eq('is_support', true);
-      var supportChatId = null;
-      if (supportChats) {
-        for (var i = 0; i < supportChats.length; i++) {
-          var { data: members } = await supabaseClient.from('chat_members').select('user_id').eq('chat_id', supportChats[i].id);
-          if (members && members.find(function(m) { return m.user_id === userId; })) {
-            supportChatId = supportChats[i].id;
+  // ========== ПЕРСОНАЛЬНЫЙ ЧАТ ПОДДЕРЖКИ ДЛЯ КАЖДОГО ПОЛЬЗОВАТЕЛЯ ==========
+  if (String(conversationId) === String(state.supportConversationId)) {
+    if (!state.currentSession?.user) {
+      showNotification('Войдите в аккаунт', 'warning');
+      openScreen('account');
+      return;
+    }
+    
+    const userId = state.currentSession.user.id;
+    let personalChatId = null;
+    
+    // 1. Находим все чаты пользователя
+    const { data: userChats } = await supabaseClient
+      .from('chat_members')
+      .select('chat_id')
+      .eq('user_id', userId);
+    
+    if (userChats && userChats.length > 0) {
+      const chatIds = userChats.map(c => c.chat_id);
+      
+      // 2. Ищем среди них чат поддержки
+      const { data: supportChats } = await supabaseClient
+        .from('chats')
+        .select('id')
+        .in('id', chatIds)
+        .eq('is_support', true);
+      
+      if (supportChats && supportChats.length > 0) {
+        // 3. Проверяем, что в чате только 2 участника
+        for (const chat of supportChats) {
+          const { data: members } = await supabaseClient
+            .from('chat_members')
+            .select('user_id')
+            .eq('chat_id', chat.id);
+          
+          if (members && members.length === 2 && 
+              members.some(m => m.user_id === userId) && 
+              members.some(m => m.user_id === OWNER_UID)) {
+            personalChatId = chat.id;
             break;
           }
         }
       }
-      
-      if (supportChatId) {
-        state.currentConversationId = supportChatId;
-        conversationId = supportChatId;
-      } else {
-        var newId = crypto.randomUUID();
-        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
-          method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ id: newId, is_group: false, is_support: true })
-        });
-        await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
-          method: 'POST', headers: { 'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 'Authorization': 'Bearer ' + state.currentSession.access_token, 'Content-Type': 'application/json' },
-          body: JSON.stringify([{ chat_id: newId, user_id: userId }, { chat_id: newId, user_id: OWNER_UID }])
-        });
-        state.currentConversationId = newId;
-        conversationId = newId;
-      }
     }
+    
+    // 4. Если не нашли — создаём новый
+    if (!personalChatId) {
+      function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = Math.random() * 16 | 0;
+          var v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
+      
+      const newChatId = crypto.randomUUID ? crypto.randomUUID() : generateUUID();
+      
+      await supabaseClient.from('chats').insert({ 
+        id: newChatId, 
+        is_group: false, 
+        is_support: true 
+      });
+      
+      await supabaseClient.from('chat_members').insert([
+        { chat_id: newChatId, user_id: userId },
+        { chat_id: newChatId, user_id: OWNER_UID }
+      ]);
+      
+      personalChatId = newChatId;
+      console.log('✅ Создан персональный чат поддержки для:', userId);
+    }
+    
+    // 5. Открываем персональный чат
+    state.currentConversationId = personalChatId;
+    
+    const { data: messages } = await supabaseClient
+      .from('messages')
+      .select('*')
+      .eq('chat_id', personalChatId)
+      .order('created_at', { ascending: true });
+    
+    state.conversationMessages = messages || [];
+    
+    if (messengerTopName) messengerTopName.textContent = 'Mark1z Design';
+    if (messengerTopSub) messengerTopSub.textContent = 'Чат поддержки';
+    
+    renderMessagesList();
+    return;
   }
   
   try {
