@@ -2603,7 +2603,7 @@ try {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'microsoft/phi-3-mini-128k-instruct:free',
+      model: 'openai/gpt-3.5-turbo:free',
       messages: [
         {
           role: 'system',
