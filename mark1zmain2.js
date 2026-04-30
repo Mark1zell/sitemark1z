@@ -16,6 +16,219 @@
     return;
   }
 
+  // ========== ПЕРСОНАЛЬНЫЕ ЧАТЫ ПОДДЕРЖКИ ==========
+
+// Генерация UUID для старых браузеров
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0;
+    var v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Найти персональный чат поддержки для пользователя
+async function findPersonalSupportChat(userId) {
+  try {
+    // Получаем все чаты, где участвует пользователь
+    const { data: userChats } = await supabaseClient
+      .from('chat_members')
+      .select('chat_id')
+      .eq('user_id', userId);
+    
+    if (!userChats?.length) return null;
+    
+    const chatIds = userChats.map(c => c.chat_id);
+    
+    // Ищем среди них чат поддержки (is_support = true)
+    const { data: supportChats } = await supabaseClient
+      .from('chats')
+      .select('id')
+      .in('id', chatIds)
+      .eq('is_support', true);
+    
+    if (!supportChats?.length) return null;
+    
+    // Проверяем, что в чате только 2 участника (пользователь и админ)
+    for (const chat of supportChats) {
+      const { data: members } = await supabaseClient
+        .from('chat_members')
+        .select('user_id')
+        .eq('chat_id', chat.id);
+      
+      if (members?.length === 2 && 
+          members.some(m => m.user_id === userId) && 
+          members.some(m => m.user_id === OWNER_UID)) {
+        return chat.id;
+      }
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('findPersonalSupportChat error:', err);
+    return null;
+  }
+}
+
+// Создать персональный чат поддержки
+async function createPersonalSupportChat(userId) {
+  try {
+    const newChatId = crypto.randomUUID ? crypto.randomUUID() : generateUUID();
+    
+    // Создаём чат поддержки
+    const { error: chatError } = await supabaseClient
+      .from('chats')
+      .insert({ id: newChatId, is_group: false, is_support: true });
+    
+    if (chatError) throw chatError;
+    
+    // Добавляем участников (пользователь + админ)
+    const { error: membersError } = await supabaseClient
+      .from('chat_members')
+      .insert([
+        { chat_id: newChatId, user_id: userId },
+        { chat_id: newChatId, user_id: OWNER_UID }
+      ]);
+    
+    if (membersError) throw membersError;
+    
+    console.log('✅ Создан персональный чат поддержки:', newChatId);
+    return newChatId;
+  } catch (err) {
+    console.error('createPersonalSupportChat error:', err);
+    return null;
+  }
+}
+
+// Получить все диалоги поддержки для админа
+async function loadSupportDialogs() {
+  if (!messengerDialogs) return;
+  
+  try {
+    showLoading('Загрузка диалогов поддержки...');
+    
+    // Находим все чаты, где участник - админ
+    const { data: adminMembers } = await supabaseClient
+      .from('chat_members')
+      .select('chat_id')
+      .eq('user_id', OWNER_UID);
+    
+    if (!adminMembers?.length) {
+      messengerDialogs.innerHTML = '<div class="mkz-card"><p>Нет обращений в поддержку</p></div>';
+      hideLoading();
+      return;
+    }
+    
+    const supportChatIds = adminMembers.map(m => m.chat_id);
+    
+    // Получаем информацию о чатах
+    const { data: chats } = await supabaseClient
+      .from('chats')
+      .select('*')
+      .in('id', supportChatIds)
+      .eq('is_support', true);
+    
+    if (!chats?.length) {
+      messengerDialogs.innerHTML = '<div class="mkz-card"><p>Нет обращений в поддержку</p></div>';
+      hideLoading();
+      return;
+    }
+    
+    // Для каждого чата получаем второго участника и последнее сообщение
+    const dialogs = [];
+    
+    for (const chat of chats) {
+      // Получаем второго участника (не админа)
+      const { data: members } = await supabaseClient
+        .from('chat_members')
+        .select('user_id')
+        .eq('chat_id', chat.id)
+        .neq('user_id', OWNER_UID);
+      
+      if (!members?.[0]) continue;
+      
+      const userId = members[0].user_id;
+      const userProfile = await readProfileByUserId(userId);
+      
+      // Получаем последнее сообщение
+      const { data: lastMsg } = await supabaseClient
+        .from('messages')
+        .select('*')
+        .eq('chat_id', chat.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      // Считаем непрочитанные (где отправитель не админ)
+      const { data: unreadMsgs } = await supabaseClient
+        .from('messages')
+        .select('id')
+        .eq('chat_id', chat.id)
+        .eq('is_read', false)
+        .neq('sender_id', OWNER_UID);
+      
+      dialogs.push({
+        chatId: chat.id,
+        user: userProfile,
+        lastMessage: lastMsg?.[0],
+        unreadCount: unreadMsgs?.length || 0,
+        updatedAt: chat.updated_at
+      });
+    }
+    
+    // Сортируем по дате последнего сообщения
+    dialogs.sort((a, b) => {
+      const dateA = a.lastMessage?.created_at || a.updatedAt;
+      const dateB = b.lastMessage?.created_at || b.updatedAt;
+      return new Date(dateB) - new Date(dateA);
+    });
+    
+    // Рендерим список
+    if (dialogs.length === 0) {
+      messengerDialogs.innerHTML = '<div class="mkz-card"><p>Нет обращений в поддержку</p></div>';
+    } else {
+      messengerDialogs.innerHTML = dialogs.map(dialog => {
+        const userName = safeText(dialog.user?.username || 'Пользователь', 'Пользователь');
+        const avatarUrl = safeUrl(dialog.user?.avatar_url || '');
+        const lastMsgText = dialog.lastMessage?.content || 'Нет сообщений';
+        const lastMsgTime = dialog.lastMessage?.created_at ? formatDateTime(dialog.lastMessage.created_at) : '';
+        const unreadBadge = dialog.unreadCount > 0 ? `<span class="mkz-unread-badge">${dialog.unreadCount}</span>` : '';
+        
+        return `
+          <button class="mkz-dialog mkz-dialog--support" data-open-chat="${dialog.chatId}" style="width:100%;margin-bottom:8px;padding:14px;border-radius:16px;border:2px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.03);text-align:left;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:46px;height:46px;border-radius:50%;${avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;` : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);'}display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;">
+                ${avatarUrl ? '' : getInitial(userName)}
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-weight:600;color:#fff;">${escapeHtml(userName)}</span>
+                  ${unreadBadge}
+                  <span style="font-size:11px;color:rgba(255,255,255,0.5);">${lastMsgTime}</span>
+                </div>
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(lastMsgText)}</div>
+              </div>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+    
+    // Вешаем обработчики
+    document.querySelectorAll('.mkz-dialog--support').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const chatId = btn.getAttribute('data-open-chat');
+        await openConversation(chatId);
+      });
+    });
+    
+  } catch (err) {
+    console.error('loadSupportDialogs error:', err);
+    messengerDialogs.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки</p></div>';
+  } finally {
+    hideLoading();
+  }
+}
+
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -1653,6 +1866,52 @@ async function renderMessengerDialogs() {
       if (c.is_support === true) return false;
       return true;
     });
+
+    // Закреплённый чат поддержки (персональный)
+if (state.currentSession?.user) {
+  const supportBtnHtml = `
+    <div class="mkz-messenger-pinned">
+      <div class="mkz-messenger-pinned__label">🤝 Поддержка</div>
+      <button class="mkz-dialog" id="mkzOpenSupportChat" style="width:100%;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#ff2fae,#7a3cff);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:18px;">M</div>
+          <div style="flex:1;">
+            <div style="font-weight:600;color:#fff;">Mark1z Design</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.6);">Техподдержка и заказы</div>
+          </div>
+        </div>
+      </button>
+    </div>
+  `;
+  
+  // Вставляем в начало списка
+  messengerDialogs.insertAdjacentHTML('afterbegin', supportBtnHtml);
+  
+  // Обработчик открытия персонального чата поддержки
+  document.getElementById('mkzOpenSupportChat')?.addEventListener('click', async () => {
+    if (!state.currentSession?.user) {
+      openScreen('account');
+      return;
+    }
+    
+    const userId = state.currentSession.user.id;
+    
+    // Ищем или создаём персональный чат
+    let personalChatId = await findPersonalSupportChat(userId);
+    
+    if (!personalChatId) {
+      personalChatId = await createPersonalSupportChat(userId);
+    }
+    
+    if (personalChatId) {
+      openScreen('messenger');
+      await openConversation(personalChatId);
+    } else {
+      showNotification('Ошибка открытия чата поддержки', 'error');
+    }
+  });
+}
+    
     messengerDialogs.innerHTML = personalChats.map(chat => {
       // Находим собеседника для этого чата
       const chatMembers = (allMembers || []).filter(m => m.chat_id === chat.id);
@@ -2529,51 +2788,55 @@ setTimeout(() => {
       var meta = document.getElementById('mkzMessengerAttachMeta');
       if (meta) meta.innerHTML = '';
           
-      // Автоответ бота поддержки
+      // После успешной отправки сообщения пользователем
       if (state.currentSession?.user?.id !== OWNER_UID) {
-        var { data: chatCheck } = await supabaseClient.from('chats').select('is_support').eq('id', state.currentConversationId).single();
-        if (chatCheck && chatCheck.is_support) {
-          var userMsg = (content || '').toLowerCase();
-        var botReply = '';
+        // Проверяем, является ли чат чатом поддержки
+        const { data: chatInfo } = await supabaseClient
+          .from('chats')
+          .select('is_support')
+          .eq('id', state.currentConversationId)
+          .single();
         
-        if (userMsg.includes('цена') || userMsg.includes('стоит') || userMsg.includes('сколько') || userMsg.includes('прайс')) {
-          botReply = 'Здравствуйте! Вот примерные цены:\n📌 Логотип — 600₽\n📌 Баннер/постер — 500₽\n📌 Аватарка — 500₽\n📌 Дизайн сайта — от 3000₽\n📌 Вёрстка сайта — от 15000₽\n\nТочную стоимость скажу после обсуждения деталей. Напишите @Mark1zell в Telegram!';
-        } else if (userMsg.includes('срок') || userMsg.includes('долго') || userMsg.includes('сколько дней')) {
-          botReply = 'Сроки зависят от проекта. Логотип/баннер — 1-2 дня. Сайт — от 3 дней до недели. Приложение — до 2 недель. Всё обсуждаемо!';
-        } else if (userMsg.includes('привет') || userMsg.includes('здрав') || userMsg.includes('хай') || userMsg.includes('ку')) {
-          botReply = 'Привет! 👋 Я бот Mark1z Design. Напишите ваш вопрос или заказ, и я отвечу или передам администратору. Для связи: @Mark1zell в Telegram.';
-        } else if (userMsg.includes('пример') || userMsg.includes('портфолио') || userMsg.includes('работы')) {
-          botReply = 'Портфолио можно посмотреть в разделе «Портфолио» на сайте или запросить в Telegram: @Mark1zell';
-        } else if (userMsg.includes('контакт') || userMsg.includes('связь') || userMsg.includes('телеграм') || userMsg.includes('tg')) {
-          botReply = 'Связаться с дизайнером: Telegram @Mark1zell, ВКонтакте vk.com/mark1zyyy';
-        } else if (userMsg.includes('оплат') || userMsg.includes('плат') || userMsg.includes('карт')) {
-          botReply = 'Оплата принимается на карту Т-Банка. Ссылка на оплату есть в разделе «Заказать» на сайте.';
-        } else {
-          botReply = 'Спасибо за обращение! 🙏 Администратор скоро ответит. Для быстрой связи: Telegram @Mark1zell';
+        if (chatInfo?.is_support) {
+          // Формируем ответ бота в тот же чат
+          let botReply = '';
+          const userMsg = (content || '').toLowerCase();
+          
+          if (userMsg.includes('цена') || userMsg.includes('стоит') || userMsg.includes('прайс')) {
+            botReply = '💰 Цены:\n• Логотип — от 600₽\n• Баннер/постер — от 500₽\n• Дизайн сайта — от 3000₽\n• Вёрстка — от 15000₽\n\nТочную цену скажу после обсуждения. Напишите @Mark1zell в Telegram!';
+          } else if (userMsg.includes('срок') || userMsg.includes('долго')) {
+            botReply = '⏱ Сроки: логотип/баннер — 1-2 дня, сайт — от 3 дней, приложение — до 2 недель. Всё обсуждаемо!';
+          } else if (userMsg.includes('привет') || userMsg.includes('здрав')) {
+            botReply = '👋 Привет! Я бот Mark1z Design. Ваше сообщение передано администратору. Для быстрой связи: @Mark1zell в Telegram.';
+          } else if (userMsg.includes('портфолио')) {
+            botReply = '🎨 Портфолио в разделе "Портфолио" на сайте или запросите в Telegram: @Mark1zell';
+          } else {
+            botReply = '🙏 Спасибо за обращение! Администратор скоро ответит. Для быстрой связи: Telegram @Mark1zell';
+          }
+          
+          // Отправляем ответ бота в ТОТ ЖЕ чат
+          setTimeout(async () => {
+            await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
+              method: 'POST',
+              headers: {
+                'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
+                'Authorization': 'Bearer ' + state.currentSession.access_token,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                chat_id: state.currentConversationId,
+                sender_id: OWNER_UID,
+                content: botReply,
+                type: 'text'
+              })
+            });
+            
+            // Обновляем сообщения в чате
+            await openConversation(state.currentConversationId, true);
+          }, 1500);
         }
-      if (botReply) {
-        setTimeout(async function() {
-          var botPayload = {
-            chat_id: state.currentConversationId,
-            sender_id: OWNER_UID,
-            content: botReply,
-            type: 'text'
-          };
-          await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/messages', {
-            method: 'POST',
-            headers: {
-              'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW',
-              'Authorization': 'Bearer ' + state.currentSession.access_token,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation'
-            },
-            body: JSON.stringify(botPayload)
-          });
-          await openConversation(state.currentConversationId, true);
-        }, 2000);
       }
-        }
-      }
+      
     } catch (err) {
       state.conversationMessages = state.conversationMessages.filter(function(m) { return m.id !== tempId; });
       renderMessagesList();
@@ -2678,32 +2941,33 @@ setTimeout(() => {
   
   // ========== BIND STATIC EVENTS ==========
     function bindStaticEvents() {
-    // Кнопка «Сообщения поддержки» только для админа
-    if (isOwner()) {
-      var supportMsgBtn = document.createElement('button');
-      supportMsgBtn.id = 'mkzSupportMsgBtn';
+// Кнопка "Сообщения поддержки" для админа
+if (isOwner()) {
+  const supportMsgBtn = document.createElement('button');
+  supportMsgBtn.id = 'mkzSupportMsgBtn';
+  supportMsgBtn.textContent = '💬 Сообщения поддержки';
+  supportMsgBtn.style.cssText = 'width:100%;padding:10px 14px;margin-top:6px;border-radius:12px;background:rgba(255,47,174,0.15);border:1px solid rgba(255,47,174,0.3);color:#fff;cursor:pointer;font-weight:600;font-size:13px;';
+  
+  let showingSupport = false;
+  
+  supportMsgBtn.onclick = async () => {
+    showingSupport = !showingSupport;
+    if (showingSupport) {
+      supportMsgBtn.textContent = '📋 Все диалоги';
+      supportMsgBtn.style.background = 'rgba(59,130,246,0.15)';
+      supportMsgBtn.style.borderColor = 'rgba(59,130,246,0.3)';
+      await loadSupportDialogs(); // Загружаем список обращений
+    } else {
       supportMsgBtn.textContent = '💬 Сообщения поддержки';
-      supportMsgBtn.style.cssText = 'width:100%;padding:10px 14px;margin-top:6px;border-radius:12px;background:rgba(255,47,174,0.15);border:1px solid rgba(255,47,174,0.3);color:#fff;cursor:pointer;font-weight:600;font-size:13px;text-align:center;';
-      
-      var showingSupport = false;
-      
-      supportMsgBtn.onclick = async function() {
-        showingSupport = !showingSupport
-        if (showingSupport) {
-          supportMsgBtn.textContent = '👤 Мои чаты';
-          supportMsgBtn.style.background = 'rgba(59,130,246,0.15)';
-          supportMsgBtn.style.borderColor = 'rgba(59,130,246,0.3)';
-          await loadSupportDialogs();
-        } else {
-          supportMsgBtn.textContent = '💬 Сообщения поддержки';
-          supportMsgBtn.style.background = 'rgba(255,47,174,0.15)';
-          supportMsgBtn.style.borderColor = 'rgba(255,47,174,0.3)';
-          await renderMessengerDialogs();
-        }
-      };
-      
-      var sidebar = document.querySelector('#messenger .mkz-messenger-sidebar__top');
-      if (sidebar) sidebar.appendChild(supportMsgBtn);
+      supportMsgBtn.style.background = 'rgba(255,47,174,0.15)';
+      supportMsgBtn.style.borderColor = 'rgba(255,47,174,0.3)';
+      await renderMessengerDialogs(); // Возвращаем обычный список чатов
+    }
+  };
+  
+  const sidebar = document.querySelector('#messenger .mkz-messenger-sidebar__top');
+  if (sidebar) sidebar.appendChild(supportMsgBtn);
+}
     }
     if (messengerAttachImageBtn) messengerAttachImageBtn.style.display = 'none';
     if (messengerAttachFileBtn) messengerAttachFileBtn.style.display = 'none';
