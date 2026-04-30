@@ -2610,7 +2610,7 @@ setTimeout(() => {
                   'X-Title': 'Mark1z Design'
                 },
                 body: JSON.stringify({
-                  model: 'google/gemini-2.0-flash-lite-preview-02-05:free',
+                  model: 'microsoft/phi-3-mini-128k-instruct:free',
                   messages: [
                     {
                       role: 'system',
