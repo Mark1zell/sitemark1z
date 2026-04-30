@@ -1724,7 +1724,38 @@ async function renderMessengerDialogs() {
         '<div style="width:46px;height:46px;min-width:46px;border-radius:50%;' + (avatarUrl ? 'background-image:url(' + escapeHtml(avatarUrl) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);') + 'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;">' + (avatarUrl ? '' : getInitial(displayName, 'П')) + '</div>' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
-            '<span style="font-weight:600;font-size:14px;color:#fff;text-shadow:0 0 8px rgba(0,0,0,0.5);">' + escapeHtml(displayName) + '</span>' +
+            // Определяем цвет статуса
+let statusColor = '#64748b'; // серый по умолчанию (оффлайн)
+let statusDot = '';
+
+if (chat.is_group) {
+  statusDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b5cf6;margin-right:6px;box-shadow:0 0 4px #8b5cf6;"></span>';
+} else if (otherMemberId && profilesMap[otherMemberId]) {
+  const profile = profilesMap[otherMemberId];
+  if (profile.is_online) {
+    statusColor = '#22c55e'; // зелёный — онлайн
+    statusDot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:6px;box-shadow:0 0 6px #22c55e;animation:pulse-green 1.5s infinite;"></span>';
+  } else if (profile.last_seen_at) {
+    const lastSeen = new Date(profile.last_seen_at);
+    const now = new Date();
+    const diffMins = Math.floor((now - lastSeen) / 60000);
+    if (diffMins < 5) {
+      statusColor = '#f97316'; // оранжевый — был недавно
+      statusDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;margin-right:6px;box-shadow:0 0 4px #f97316;"></span>';
+    } else {
+      statusColor = '#64748b'; // серый — оффлайн
+      statusDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748b;margin-right:6px;"></span>';
+    }
+  } else {
+    statusDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748b;margin-right:6px;"></span>';
+  }
+} else if (String(chat.id) === String(state.supportConversationId)) {
+  statusColor = '#22c55e';
+  statusDot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:6px;box-shadow:0 0 6px #22c55e;animation:pulse-green 1.5s infinite;"></span>';
+}
+
+// Имя с индикатором
+const nameWithStatus = '<div style="display:flex;align-items:center;gap:4px;">' + statusDot + '<span style="font-weight:600;font-size:14px;color:#fff;text-shadow:0 0 8px rgba(0,0,0,0.5);">' + escapeHtml(displayName) + '</span></div>'; +
             (lastMsg && lastMsg.sender_id !== myId && !isActive ? ' <span style="display:inline-block;width:8px;height:8px;background:#ff2fae;border-radius:50%;"></span>' : '') +
             (timeText ? '<span style="font-size:11px;color:rgba(255,255,255,0.5);">' + timeText + '</span>' : '') +
           '</div>' +
