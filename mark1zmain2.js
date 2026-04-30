@@ -3391,6 +3391,8 @@ var newChatId = generateUUID();
   
 }  // ← ЭТА СКОБКА ЗАКРЫВАЕТ bindStaticEvents()
 
+;
+
 // ========== CSS STYLING ==========
 (function addStyles() {
   var style = document.createElement('style');
