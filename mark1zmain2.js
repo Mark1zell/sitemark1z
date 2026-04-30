@@ -2413,55 +2413,62 @@ if (otherUserId && otherUserId !== '3bf0b657-7722-4189-bd0e-6b7b9271ccdc') {
 if (String(conversationId) === String(state.supportConversationId) && state.currentSession?.user) {
   var userId = state.currentSession.user.id;
   if (userId !== OWNER_UID) {
-    var { data: supportChats } = await supabaseClient.from('conversations').select('id').eq('is_support', true);
-    var supportChatId = null;
-    if (supportChats) {
-      for (var i = 0; i < supportChats.length; i++) {
-        var { data: members } = await supabaseClient.from('conversation_members').select('user_id').eq('conversation_id', supportChats[i].id);
-        if (members && members.find(function(m) { return m.user_id === userId; })) {
-          supportChatId = supportChats[i].id;
-          break;
+    // УБРАТЬ await ↓
+    supabaseClient.from('chats').select('id').eq('is_support', true).then(result => {
+      var supportChats = result.data;
+      var supportChatId = null;
+      if (supportChats) {
+        for (var i = 0; i < supportChats.length; i++) {
+          // УБРАТЬ await ↓
+          supabaseClient.from('chat_members').select('user_id').eq('chat_id', supportChats[i].id).then(memberResult => {
+            var members = memberResult.data;
+            if (members && members.find(function(m) { return m.user_id === userId; })) {
+              supportChatId = supportChats[i].id;
+              if (supportChatId) {
+                state.currentConversationId = supportChatId;
+                conversationId = supportChatId;
+              }
+            }
+          });
         }
       }
-    }
-    
-    if (supportChatId) {
-      state.currentConversationId = supportChatId;
-      conversationId = supportChatId;
-    } else {
-      var newId = generateUUID();
-      await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/conversations', {
-        method: 'POST', 
-        headers: { 
-          'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 
-          'Authorization': 'Bearer ' + state.currentSession.access_token, 
-          'Content-Type': 'application/json', 
-          'Prefer': 'return=minimal' 
-        },
-        body: JSON.stringify({ id: newId, is_group: false, is_support: true })
-      });
-      await fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/conversation_members', {
-        method: 'POST', 
-        headers: { 
-          'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 
-          'Authorization': 'Bearer ' + state.currentSession.access_token, 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify([{ conversation_id: newId, user_id: userId }, { conversation_id: newId, user_id: OWNER_UID }])
-      });
-      state.currentConversationId = newId;
-      conversationId = newId;
-    }
+      
+      if (!supportChatId) {
+        var newId = generateUUID();
+        fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chats', {
+          method: 'POST', 
+          headers: { 
+            'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 
+            'Authorization': 'Bearer ' + state.currentSession.access_token, 
+            'Content-Type': 'application/json', 
+            'Prefer': 'return=minimal' 
+          },
+          body: JSON.stringify({ id: newId, is_group: false, is_support: true })
+        }).then(() => {
+          fetch('https://jtokctxkrojiggjckwfn.supabase.co/rest/v1/chat_members', {
+            method: 'POST', 
+            headers: { 
+              'apikey': 'sb_publishable_jDgy-GUNpSSnPjsp2FQXAA_-m5NIehW', 
+              'Authorization': 'Bearer ' + state.currentSession.access_token, 
+              'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify([{ chat_id: newId, user_id: userId }, { chat_id: newId, user_id: OWNER_UID }])
+          }).then(() => {
+            state.currentConversationId = newId;
+            conversationId = newId;
+          });
+        });
+      }
+    });
   }
 }
   
   try {
     // Загружаем сообщения
-    const { data: messages, error: msgError } = await supabaseClient
-      .from('messages')
-      .select('*')
-      .eq('chat_id', conversationId)
-      .order('created_at', { ascending: true });
+  const { data: messages, error: msgError } = await supabaseClient
+  .from('conversation_messages')
+  .select('*')
+  .eq('conversation_id', conversationId)
     
     if (msgError) { console.error('Ошибка загрузки сообщений:', msgError); return; }
 
@@ -2474,7 +2481,7 @@ if (String(conversationId) === String(state.supportConversationId) && state.curr
         // Обновляем время прочтения
     if (state.currentSession?.user) {
       try {
-        await supabaseClient.from('chat_members')
+        await supabaseClient.from('conversation_members')
           .update({ last_read_at: new Date().toISOString() })
           .eq('chat_id', conversationId)
           .eq('user_id', state.currentSession.user.id);
