@@ -1755,6 +1755,52 @@ async function editContest(postId) {
   }
 }
 
+// ========== ПОИСК СУЩЕСТВУЮЩЕГО ЧАТА 1-на-1 ==========
+async function findExistingConversation(userId) {
+  if (!state.currentSession?.user) return null;
+  const myUserId = state.currentSession.user.id;
+  
+  try {
+    // Ищем чаты где я участник (таблица conversation_members)
+    const { data: myChats, error: myChatsError } = await supabaseClient
+      .from('conversation_members')
+      .select('conversation_id')
+      .eq('user_id', myUserId);
+    
+    if (myChatsError) throw myChatsError;
+    if (!myChats?.length) return null;
+    
+    const myChatIds = myChats.map(m => m.conversation_id);
+    
+    // Ищем участников в этих чатах
+    const { data: allMembers, error: membersError } = await supabaseClient
+      .from('conversation_members')
+      .select('conversation_id, user_id')
+      .in('conversation_id', myChatIds);
+    
+    if (membersError) throw membersError;
+    
+    // Группируем по чатам
+    const chatsMap = {};
+    for (const m of allMembers || []) {
+      if (!chatsMap[m.conversation_id]) chatsMap[m.conversation_id] = [];
+      chatsMap[m.conversation_id].push(m.user_id);
+    }
+    
+    // Ищем чат ровно с двумя участниками
+    for (const [chatId, userIds] of Object.entries(chatsMap)) {
+      if (userIds.length === 2 && userIds.includes(myUserId) && userIds.includes(userId)) {
+        return chatId;
+      }
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('findExistingConversation error:', err);
+    return null;
+  }
+}
+
 // ========== НАЧАТЬ ЧАТ С ПОЛЬЗОВАТЕЛЕМ ==========
 async function startConversationWithUser(userId) {
   if (!state.currentSession?.user) {
@@ -1764,42 +1810,40 @@ async function startConversationWithUser(userId) {
 
   const myId = state.currentSession.user.id;
   
-  // 1. Проверяем существующий чат
+  // 1. Проверяем существующий чат (используем conversation_members)
   const existingId = await findExistingConversation(userId);
   if (existingId) {
     console.log('✅ Чат уже существует:', existingId);
+    await openConversation(existingId);
     return existingId;
   }
 
-  // 2. Создаём новый чат
+  // 2. Создаём новый чат в таблице conversations
   try {
-    const newChatId = generateUUID(); // ← ЗДЕСЬ ИСПОЛЬЗУЕМ generateUUID
+    const newChatId = generateUUID();
     
     const { error: chatError } = await supabaseClient
-      .from('chats')
-      .insert({ id: newChatId, is_group: false });
+      .from('conversations')
+      .insert({ id: newChatId, is_group: false, updated_at: new Date().toISOString() });
 
-    if (chatError) {
-      console.error('Ошибка создания чата:', chatError);
-      throw new Error('Не удалось создать чат: ' + chatError.message);
-    }
+    if (chatError) throw chatError;
 
-    // 3. Добавляем участников
+    // 3. Добавляем участников в conversation_members
     const { error: membersError } = await supabaseClient
-      .from('chat_members')
+      .from('conversation_members')
       .insert([
-        { chat_id: newChatId, user_id: myId },
-        { chat_id: newChatId, user_id: userId }
+        { conversation_id: newChatId, user_id: myId },
+        { conversation_id: newChatId, user_id: userId }
       ]);
 
     if (membersError) {
-      console.error('Ошибка добавления участников:', membersError);
-      // Удаляем пустой чат
-      await supabaseClient.from('chats').delete().eq('id', newChatId);
-      throw new Error('Не удалось добавить участников: ' + membersError.message);
+      await supabaseClient.from('conversations').delete().eq('id', newChatId);
+      throw membersError;
     }
 
     console.log('🆕 Чат создан:', newChatId);
+    await openConversation(newChatId);
+    showNotification('Чат создан', 'success');
     return newChatId;
 
   } catch (err) {
