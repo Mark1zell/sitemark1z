@@ -1,0 +1,12 @@
+(function() {
+  'use strict';
+  console.log('🔥 MKZ скрипт загружен');
+  
+  window.mkz = {
+    init: function() {
+      console.log('✅ Сайт работает без ошибок');
+    }
+  };
+  
+  window.mkz.init();
+})();
