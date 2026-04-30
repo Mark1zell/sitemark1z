@@ -3422,7 +3422,7 @@ initSupportDialogsBackButton();
     await updatePresence(!document.hidden);
   });
   
-  window.addEventListener('beforeunload', function() {
+   window.addEventListener('beforeunload', function() {
     updatePresence(false);
   });
 
