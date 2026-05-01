@@ -1747,7 +1747,7 @@ async function renderMessengerDialogs() {
       var boxShadow = isActive ? '0 0 24px rgba(255,47,174,0.3), inset 0 0 0 1px rgba(255,47,174,0.2)' : 'none';
 
       var openChatId = chat.id;
-      return '<button class="mkz-dialog" type="button" data-open-chat="' + openChatId + '" style="' + bgStyle + 'border-radius:16px;border:2px solid ' + borderColor + ';' + outlineStyle + 'box-shadow:' + boxShadow + ';transition:all 0.3s ease;padding:14px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:6px;position:relative;overflow:hidden;">' +
+      return '<button class="mkz-dialog" type="button" data-open-chat="' + openChatId + '" data-user-id="' + (otherMemberId || '') + '" style="' + bgStyle + 'border-radius:16px;border:2px solid ' + borderColor + ';' + outlineStyle + 'box-shadow:' + boxShadow + ';transition:all 0.3s ease;padding:14px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;margin-bottom:6px;position:relative;overflow:hidden;">' +
         '<div style="width:46px;height:46px;min-width:46px;border-radius:50%;' + (avatarUrl ? 'background-image:url(' + escapeHtml(avatarUrl) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(135deg,#ff2fae,#7a3cff);') + 'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;">' + (avatarUrl ? '' : getInitial(displayName, 'П')) + '</div>' +
         '<div style="flex:1;min-width:0;width:100%;">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;">' +
@@ -2421,6 +2421,135 @@ setTimeout(() => {
       messengerDialogs.innerHTML = '<div class="mkz-card"><p>Ошибка загрузки</p></div>';
     }
   }
+
+  // ========== REAL-TIME ОБНОВЛЕНИЕ СПИСКА ДИАЛОГОВ ==========
+let realtimeSubscription = null;
+
+async function initRealtimeDialogs() {
+  if (!state.currentSession?.user) return;
+  
+  if (realtimeSubscription) {
+    supabaseClient.removeChannel(realtimeSubscription);
+  }
+  
+  const myId = state.currentSession.user.id;
+  
+  const { data: myChats } = await supabaseClient
+    .from('chat_members')
+    .select('chat_id')
+    .eq('user_id', myId);
+  
+  if (!myChats?.length) return;
+  
+  const chatIds = myChats.map(c => c.chat_id);
+  
+  realtimeSubscription = supabaseClient
+    .channel('dialogs-realtime')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: `chat_id=in.(${chatIds.join(',')})`
+    }, async (payload) => {
+      console.log('📨 Новое сообщение в чате:', payload.new.chat_id);
+      await updateDialogLastMessage(payload.new.chat_id);
+    })
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'profiles'
+    }, async (payload) => {
+      const updatedUserId = payload.new.id;
+      const hasChatWithUser = await checkIfHaveChatWithUser(updatedUserId);
+      if (hasChatWithUser) {
+        console.log('👤 Обновлён профиль:', updatedUserId);
+        await updateDialogUserInfo(updatedUserId);
+      }
+    })
+    .subscribe();
+}
+
+async function updateDialogLastMessage(chatId) {
+  const { data: lastMsg } = await supabaseClient
+    .from('messages')
+    .select('content, created_at, sender_id')
+    .eq('chat_id', chatId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  
+  const dialogElement = document.querySelector(`.mkz-dialog[data-open-chat="${chatId}"]`);
+  if (!dialogElement) return;
+  
+  const previewEl = dialogElement.querySelector('.mkz-dialog__preview');
+  const timeEl = dialogElement.querySelector('.mkz-dialog__time');
+  
+  if (lastMsg?.[0]) {
+    let preview = lastMsg[0].content || '📎 Вложение';
+    if (preview.length > 40) preview = preview.substring(0, 40) + '...';
+    if (previewEl) previewEl.textContent = preview;
+    if (timeEl) timeEl.textContent = formatDateTime(lastMsg[0].created_at);
+  }
+  
+  dialogElement.remove();
+  const container = document.querySelector('.mkz-chat-list');
+  if (container) container.prepend(dialogElement);
+}
+
+async function updateDialogUserInfo(userId) {
+  const dialogElement = document.querySelector(`.mkz-dialog[data-user-id="${userId}"]`);
+  if (!dialogElement) return;
+  
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('username, avatar_url, is_online, last_seen_at')
+    .eq('id', userId)
+    .single();
+  
+  if (!profile) return;
+  
+  const nameEl = dialogElement.querySelector('.mkz-dialog__name');
+  if (nameEl) nameEl.textContent = profile.username || 'Пользователь';
+  
+  const avatarEl = dialogElement.querySelector('.mkz-dialog__avatar');
+  if (avatarEl) {
+    if (profile.avatar_url) {
+      avatarEl.style.backgroundImage = `url('${profile.avatar_url}')`;
+      avatarEl.style.backgroundSize = 'cover';
+      avatarEl.textContent = '';
+    } else {
+      avatarEl.style.backgroundImage = '';
+      avatarEl.textContent = getInitial(profile.username, 'П');
+    }
+  }
+  
+  const statusEl = dialogElement.querySelector('.mkz-dialog__status');
+  if (statusEl) {
+    statusEl.textContent = profile.is_online ? 'В сети' : (profile.last_seen_at ? `Был(а) ${formatDateOnly(profile.last_seen_at)}` : 'Не в сети');
+    statusEl.style.color = profile.is_online ? '#22c55e' : '#94a3b8';
+  }
+}
+
+async function checkIfHaveChatWithUser(userId) {
+  if (!state.currentSession?.user) return false;
+  const myId = state.currentSession.user.id;
+  
+  const { data: members } = await supabaseClient
+    .from('chat_members')
+    .select('chat_id')
+    .eq('user_id', myId);
+  
+  if (!members?.length) return false;
+  
+  const chatIds = members.map(m => m.chat_id);
+  
+  const { data: otherMembers } = await supabaseClient
+    .from('chat_members')
+    .select('chat_id')
+    .in('chat_id', chatIds)
+    .eq('user_id', userId);
+  
+  return otherMembers?.length > 0;
+}
 
   function initSupportDialogsButton() { const btn = document.getElementById('mkzOpenSupportChatsBtn'); if (btn) btn.addEventListener('click', async () => { await loadSupportDialogs(); openScreen('support-dialogs'); }); }
   function initSupportDialogsBackButton() { const backBtn = document.getElementById('mkzBackToAdminBtn'); if (backBtn) backBtn.addEventListener('click', () => openScreen('account')); }
@@ -3232,6 +3361,7 @@ var newChatId = generateUUID();
     await Promise.all([cacheProfiles(), renderPortfolio(), renderReviews(), renderNews(), renderFaqQuestions(), renderContestEntriesAdmin(), searchPeople(), renderMessengerDialogs()]);
     await loadUserBio();
     bindStaticEvents();   
+    await initRealtimeDialogs();
     var msgContainer = document.getElementById('mkzMessengerMessages');
     if (msgContainer) msgContainer.style.overflowY = 'hidden';
     var compose = document.getElementById('mkzMessengerForm');
